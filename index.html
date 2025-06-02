@@ -38,7 +38,7 @@
     }).addTo(map);
 
     // Завантажуємо файл GeoJSON з районами
-    fetch('districts.geojson')
+    fetch('center.json')
       .then(response => response.json())
       .then(data => {
         L.geoJSON(data, {
@@ -56,7 +56,7 @@
       })
       .catch(error => {
         console.error('Помилка завантаження GeoJSON:', error);
-        alert('Не вдалося завантажити файл districts.geojson');
+        alert('Не вдалося завантажити файл center.json');
       });
   </script>
 
