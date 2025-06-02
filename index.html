@@ -12,7 +12,7 @@
       margin: 0;
       padding: 0;
     }
-    button.layer-toggle, button.locate-btn {
+    button.layer-toggle, button.locate-btn, button.auth-btn, button.history-btn {
       position: absolute;
       left: 50px;
       z-index: 1000;
@@ -22,164 +22,307 @@
       border-radius: 4px;
       cursor: pointer;
     }
-    button.locate-btn {
-      top: 10px;
+    button.locate-btn { top: 10px; }
+    button.layer-toggle { top: 50px; }
+    button.auth-btn { top: 90px; }
+    button.history-btn { top: 130px; }
+    #history-view {
+      display: none;
+      position: absolute;
+      top: 170px;
+      left: 50px;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      max-height: 50vh;
+      overflow-y: auto;
     }
-    button.layer-toggle {
-      top: 50px;
+    #edit-form {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2000;
+      background: white;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #edit-form input, #edit-form textarea {
+      display: block;
+      margin: 10px 0;
+      width: 100%;
     }
   </style>
 </head>
 <body>
+  <button onclick="findLocation()" class="locate-btn">📍 Показати моє місце</button>
+  <button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
+  <button onclick="toggleAuth()" class="auth-btn" id="auth-btn">🔒 Увійти</button>
+  <button onclick="showHistory()" class="history-btn">📜 Історія</button>
+  <div id="map"></div>
+  <div id="history-view"></div>
+  <div id="edit-form">
+    <h3>Редагувати інформацію</h3>
+    <input type="text" id="edit-date-received" placeholder="Дата отримання (рррр-мм-дд)">
+    <input type="text" id="edit-date-processed" placeholder="Дата опрацювання (рррр-мм-дд)">
+    <input type="text" id="edit-bulletin" placeholder="Вісник">
+    <textarea id="edit-additional" placeholder="Додатково"></textarea>
+    <button onclick="saveInfo()">Зберегти</button>
+    <button onclick="closeEditForm()">Скасувати</button>
+  </div>
 
-<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце</button>
-<button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
-<div id="map"></div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js"></script>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
 
-<script>
-  const map = L.map('map').setView([49.1029, 29.2074], 14);
-
-  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap',
-    maxZoom: 19
-  }).addTo(map);
-
-  const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' +
-    'World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: '© Esri',
-    maxZoom: 19
-  });
-
-  const district1 = L.layerGroup();
-  const district2 = L.layerGroup();
-
-  const districtCenters = [];
-
-  function createDistrictPopup(name, latlng) {
-    return `<b>${name}</b><br>
-      <button onclick="routeToDistrict(${latlng.lat}, ${latlng.lng}, '${name}')">📌 Прокласти маршрут сюди</button>`;
-  }
-
-  fetch('district1.json')
-    .then(res => res.json())
-    .then(data => {
-      const d1Layer = L.geoJSON(data, {
-        onEachFeature: (feature, layer) => {
-          const center = layer.getBounds().getCenter();
-          districtCenters.push({ name: feature.properties?.name || 'Територія 1', latlng: center });
-          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 1', center));
-        },
-        style: {
-          color: 'blue',
-          fillColor: '#99ccff',
-          fillOpacity: 0.4
-        }
-      }).addTo(district1);
-    });
-
-  fetch('district2.json')
-    .then(res => res.json())
-    .then(data => {
-      const d2Layer = L.geoJSON(data, {
-        onEachFeature: (feature, layer) => {
-          const center = layer.getBounds().getCenter();
-          districtCenters.push({ name: feature.properties?.name || 'Територія 2', latlng: center });
-          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 2', center));
-        },
-        style: {
-          color: 'green',
-          fillColor: '#b6fcb6',
-          fillOpacity: 0.4
-        }
-      }).addTo(district2);
-    });
-
-  const baseMaps = {
-    "Стандартна карта": osm,
-    "Супутникова карта": satellite
-  };
-
-  const overlayMaps = {
-    "Територія 1": district1,
-    "Територія 2": district2
-  };
-
-  L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
-
-  function toggleLayers() {
-    const control = document.querySelector('.leaflet-control-layers');
-    if (control) {
-      control.classList.toggle('leaflet-control-layers-expanded');
-    }
-  }
-
-  let currentMarker = null;
-  let currentCircle = null;
-  let routeControl = null;
-  let currentLocation = null;
-
-  function findLocation() {
-    map.locate({
-      setView: true,
-      maxZoom: 16,
-      timeout: 20000,
-      enableHighAccuracy: true
-    });
-  }
-
-  map.on('locationfound', function (e) {
-    currentLocation = e.latlng;
-
-    if (currentMarker) map.removeLayer(currentMarker);
-    if (currentCircle) map.removeLayer(currentCircle);
-
-    currentCircle = L.circle(e.latlng, {
-      radius: e.accuracy,
-      color: 'blue',
-      fillColor: '#30f',
-      fillOpacity: 0.2
+    const map = L.map('map').setView([49.1029, 29.2074], 14);
+    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 19
     }).addTo(map);
+    const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: '© Esri',
+      maxZoom: 19
+    });
+    const district1 = L.layerGroup().addTo(map);
+    const district2 = L.layerGroup().addTo(map);
+    const baseMaps = { "Стандартна карта": osm, "Супутникова карта": satellite };
+    const overlayMaps = { "Територія 1": district1, "Територія 2": district2 };
+    L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
 
-    currentMarker = L.marker(e.latlng).addTo(map)
-      .bindPopup("Ваше місцерозташування (точність " + Math.round(e.accuracy) + " м)").openPopup();
-  });
+    let currentUser = null;
+    let currentMarker = null;
+    let currentCircle = null;
+    let routeControl = null;
+    let currentLocation = null;
+    let currentFeatureId = null;
 
-  map.on('locationerror', function (e) {
-    alert("⚠ Не вдалося визначити місцерозташування: " + e.message +
-      "\n\nМожливі причини:\n- Вимкнені служби геолокації\n- Відсутній дозвіл у браузері\n- Повільне з'єднання або слабкий сигнал\n- Сайт повинен відкриватися через HTTPS");
-  });
+    // Authentication state
+    auth.onAuthStateChanged(user => {
+      currentUser = user;
+      document.getElementById('auth-btn').textContent = user ? '🔓 Вийти' : '🔒 Увійти';
+      document.querySelector('.history-btn').style.display = user ? 'block' : 'none';
+      loadDistricts();
+    });
 
-  window.routeToDistrict = function(lat, lng, name) {
-    if (!currentLocation) {
-      alert("⛔ Спочатку натисніть кнопку 📍 «Показати моє місце»");
-      return;
+    function toggleAuth() {
+      if (currentUser) {
+        auth.signOut();
+      } else {
+        const email = prompt("Введіть email:");
+        const password = prompt("Введіть пароль:");
+        auth.signInWithEmailAndPassword(email, password).catch(error => {
+          alert("⚠ Помилка входу: " + error.message);
+        });
+      }
     }
 
-    if (routeControl) {
-      map.removeControl(routeControl);
+    function loadDistricts() {
+      district1.clearLayers();
+      district2.clearLayers();
+      db.collection('districts').get().then(snapshot => {
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const layerGroup = data.district === 'district1' ? district1 : district2;
+          const geoJsonLayer = L.geoJSON(data.geojson, {
+            style: {
+              color: data.district === 'district1' ? 'blue' : 'green',
+              fillColor: data.district === 'district1' ? '#99ccff' : '#b6fcb6',
+              fillOpacity: 0.4
+            },
+            onEachFeature: (feature, layer) => {
+              const center = layer.getBounds().getCenter();
+              const popupContent = createDistrictPopup(feature.properties?.name || `Територія ${data.district}`, center, doc.id);
+              layer.bindPopup(popupContent);
+              if (currentUser) {
+                const tooltipContent = createTooltipContent(data.info);
+                layer.bindTooltip(tooltipContent, { direction: 'top' });
+                layer.on('mouseover', () => layer.openTooltip());
+                layer.on('mouseout', () => layer.closeTooltip());
+              }
+            }
+          }).addTo(layerGroup);
+        });
+      });
     }
 
-    routeControl = L.Routing.control({
-      waypoints: [currentLocation, L.latLng(lat, lng)],
-      routeWhileDragging: false,
-      addWaypoints: false,
-      show: false,
-      createMarker: () => null
-    }).addTo(map);
-
-    const dist = currentLocation.distanceTo(L.latLng(lat, lng));
-    const distText = dist > 1000 ? (dist / 1000).toFixed(2) + " км" : Math.round(dist) + " м";
-
-    if (currentMarker) {
-      currentMarker.bindPopup(
-        `Ваше місцерозташування<br>Маршрут до <b>${name}</b><br>Відстань: ${distText}`
-      ).openPopup();
+    function createDistrictPopup(name, latlng, docId) {
+      let content = `<b>${name}</b><br><button onclick="routeToDistrict(${latlng.lat}, ${latlng.lng}, '${name}')">📌 Прокласти маршрут сюди</button>`;
+      if (currentUser) {
+        content += `<br><button onclick="openEditForm('${docId}')">✏️ Редагувати</button>`;
+      }
+      return content;
     }
-  };
-</script>
 
+    function createTooltipContent(info) {
+      if (!info) return 'Немає інформації';
+      return `Останнє оновлення:<br>
+        Дата отримання: ${info.dateReceived || '—'}<br>
+        Дата опрацювання: ${info.dateProcessed || '—'}<br>
+        Вісник: ${info.bulletin || '—'}<br>
+        Додатково: ${info.additional || '—'}`;
+    }
+
+    function openEditForm(docId) {
+      currentFeatureId = docId;
+      document.getElementById('edit-form').style.display = 'block';
+      db.collection('districts').doc(docId).get().then(doc => {
+        if (doc.exists) {
+          const data = doc.data().info || {};
+          document.getElementById('edit-date-received').value = data.dateReceived || '';
+          document.getElementById('edit-date-processed').value = data.dateProcessed || '';
+          document.getElementById('edit-bulletin').value = data.bulletin || '';
+          document.getElementById('edit-additional').value = data.additional || '';
+        }
+      });
+    }
+
+    function closeEditForm() {
+      document.getElementById('edit-form').style.display = 'none';
+      currentFeatureId = null;
+    }
+
+    function saveInfo() {
+      if (!currentUser || !currentFeatureId) return;
+      const info = {
+        dateReceived: document.getElementById('edit-date-received').value,
+        dateProcessed: document.getElementById('edit-date-processed').value,
+        bulletin: document.getElementById('edit-bulletin').value,
+        additional: document.getElementById('edit-additional').value,
+        updatedBy: currentUser.email,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      db.collection('districts').doc(currentFeatureId).update({ info }).then(() => {
+        db.collection('history').add({
+          districtId: currentFeatureId,
+          info,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        loadDistricts();
+        closeEditForm();
+      }).catch(error => {
+        alert("⚠ Помилка збереження: " + error.message);
+      });
+    }
+
+    function showHistory() {
+      const historyView = document.getElementById('history-view');
+      historyView.style.display = historyView.style.display === 'block' ? 'none' : 'block';
+      if (historyView.style.display === 'block') {
+        db.collection('history').orderBy('timestamp', 'desc').get().then(snapshot => {
+          let content = '<h3>Історія змін</h3>';
+          content += '<button onclick="exportHistory()">📥 Експортувати</button><br>';
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            content += `<p><b>Територія:</b> ${data.districtId}<br>
+              <b>Оновлено:</b> ${data.info.updatedBy}<br>
+              <b>Дата:</b> ${data.timestamp.toDate().toLocaleString('uk-UA')}<br>
+              <b>Інформація:</b><br>
+              Дата отримання: ${data.info.dateReceived || '—'}<br>
+              Дата опрацювання: ${data.info.dateProcessed || '—'}<br>
+              Вісник: ${data.info.bulletin || '—'}<br>
+              Додатково: ${data.info.additional || '—'}</p>`;
+          });
+          historyView.innerHTML = content;
+        });
+      }
+    }
+
+    function exportHistory() {
+      db.collection('history').orderBy('timestamp', 'desc').get().then(snapshot => {
+        const data = snapshot.docs.map(doc => ({
+          districtId: doc.data().districtId,
+          ...doc.data().info,
+          timestamp: doc.data().timestamp.toDate().toLocaleString('uk-UA')
+        }));
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'history.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
+
+    function toggleLayers() {
+      const control = document.querySelector('.leaflet-control-layers');
+      if (control) {
+        control.classList.toggle('leaflet-control-layers-expanded');
+      }
+    }
+
+    function findLocation() {
+      map.locate({
+        setView: true,
+        maxZoom: 16,
+        timeout: 20000,
+        enableHighAccuracy: true
+      });
+    }
+
+    map.on('locationfound', function (e) {
+      currentLocation = e.latlng;
+      if (currentMarker) map.removeLayer(currentMarker);
+      if (currentCircle) map.removeLayer(currentCircle);
+      currentCircle = L.circle(e.latlng, {
+        radius: e.accuracy,
+        color: 'blue',
+        fillColor: '#30f',
+        fillOpacity: 0.2
+      }).addTo(map);
+      currentMarker = L.marker(e.latlng).addTo(map)
+        .bindPopup("Ваше місцерозташування (точність " + Math.round(e.accuracy) + " м)").openPopup();
+    });
+
+    map.on('locationerror', function (e) {
+      alert("⚠ Не вдалося визначити місцерозташування: " + e.message +
+        "\n\nМожливі причини:\n- Вимкнені служби геолокації\n- Відсутній дозвіл у браузері\n- Повільне з'єднання або слабкий сигнал\n- Сайт повинен відкриватися через HTTPS");
+    });
+
+    window.routeToDistrict = function(lat, lng, name) {
+      if (!currentLocation) {
+        alert("⛔ Спочатку натисніть кнопку 📍 «Показати моє місце»");
+        return;
+      }
+      if (routeControl) {
+        map.removeControl(routeControl);
+      }
+      routeControl = L.Routing.control({
+        waypoints: [currentLocation, L.latLng(lat, lng)],
+        routeWhileDragging: false,
+        addWaypoints: false,
+        show: false,
+        createMarker: () => null
+      }).addTo(map);
+      const dist = currentLocation.distanceTo(L.latLng(lat, lng));
+      const distText = dist > 1000 ? (dist / 1000).toFixed(2) + " км" : Math.round(dist) + " м";
+      if (currentMarker) {
+        currentMarker.bindPopup(
+          `Ваше місцерозташdrivers license: 24.10.2025
+        ).openPopup();
+      }
+    };
+  </script>
 </body>
 </html>
