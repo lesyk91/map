@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
   <meta charset="utf-8" />
-  <title>Карта Іллінців з районами</title>
+  <title>Інтерактивна карта Іллінців</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- Leaflet CSS -->
@@ -24,14 +24,14 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-  // Ініціалізуємо карту
+  // 1. Створення карти
   const map = L.map('map').setView([49.1029, 29.2074], 14);
 
-  // Базові шари
+  // 2. Базові шари
   const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap'
-  });
+    attribution: '© OpenStreetMap',
+    maxZoom: 19
+  }).addTo(map); // стандартна карта за замовчуванням
 
   const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -39,14 +39,34 @@
     maxZoom: 19
   });
 
-  // Додаємо стандартну карту за замовчуванням
-  osm.addTo(map);
+  // 3. Поточне місцезнаходження користувача
+  map.locate({ setView: true, maxZoom: 16 });
 
-  // Створюємо порожні шари для кожного району
+  map.on('locationfound', function (e) {
+    const radius = e.accuracy;
+
+    // Коло точності
+    L.circle(e.latlng, {
+      radius: radius,
+      color: 'blue',
+      fillColor: '#30f',
+      fillOpacity: 0.2
+    }).addTo(map);
+
+    // Маркер з підписом
+    L.marker(e.latlng).addTo(map)
+      .bindPopup("Ваше місцерозташування (точність " + Math.round(radius) + " м)")
+      .openPopup();
+  });
+
+  map.on('locationerror', function (e) {
+    alert("Не вдалося визначити місцерозташування: " + e.message);
+  });
+
+  // 4. Шари GeoJSON (райони)
   const district1 = L.layerGroup();
   const district2 = L.layerGroup();
 
-  // Завантаження GeoJSON-файлів
   fetch('district1.json')
     .then(res => res.json())
     .then(data => {
@@ -77,10 +97,10 @@
       }).addTo(district2);
     });
 
-  // Додаємо панель з перемикачем шарів
+  // 5. Контроль шарів
   const baseMaps = {
     "Стандартна карта": osm,
-    "Супутникова": satellite
+    "Супутникова карта": satellite
   };
 
   const overlayMaps = {
