@@ -17,6 +17,19 @@
   </style>
 </head>
 <body>
+<button onclick="findLocation()" style="
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+">
+  📍 Показати моє місце
+</button>
 
 <div id="map"></div>
 
@@ -24,6 +37,30 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
+function findLocation() {
+  map.locate({ setView: true, maxZoom: 16 });
+
+  map.once('locationfound', function (e) {
+    const radius = e.accuracy;
+
+    L.circle(e.latlng, {
+      radius: radius,
+      color: 'blue',
+      fillColor: '#30f',
+      fillOpacity: 0.2
+    }).addTo(map);
+
+    L.marker(e.latlng).addTo(map)
+      .bindPopup("Ваше місцерозташування (точність " + Math.round(radius) + " м)")
+      .openPopup();
+  });
+
+  map.once('locationerror', function (e) {
+    alert("⚠ Не вдалося визначити місцерозташування: " + e.message + "\n\nПеревір, чи дозволено доступ у налаштуваннях браузера.");
+  });
+}
+
+  
   // 1. Створення карти
   const map = L.map('map').setView([49.1029, 29.2074], 14);
 
