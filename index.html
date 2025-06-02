@@ -120,27 +120,33 @@
 
   // 6. Кнопка "Моє місцерозташування"
   function findLocation() {
-    map.locate({ setView: true, maxZoom: 16 });
+  map.locate({
+    setView: true,
+    maxZoom: 16,
+    timeout: 20000,
+    enableHighAccuracy: true
+  });
 
-    map.once('locationfound', function (e) {
-      const radius = e.accuracy;
+  map.on('locationfound', function (e) {
+    const radius = e.accuracy;
 
-      L.circle(e.latlng, {
-        radius: radius,
-        color: 'blue',
-        fillColor: '#30f',
-        fillOpacity: 0.2
-      }).addTo(map);
+    L.circle(e.latlng, {
+      radius: radius,
+      color: 'blue',
+      fillColor: '#30f',
+      fillOpacity: 0.2
+    }).addTo(map);
 
-      L.marker(e.latlng).addTo(map)
-        .bindPopup("Ваше місцерозташування (точність " + Math.round(radius) + " м)")
-        .openPopup();
-    });
+    L.marker(e.latlng).addTo(map)
+      .bindPopup("Ваше місцерозташування (точність " + Math.round(radius) + " м)")
+      .openPopup();
+  });
 
-    map.once('locationerror', function (e) {
-      alert("⚠ Не вдалося визначити місцерозташування: " + e.message +
-        "\n\nПеревір, чи дозволено доступ у налаштуваннях браузера або системи.");
-    });
+  map.on('locationerror', function (e) {
+    alert("⚠ Не вдалося визначити місцерозташування: " + e.message);
+  });
+}
+
   }
 </script>
 
