@@ -4,9 +4,8 @@
   <meta charset="utf-8" />
   <title>Інтерактивна карта Іллінців</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
   <style>
     html, body, #map {
       height: 100%;
@@ -33,23 +32,16 @@
 </head>
 <body>
 
-<!-- Кнопка: показати місце -->
 <button onclick="findLocation()" class="locate-btn">📍 Показати моє місце</button>
-
-<!-- Кнопка: шари -->
 <button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
-
-<!-- Мапа -->
 <div id="map"></div>
 
-<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
 
 <script>
-  // 1. Ініціалізація карти
   const map = L.map('map').setView([49.1029, 29.2074], 14);
 
-  // 2. Базові шари
   const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap',
     maxZoom: 19
@@ -61,16 +53,24 @@
     maxZoom: 19
   });
 
-  // 3. Шари GeoJSON
   const district1 = L.layerGroup();
   const district2 = L.layerGroup();
+
+  const districtCenters = [];
+
+  function createDistrictPopup(name, latlng) {
+    return `<b>${name}</b><br>
+      <button onclick="routeToDistrict(${latlng.lat}, ${latlng.lng}, '${name}')">📌 Прокласти маршрут сюди</button>`;
+  }
 
   fetch('district1.json')
     .then(res => res.json())
     .then(data => {
-      L.geoJSON(data, {
+      const d1Layer = L.geoJSON(data, {
         onEachFeature: (feature, layer) => {
-          layer.bindPopup(feature.properties?.name || 'Район 1');
+          const center = layer.getBounds().getCenter();
+          districtCenters.push({ name: feature.properties?.name || 'Район 1', latlng: center });
+          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Район 1', center));
         },
         style: {
           color: 'blue',
@@ -83,9 +83,11 @@
   fetch('district2.json')
     .then(res => res.json())
     .then(data => {
-      L.geoJSON(data, {
+      const d2Layer = L.geoJSON(data, {
         onEachFeature: (feature, layer) => {
-          layer.bindPopup(feature.properties?.name || 'Район 2');
+          const center = layer.getBounds().getCenter();
+          districtCenters.push({ name: feature.properties?.name || 'Район 2', latlng: center });
+          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Район 2', center));
         },
         style: {
           color: 'green',
@@ -95,7 +97,6 @@
       }).addTo(district2);
     });
 
-  // 4. Контроль шарів
   const baseMaps = {
     "Стандартна карта": osm,
     "Супутникова карта": satellite
@@ -106,11 +107,8 @@
     "Район 2": district2
   };
 
-  const layerControl = L.control.layers(baseMaps, overlayMaps, {
-    collapsed: true
-  }).addTo(map);
+  L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
 
-  // 5. Кнопка "Шари"
   function toggleLayers() {
     const control = document.querySelector('.leaflet-control-layers');
     if (control) {
@@ -118,7 +116,11 @@
     }
   }
 
-  // 6. Показати місцерозташування
+  let currentMarker = null;
+  let currentCircle = null;
+  let routeControl = null;
+  let currentLocation = null;
+
   function findLocation() {
     map.locate({
       setView: true,
@@ -128,40 +130,55 @@
     });
   }
 
-  // 7. Змінні для зберігання мітки та кола
-  let currentMarker = null;
-  let currentCircle = null;
-
-  // 8. Обробка успішного знаходження місця
   map.on('locationfound', function (e) {
-    const radius = e.accuracy;
+    currentLocation = e.latlng;
 
-    // Видалити попередні мітки/кола
-    if (currentMarker) {
-      map.removeLayer(currentMarker);
-    }
-    if (currentCircle) {
-      map.removeLayer(currentCircle);
-    }
+    if (currentMarker) map.removeLayer(currentMarker);
+    if (currentCircle) map.removeLayer(currentCircle);
 
-    // Додати нові
     currentCircle = L.circle(e.latlng, {
-      radius: radius,
+      radius: e.accuracy,
       color: 'blue',
       fillColor: '#30f',
       fillOpacity: 0.2
     }).addTo(map);
 
     currentMarker = L.marker(e.latlng).addTo(map)
-      .bindPopup("Ваше місцерозташування (точність " + Math.round(radius) + " м)")
-      .openPopup();
+      .bindPopup("Ваше місцерозташування (точність " + Math.round(e.accuracy) + " м)").openPopup();
   });
 
-  // 9. Обробка помилки геолокації
   map.on('locationerror', function (e) {
     alert("⚠ Не вдалося визначити місцерозташування: " + e.message +
       "\n\nМожливі причини:\n- Вимкнені служби геолокації\n- Відсутній дозвіл у браузері\n- Повільне з'єднання або слабкий сигнал\n- Сайт повинен відкриватися через HTTPS");
   });
+
+  window.routeToDistrict = function(lat, lng, name) {
+    if (!currentLocation) {
+      alert("⛔ Спочатку натисніть кнопку 📍 «Показати моє місце»");
+      return;
+    }
+
+    if (routeControl) {
+      map.removeControl(routeControl);
+    }
+
+    routeControl = L.Routing.control({
+      waypoints: [currentLocation, L.latLng(lat, lng)],
+      routeWhileDragging: false,
+      addWaypoints: false,
+      show: false,
+      createMarker: () => null
+    }).addTo(map);
+
+    const dist = currentLocation.distanceTo(L.latLng(lat, lng));
+    const distText = dist > 1000 ? (dist / 1000).toFixed(2) + " км" : Math.round(dist) + " м";
+
+    if (currentMarker) {
+      currentMarker.bindPopup(
+        `Ваше місцерозташування<br>Маршрут до <b>${name}</b><br>Відстань: ${distText}`
+      ).openPopup();
+    }
+  };
 </script>
 
 </body>
