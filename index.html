@@ -1,42 +1,64 @@
 <!DOCTYPE html>
-<html>
+<html lang="uk">
 <head>
   <meta charset="utf-8" />
-  <title>Карта міста</title>
+  <title>Карта міста Іллінці</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
   <style>
-    #map { height: 100vh; margin: 0; }
-    html, body { height: 100%; margin: 0; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
+
   <div id="map"></div>
 
+  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    var map = L.map('map').setView([49.1029, 29.2074], 14); // Координати центру Іллінців
 
+  <script>
+    // Створюємо карту і задаємо координати центру Іллінців
+    const map = L.map('map').setView([49.1029, 29.2074], 14);
+
+    // Додаємо базову карту OpenStreetMap
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap'
+      attribution: '© OpenStreetMap',
+      maxZoom: 19
     }).addTo(map);
 
-    // Підключаємо райони
+    // Завантажуємо файл GeoJSON з районами
     fetch('districts.geojson')
       .then(response => response.json())
       .then(data => {
         L.geoJSON(data, {
           onEachFeature: function (feature, layer) {
-            layer.bindPopup(feature.properties.name);
+            const name = feature.properties?.name || 'Без назви';
+            layer.bindPopup(`<strong>${name}</strong>`);
           },
           style: {
-            color: 'blue',
+            color: '#0066cc',
+            weight: 2,
             fillColor: '#99ccff',
-            fillOpacity: 0.4
+            fillOpacity: 0.5
           }
         }).addTo(map);
+      })
+      .catch(error => {
+        console.error('Помилка завантаження GeoJSON:', error);
+        alert('Не вдалося завантажити файл districts.geojson');
       });
   </script>
+
 </body>
 </html>
