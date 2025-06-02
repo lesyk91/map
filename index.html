@@ -7,68 +7,53 @@
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-
   <style>
     html, body, #map {
       height: 100%;
       margin: 0;
       padding: 0;
     }
+    button.layer-toggle, button.locate-btn {
+      position: absolute;
+      left: 10px;
+      z-index: 1000;
+      padding: 8px 12px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button.locate-btn {
+      top: 10px;
+    }
+    button.layer-toggle {
+      top: 50px;
+    }
   </style>
 </head>
 <body>
-<button onclick="findLocation()" style="
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 1000;
-  padding: 8px 12px;
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  cursor: pointer;
-">
-  📍 Показати моє місце
-</button>
 
+<!-- Кнопка: показати місце -->
+<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце</button>
+
+<!-- Кнопка: шари -->
+<button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
+
+<!-- Мапа -->
 <div id="map"></div>
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-function findLocation() {
-  map.locate({ setView: true, maxZoom: 16 });
-
-  map.once('locationfound', function (e) {
-    const radius = e.accuracy;
-
-    L.circle(e.latlng, {
-      radius: radius,
-      color: 'blue',
-      fillColor: '#30f',
-      fillOpacity: 0.2
-    }).addTo(map);
-
-    L.marker(e.latlng).addTo(map)
-      .bindPopup("Ваше місцерозташування (точність " + Math.round(radius) + " м)")
-      .openPopup();
-  });
-
-  map.once('locationerror', function (e) {
-    alert("⚠ Не вдалося визначити місцерозташування: " + e.message + "\n\nПеревір, чи дозволено доступ у налаштуваннях браузера.");
-  });
-}
-
-  
-  // 1. Створення карти
+  // 1. Ініціалізація карти
   const map = L.map('map').setView([49.1029, 29.2074], 14);
 
   // 2. Базові шари
   const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap',
     maxZoom: 19
-  }).addTo(map); // стандартна карта за замовчуванням
+  }).addTo(map);
 
   const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -76,31 +61,7 @@ function findLocation() {
     maxZoom: 19
   });
 
-  // 3. Поточне місцезнаходження користувача
-  map.locate({ setView: true, maxZoom: 16 });
-
-  map.on('locationfound', function (e) {
-    const radius = e.accuracy;
-
-    // Коло точності
-    L.circle(e.latlng, {
-      radius: radius,
-      color: 'blue',
-      fillColor: '#30f',
-      fillOpacity: 0.2
-    }).addTo(map);
-
-    // Маркер з підписом
-    L.marker(e.latlng).addTo(map)
-      .bindPopup("Ваше місцерозташування (точність " + Math.round(radius) + " м)")
-      .openPopup();
-  });
-
-  map.on('locationerror', function (e) {
-    alert("Не вдалося визначити місцерозташування: " + e.message);
-  });
-
-  // 4. Шари GeoJSON (райони)
+  // 3. Шари GeoJSON
   const district1 = L.layerGroup();
   const district2 = L.layerGroup();
 
@@ -134,7 +95,7 @@ function findLocation() {
       }).addTo(district2);
     });
 
-  // 5. Контроль шарів
+  // 4. Контроль шарів
   const baseMaps = {
     "Стандартна карта": osm,
     "Супутникова карта": satellite
@@ -145,7 +106,42 @@ function findLocation() {
     "Район 2": district2
   };
 
-  L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
+  const layerControl = L.control.layers(baseMaps, overlayMaps, {
+    collapsed: true // згорнута панель за замовчуванням
+  }).addTo(map);
+
+  // 5. Кнопка "Шари" — відкриття/закриття панелі
+  function toggleLayers() {
+    const control = document.querySelector('.leaflet-control-layers');
+    if (control) {
+      control.classList.toggle('leaflet-control-layers-expanded');
+    }
+  }
+
+  // 6. Кнопка "Моє місцерозташування"
+  function findLocation() {
+    map.locate({ setView: true, maxZoom: 16 });
+
+    map.once('locationfound', function (e) {
+      const radius = e.accuracy;
+
+      L.circle(e.latlng, {
+        radius: radius,
+        color: 'blue',
+        fillColor: '#30f',
+        fillOpacity: 0.2
+      }).addTo(map);
+
+      L.marker(e.latlng).addTo(map)
+        .bindPopup("Ваше місцерозташування (точність " + Math.round(radius) + " м)")
+        .openPopup();
+    });
+
+    map.once('locationerror', function (e) {
+      alert("⚠ Не вдалося визначити місцерозташування: " + e.message +
+        "\n\nПеревір, чи дозволено доступ у налаштуваннях браузера або системи.");
+    });
+  }
 </script>
 
 </body>
