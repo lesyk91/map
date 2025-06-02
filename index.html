@@ -69,8 +69,8 @@
       const d1Layer = L.geoJSON(data, {
         onEachFeature: (feature, layer) => {
           const center = layer.getBounds().getCenter();
-          districtCenters.push({ name: feature.properties?.name || 'Район 1', latlng: center });
-          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Район 1', center));
+          districtCenters.push({ name: feature.properties?.name || 'Територія 1', latlng: center });
+          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 1', center));
         },
         style: {
           color: 'blue',
@@ -86,8 +86,8 @@
       const d2Layer = L.geoJSON(data, {
         onEachFeature: (feature, layer) => {
           const center = layer.getBounds().getCenter();
-          districtCenters.push({ name: feature.properties?.name || 'Район 2', latlng: center });
-          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Район 2', center));
+          districtCenters.push({ name: feature.properties?.name || 'Територія 2', latlng: center });
+          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 2', center));
         },
         style: {
           color: 'green',
@@ -103,8 +103,8 @@
   };
 
   const overlayMaps = {
-    "Район 1": district1,
-    "Район 2": district2
+    "Територія 1": district1,
+    "Територія 2": district2
   };
 
   L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
