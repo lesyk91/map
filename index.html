@@ -123,31 +123,44 @@
     map.locate({
       setView: true,
       maxZoom: 16,
-      timeout: 20000, // 20 секунд
-      enableHighAccuracy: true // точніше, але може бути повільніше
+      timeout: 20000,
+      enableHighAccuracy: true
     });
   }
 
-  // 7. Обробка успішного знаходження місця
+  // 7. Змінні для зберігання мітки та кола
+  let currentMarker = null;
+  let currentCircle = null;
+
+  // 8. Обробка успішного знаходження місця
   map.on('locationfound', function (e) {
     const radius = e.accuracy;
 
-    L.circle(e.latlng, {
+    // Видалити попередні мітки/кола
+    if (currentMarker) {
+      map.removeLayer(currentMarker);
+    }
+    if (currentCircle) {
+      map.removeLayer(currentCircle);
+    }
+
+    // Додати нові
+    currentCircle = L.circle(e.latlng, {
       radius: radius,
       color: 'blue',
       fillColor: '#30f',
       fillOpacity: 0.2
     }).addTo(map);
 
-    L.marker(e.latlng).addTo(map)
+    currentMarker = L.marker(e.latlng).addTo(map)
       .bindPopup("Ваше місцерозташування (точність " + Math.round(radius) + " м)")
       .openPopup();
   });
 
-  // 8. Обробка помилки геолокації
+  // 9. Обробка помилки геолокації
   map.on('locationerror', function (e) {
     alert("⚠ Не вдалося визначити місцерозташування: " + e.message +
-      "\n\nМожливі причини:\n- Вимкнені служби геолокації\n- Відсутній дозвіл у браузері\n- Повільне з'єднання або слабкий сигнал\n- Потрібно запустити сайт через HTTPS");
+      "\n\nМожливі причини:\n- Вимкнені служби геолокації\n- Відсутній дозвіл у браузері\n- Повільне з'єднання або слабкий сигнал\n- Сайт повинен відкриватися через HTTPS");
   });
 </script>
 
