@@ -107,10 +107,10 @@
   };
 
   const layerControl = L.control.layers(baseMaps, overlayMaps, {
-    collapsed: true // згорнута панель за замовчуванням
+    collapsed: true
   }).addTo(map);
 
-  // 5. Кнопка "Шари" — відкриття/закриття панелі
+  // 5. Кнопка "Шари"
   function toggleLayers() {
     const control = document.querySelector('.leaflet-control-layers');
     if (control) {
@@ -118,15 +118,17 @@
     }
   }
 
-  // 6. Кнопка "Моє місцерозташування"
+  // 6. Показати місцерозташування
   function findLocation() {
-  map.locate({
-    setView: true,
-    maxZoom: 16,
-    timeout: 20000,
-    enableHighAccuracy: true
-  });
+    map.locate({
+      setView: true,
+      maxZoom: 16,
+      timeout: 20000, // 20 секунд
+      enableHighAccuracy: true // точніше, але може бути повільніше
+    });
+  }
 
+  // 7. Обробка успішного знаходження місця
   map.on('locationfound', function (e) {
     const radius = e.accuracy;
 
@@ -142,12 +144,11 @@
       .openPopup();
   });
 
+  // 8. Обробка помилки геолокації
   map.on('locationerror', function (e) {
-    alert("⚠ Не вдалося визначити місцерозташування: " + e.message);
+    alert("⚠ Не вдалося визначити місцерозташування: " + e.message +
+      "\n\nМожливі причини:\n- Вимкнені служби геолокації\n- Відсутній дозвіл у браузері\n- Повільне з'єднання або слабкий сигнал\n- Потрібно запустити сайт через HTTPS");
   });
-}
-
-  }
 </script>
 
 </body>
