@@ -24,13 +24,19 @@
     <h2 class="txt">Квест для Елі!!! Погнали!)</h2>
 
     <!-- Етап 1 -->
-     <div id="stage1" class="stage active">
+    <div id="stage1" class="stage active">
         <h2>Етап 1 - Початок <button onclick="toggleStage(1)">Сховати/Показати</button></h2>
         <div id="content1">
-            <label>Завдання 1: <input type="text" id="task1_1"></label>
+            <label>Опиши смайлики одним слово:<img id="image1" src="/map/elia/e1.jpg" alt="Завдання 5"> <input type="text" id="task1_1"></label>
             <label>Завдання 2: <input type="text" id="task1_2"></label>
             <label>Завдання 3: <input type="text" id="task1_3"></label>
-            <label>Завдання 4: <input type="text" id="task1_4"></label>
+            <p>Завдання 4:</p>
+            <p>Тепер твоє завдання відгадати музику</p>
+             <div> <audio controls>
+            <source src="/map/elia/mus.mp3" type="audio/mpeg">
+            Ваш браузер не підтримує елемент audio.
+        </audio></div>
+            <label>Отже що це?) <input type="text" id="task1_4"></label>
             <button onclick="checkAnswers(1)">Перевірка</button>
             <div id="message1" class="message"></div>
             <div id="bonus1" class="hidden">
@@ -169,11 +175,11 @@
 
         let correctAnswers = [
             ["шлях", "задня сторона", "година", "холодильник"],
-            ["1", "2", "3", "4"],
-            ["1", "2", "3", "4"],
-            ["1", "2", "3", "4"],
-            ["1", "2", "3", "4"],
-            ["1", "2", "3", "4"]
+            ["заєць", "каталітичний конвертер", "14", "ліганд"],
+            ["сорбе", "8+2-6", "фризова", "конструктивізм"],
+            ["криптопортик", "2", "сходи", "невідомо"],
+            ["олівець", "42", "спазмо", "невідомо"],
+            ["невідомо", "гематогенетичний", "ранок", "невідомо"]
         ];
 
         let finalAnswers = ["дорога мандрівника", "фінал2", "фінал3", "фінал4", "фінал5", "фінал6"];
