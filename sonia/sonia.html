@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>|Квест для Елі!| Погнали!!! |</title>
+    <title>|Квест для Соні!| Погнали!!! |</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 10px; background-image: url("/map/elia/fonfor.jpg") }
+        body { font-family: Arial, sans-serif; padding: 10px; background-image: url("/map/sonia/fonfor.jpg") }
         .stage { display: none; border: 2px solid #e05858; padding: 10px; margin: 10px 0; border-radius: 10px;}
         .active { display: block; }
         .hidden { display: none; }
@@ -21,10 +21,10 @@
     </style>
 </head>
 <body>
-    <h2 class="txt">Квест для Елі!!! Погнали!)</h2>
+    <h2 class="txt">Квест для Соні!!! Погнали!)</h2>
 
     <!-- Етап 1 -->
-     <div id="stage1" class="stage active">
+    <div id="stage1" class="stage active">
         <h2>Етап 1 - Початок <button onclick="toggleStage(1)">Сховати/Показати</button></h2>
         <div id="content1">
             <label>Завдання 1: <input type="text" id="task1_1"></label>
@@ -44,7 +44,7 @@
 
     <!-- Етап 2 -->
     <div id="stage2" class="stage">
-        <h2>Етап 2 <button onclick="toggleStage(2)">Сховати/Показати</button></h2>
+        <h2>Етап 2 - Печера Скарбів <button onclick="toggleStage(2)">Сховати/Показати</button></h2>
         <div id="content2">
             <label>Завдання 1: <input type="text" id="task2_1"></label>
             <label>Завдання 2: <input type="text" id="task2_2"></label>
@@ -54,7 +54,7 @@
             <div id="message2" class="message"></div>
             <div id="bonus2" class="hidden">
                 <div id="riddle2"></div>
-                <img id="image2" src="/map/elia/e2.jpg" alt="Завдання 5">
+                <img id="image2" src="/map/sonia/e2.jpg" alt="Завдання 5">
                 <label>Завдання 5: <input type="text" id="bonusTask2"></label>
                 <button onclick="checkBonus(2)">Перевірка</button>
                 <div id="bonusMessage2" class="message"></div>
@@ -64,7 +64,7 @@
 
     <!-- Етап 3 -->
     <div id="stage3" class="stage">
-        <h2>Етап 3<button onclick="toggleStage(3)">Сховати/Показати</button></h2>
+        <h2>Етап 3 - Лабораторія Шефа <button onclick="toggleStage(3)">Сховати/Показати</button></h2>
         <div id="content3">
             <label>Завдання 1: <input type="text" id="task3_1"></label>
             <label>Завдання 2: <input type="text" id="task3_2"></label>
@@ -84,7 +84,7 @@
 
     <!-- Етап 4 -->
     <div id="stage4" class="stage">
-        <h2>Етап 4<button onclick="toggleStage(4)">Сховати/Показати</button></h2>
+        <h2>Етап 4 - Джерело Життя <button onclick="toggleStage(4)">Сховати/Показати</button></h2>
         <div id="content4">
             <label>Завдання 1: <input type="text" id="task4_1"></label>
             <label>Завдання 2: <input type="text" id="task4_2"></label>
@@ -103,7 +103,7 @@
 
     <!-- Етап 5 -->
     <div id="stage5" class="stage">
-        <h2>Етап 5<button onclick="toggleStage(5)">Сховати/Показати</button></h2>
+        <h2>Етап 5 - Прихисток <button onclick="toggleStage(5)">Сховати/Показати</button></h2>
         <div id="content5">
             <label>Завдання 1: <input type="text" id="task5_1"></label>
             <label>Завдання 2: <input type="text" id="task5_2"></label>
@@ -149,11 +149,11 @@
         ];
         
         let riddles = [
-            { text: "Відгадай де в хаті шукати - по смайликам або Підказка: Звідси шляхи розходяться всюди, Тут не перший крок роблять люди.      -    Напиши, яка це частина хати", image: "/map/elia/elia1.jpg"   },
-            { text: "Загадка або смайлик для 2 Етапу" },
-            { image: "/map/elia/riddle3.jpg" },
+            { text: "Відгадай де в хаті шукати - по смайликам або Підказка: Тут починається будь-яка путь, Хто йде вперед – той знайде суть    -    Напиши, яка це частина хати", image: "/map/sonia/sonia1.jpg"  },
+            { text: "Завдання 2проб" },
+            { image: "/map/sonia/riddle3.jpg" },
             { text: "", image: "" },
-            { text: "Загадка або смайлик для 5 Етапу", image: "/map/elia/riddle5.jpg" },
+            { text: "Загадка або смайлик для 5 Етапу", image: "/map/sonia/riddle5.jpg" },
             { text: "Загадка або смайлик для 6 Етапу" }
         ];
         
@@ -161,22 +161,22 @@
         let finalHints = [
             { text: "На основі відгаданих відповідей знайди де шукати знахідку" }, // Текст + картинка
             { text: "Шукай в Лабораторія Шефа" }, // Тільки текст
-            { image: "/map/elia/hint3.jpg" }, // Тільки картинка
+            { image: "/map/sonia/hint3.jpg" }, // Тільки картинка
             { text: "", image: "" }, // Пустий елемент
-            { text: "Шукай в Будинку", image: "/map/elia/hint5.jpg" }, // Текст + картинка
+            { text: "Шукай в Будинку", image: "/map/sonia/hint5.jpg" }, // Текст + картинка
             { text: "Шукай в Десь там" } // Тільки текст
         ];
 
         let correctAnswers = [
-            ["шлях", "задня сторона", "година", "холодильник"],
-            ["заєць", "каталітичний конвертер", "14", "ліганд"],
-            ["сорбе", "8+2-6", "фризова", "конструктивізм"],
-            ["криптопортик", "2", "сходи", "невідомо"],
-            ["олівець", "42", "спазмо", "невідомо"],
-            ["невідомо", "гематогенетичний", "ранок", "невідомо"]
+            ["ліхтар", "в середині шафи", "тунель", "шафа з куртками"],
+            ["собака", "молекулярна дисципліна", "21", "катіон"],
+            ["борек", "8-3*2", "фахверк", "просторовість"],
+            ["Контрфорсовий", "5", "туалет", "невідомо"],
+            ["вікно", "51", "гепато", "невідомо"],
+            ["невідомо", "антикоагулянтний", "дружба", "невідомо"]
         ];
 
-        let finalAnswers = ["дорога мандрівника", "фінал2", "фінал3", "фінал4", "фінал5", "фінал6"];
+        let finalAnswers = ["шлях відкриттів", "фінал2", "фінал3", "фінал4", "фінал5", "фінал6"];
 
         function checkAnswers(stage) {
             let valid = true;
