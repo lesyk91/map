@@ -25,7 +25,7 @@
 
     <!-- Етап 1 -->
     <div id="stage1" class="stage active">
-        <h2>Етап 1 - Зал Легенд <button onclick="toggleStage(1)">Сховати/Показати</button></h2>
+        <h2>Етап 1 - Початок <button onclick="toggleStage(1)">Сховати/Показати</button></h2>
         <div id="content1">
             <label>Опиши смайлики одним слово:<img id="image1" src="/map/elia/e1.jpg" alt="Завдання 5"> <input type="text" id="task1_1"></label>
             <label>Завдання 2: <input type="text" id="task1_2"></label>
@@ -50,7 +50,7 @@
 
     <!-- Етап 2 -->
     <div id="stage2" class="stage">
-        <h2>Етап 2 - Печера Скарбів <button onclick="toggleStage(2)">Сховати/Показати</button></h2>
+        <h2>Етап 2 <button onclick="toggleStage(2)">Сховати/Показати</button></h2>
         <div id="content2">
             <label>Завдання 1: <input type="text" id="task2_1"></label>
             <label>Завдання 2: <input type="text" id="task2_2"></label>
@@ -70,7 +70,7 @@
 
     <!-- Етап 3 -->
     <div id="stage3" class="stage">
-        <h2>Етап 3 - Лабораторія Шефа <button onclick="toggleStage(3)">Сховати/Показати</button></h2>
+        <h2>Етап 3<button onclick="toggleStage(3)">Сховати/Показати</button></h2>
         <div id="content3">
             <label>Завдання 1: <input type="text" id="task3_1"></label>
             <label>Завдання 2: <input type="text" id="task3_2"></label>
@@ -90,7 +90,7 @@
 
     <!-- Етап 4 -->
     <div id="stage4" class="stage">
-        <h2>Етап 4 - Джерело Життя <button onclick="toggleStage(4)">Сховати/Показати</button></h2>
+        <h2>Етап 4<button onclick="toggleStage(4)">Сховати/Показати</button></h2>
         <div id="content4">
             <label>Завдання 1: <input type="text" id="task4_1"></label>
             <label>Завдання 2: <input type="text" id="task4_2"></label>
@@ -109,7 +109,7 @@
 
     <!-- Етап 5 -->
     <div id="stage5" class="stage">
-        <h2>Етап 5 - Прихисток <button onclick="toggleStage(5)">Сховати/Показати</button></h2>
+        <h2>Етап 5<button onclick="toggleStage(5)">Сховати/Показати</button></h2>
         <div id="content5">
             <label>Завдання 1: <input type="text" id="task5_1"></label>
             <label>Завдання 2: <input type="text" id="task5_2"></label>
@@ -155,7 +155,7 @@
         ];
         
         let riddles = [
-            { text: "Загадка або смайлик для 1 Етапу", image: "/map/elia/e1.jpg" },
+            { text: "Відгадай де в хаті шукати - по смайликам або Підказка: Звідси шляхи розходяться всюди, Тут не перший крок роблять люди.      -    Напиши, яка це частина хати", image: "/map/elia/elia1.jpg"   },
             { text: "Загадка або смайлик для 2 Етапу" },
             { image: "/map/elia/riddle3.jpg" },
             { text: "", image: "" },
@@ -165,7 +165,7 @@
         
         // Оновлений масив finalHints з підтримкою тексту, картинок або їх комбінації
         let finalHints = [
-            { text: "Шукай в Печері Скарбів", image: "/map/elia/e1.jpg" }, // Текст + картинка
+            { text: "На основі відгаданих відповідей знайди де шукати знахідку" }, // Текст + картинка
             { text: "Шукай в Лабораторія Шефа" }, // Тільки текст
             { image: "/map/elia/hint3.jpg" }, // Тільки картинка
             { text: "", image: "" }, // Пустий елемент
@@ -174,7 +174,7 @@
         ];
 
         let correctAnswers = [
-            ["1", "2", "3", "4"],
+            ["шлях", "задня сторона", "година", "Холодильник"],
             ["1", "2", "3", "4"],
             ["1", "2", "3", "4"],
             ["1", "2", "3", "4"],
@@ -182,7 +182,7 @@
             ["1", "2", "3", "4"]
         ];
 
-        let finalAnswers = ["фінал1", "фінал2", "фінал3", "фінал4", "фінал5", "фінал6"];
+        let finalAnswers = ["дорога мандрівника", "фінал2", "фінал3", "фінал4", "фінал5", "фінал6"];
 
         function checkAnswers(stage) {
             let valid = true;
