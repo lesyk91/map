@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>|Квест для Соні!| Погнали!!! |</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 10px; background-image: url("/sonia/map/fonfor.jpg") }
+        body { font-family: Arial, sans-serif; padding: 10px; background-image: url("/map/sonia/fonfor.jpg") }
         .stage { display: none; border: 2px solid #e05858; padding: 10px; margin: 10px 0; border-radius: 10px;}
         .active { display: block; }
         .hidden { display: none; }
@@ -27,13 +27,13 @@
     <div id="stage1" class="stage active">
         <h2>Етап 1 - Зал Легенд <button onclick="toggleStage(1)">Сховати/Показати</button></h2>
         <div id="content1">
-            <label>Опиши смайлики одним слово:<img id="image1" src="/sonia/map/e1.jpg" alt="Завдання 5"> <input type="text" id="task1_1"></label>
+            <label>Опиши смайлики одним слово:<img id="image1" src="/map/sonia/e1.jpg" alt="Завдання 5"> <input type="text" id="task1_1"></label>
             <label>Завдання 2: <input type="text" id="task1_2"></label>
             <label>Завдання 3: <input type="text" id="task1_3"></label>
             <p>Завдання 4:</p>
             <p>Тепер твоє завдання відгадати музику</p>
              <div> <audio controls>
-            <source src="/sonia/map/mus.mp3" type="audio/mpeg">
+            <source src="/map/sonia/mus.mp3" type="audio/mpeg">
             Ваш браузер не підтримує елемент audio.
         </audio></div>
             <label>Отже що це?) <input type="text" id="task1_4"></label>
@@ -60,7 +60,7 @@
             <div id="message2" class="message"></div>
             <div id="bonus2" class="hidden">
                 <div id="riddle2"></div>
-                <img id="image2" src="/sonia/map/e2.jpg" alt="Завдання 5">
+                <img id="image2" src="/map/sonia/e2.jpg" alt="Завдання 5">
                 <label>Завдання 5: <input type="text" id="bonusTask2"></label>
                 <button onclick="checkBonus(2)">Перевірка</button>
                 <div id="bonusMessage2" class="message"></div>
@@ -155,21 +155,21 @@
         ];
         
         let riddles = [
-            { text: "Загадка або смайлик для 1 Етапу", image: "/sonia/map/e1.jpg" },
+            { text: "Загадка або смайлик для 1 Етапу", image: "/map/sonia/e1.jpg" },
             { text: "Загадка або смайлик для 2 Етапу" },
-            { image: "/sonia/map/riddle3.jpg" },
+            { image: "/map/sonia/riddle3.jpg" },
             { text: "", image: "" },
-            { text: "Загадка або смайлик для 5 Етапу", image: "/sonia/map/riddle5.jpg" },
+            { text: "Загадка або смайлик для 5 Етапу", image: "/map/sonia/riddle5.jpg" },
             { text: "Загадка або смайлик для 6 Етапу" }
         ];
         
         // Оновлений масив finalHints з підтримкою тексту, картинок або їх комбінації
         let finalHints = [
-            { text: "Шукай в Печері Скарбів", image: "/sonia/map/e1.jpg" }, // Текст + картинка
+            { text: "Шукай в Печері Скарбів", image: "/map/sonia/e1.jpg" }, // Текст + картинка
             { text: "Шукай в Лабораторія Шефа" }, // Тільки текст
-            { image: "/sonia/map/hint3.jpg" }, // Тільки картинка
+            { image: "/map/sonia/hint3.jpg" }, // Тільки картинка
             { text: "", image: "" }, // Пустий елемент
-            { text: "Шукай в Будинку", image: "/sonia/map/hint5.jpg" }, // Текст + картинка
+            { text: "Шукай в Будинку", image: "/map/sonia/hint5.jpg" }, // Текст + картинка
             { text: "Шукай в Десь там" } // Тільки текст
         ];
 
