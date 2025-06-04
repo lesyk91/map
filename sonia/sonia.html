@@ -54,7 +54,6 @@
             <div id="message2" class="message"></div>
             <div id="bonus2" class="hidden">
                 <div id="riddle2"></div>
-                <img id="image2" src="/map/sonia/e2.jpg" alt="Завдання 5">
                 <label>Завдання 5: <input type="text" id="bonusTask2"></label>
                 <button onclick="checkBonus(2)">Перевірка</button>
                 <div id="bonusMessage2" class="message"></div>
@@ -74,7 +73,6 @@
             <div id="message3" class="message"></div>
             <div id="bonus3" class="hidden">
                 <div id="riddle3"></div>
-                <img id="image3" src="https://your-link.com/image3.jpg" alt="Завдання 5">
                 <label>Завдання 5: <input type="text" id="bonusTask3"></label>
                 <button onclick="checkBonus(3)">Перевірка</button>
                 <div id="bonusMessage3" class="message"></div>
@@ -160,11 +158,11 @@
         // Оновлений масив finalHints з підтримкою тексту, картинок або їх комбінації
         let finalHints = [
             { text: "На основі відгаданих відповідей знайди де шукати знахідку" }, // Текст + картинка
-            { text: "Шукай в Лабораторія Шефа" }, // Тільки текст
-            { text: "Шукай в Залі Легенд" }, // Тільки картинка
-            { text: "Шукай в Джерелі Життя" }, // Пустий елемент
-            { text: "Шукай в Прихистку Мандрівника" }, // Текст + картинка
-            { text: "Шукай в Печері Скарбів" } // Тільки текст
+            { text: "Вірно! Шукай в Лабораторія Шефа" }, // Тільки текст
+            { text: "Вірно! Шукай в Залі Легенд" }, // Тільки картинка
+            { text: "Вірно! Шукай в Джерелі Життя" }, // Пустий елемент
+            { text: "Вірно! Шукай в Прихистку Мандрівника" }, // Текст + картинка
+            { text: "Вірно! Шукай в Печері Скарбів" } // Тільки текст
         ];
 
         let correctAnswers = [
