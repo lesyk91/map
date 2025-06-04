@@ -54,7 +54,6 @@
             <div id="message2" class="message"></div>
             <div id="bonus2" class="hidden">
                 <div id="riddle2"></div>
-                <img id="image2" src="/map/elia/el.jpg" alt="Завдання 5">
                 <label>Завдання 5: <input type="text" id="bonusTask2"></label>
                 <button onclick="checkBonus(2)">Перевірка</button>
                 <div id="bonusMessage2" class="message"></div>
@@ -74,7 +73,6 @@
             <div id="message3" class="message"></div>
             <div id="bonus3" class="hidden">
                 <div id="riddle3"></div>
-                <img id="image3" src="https://your-link.com/image3.jpg" alt="Завдання 5">
                 <label>Завдання 5: <input type="text" id="bonusTask3"></label>
                 <button onclick="checkBonus(3)">Перевірка</button>
                 <div id="bonusMessage3" class="message"></div>
@@ -159,12 +157,12 @@
         
         // Оновлений масив finalHints з підтримкою тексту, картинок або їх комбінації
         let finalHints = [
-            { text: "На основі відгаданих відповідей знайди де шукати знахідку" }, // Текст + картинка
-            { text: "Шукай в Майстерні Смаку!" }, // Тільки текст
-            { text: "Шукай в Головній Залі!" }, // Тільки картинка
-            { text: "Шукай в Оазис Свіжості!" }, // Пустий елемент
-            { text: "Шукай в Затишному Куточку!" }, // Текст + картинка
-            { text: "Шукай в Сховищі Таємниць!" } // Тільки текст
+            { text: "Вірно! Тепер на основі відгаданих відповідей знайди, де шукати знахідку. Успіхів тобі!" }, // Текст + картинка
+            { text: "Вірно! Шукай в Майстерні Смаку!" }, // Тільки текст
+            { text: "Вірно! Шукай в Головній Залі!" }, // Тільки картинка
+            { text: "Вірно! Шукай в Оазис Свіжості!" }, // Пустий елемент
+            { text: "Вірно! Шукай в Затишному Куточку!" }, // Текст + картинка
+            { text: "Вірно! Шукай в Сховищі Таємниць!" } // Тільки текст
         ];
 
         let correctAnswers = [
@@ -176,7 +174,7 @@
             ["741", "2 тимофія 4:7", "квитанція", "гематогенетичний"]
         ];
 
-        let finalAnswers = ["дорога мандрівника", "майстерня смаку", "головна зала", "оазис свіжості", "затишний куточок", "сховище таємниць"];
+        let finalAnswers = ["тунель часу", "майстерня смаку", "головна зала", "оазис свіжості", "затишний куточок", "сховище таємниць"];
 
         function checkAnswers(stage) {
             let valid = true;
