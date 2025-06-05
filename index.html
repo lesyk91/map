@@ -97,6 +97,40 @@
       }).addTo(district2);
     });
 
+   fetch('55.json')
+    .then(res => res.json())
+    .then(data => {
+      const d2Layer = L.geoJSON(data, {
+        onEachFeature: (feature, layer) => {
+          const center = layer.getBounds().getCenter();
+          districtCenters.push({ name: feature.properties?.name || 'Територія 3', latlng: center });
+          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 3', center));
+        },
+        style: {
+          color: 'green',
+          fillColor: '#b6fcb6',
+          fillOpacity: 0.4
+        }
+      }).addTo(district3);
+    });
+
+   fetch('56.json')
+    .then(res => res.json())
+    .then(data => {
+      const d2Layer = L.geoJSON(data, {
+        onEachFeature: (feature, layer) => {
+          const center = layer.getBounds().getCenter();
+          districtCenters.push({ name: feature.properties?.name || 'Територія 4', latlng: center });
+          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 4', center));
+        },
+        style: {
+          color: 'green',
+          fillColor: '#b6fcb6',
+          fillOpacity: 0.4
+        }
+      }).addTo(district4);
+    });
+  
   const baseMaps = {
     "Стандартна карта": osm,
     "Супутникова карта": satellite
@@ -104,7 +138,9 @@
 
   const overlayMaps = {
     "Територія 1": district1,
-    "Територія 2": district2
+    "Територія 2": district2,
+    "Територія 3": district3,
+    "Територія 4": district4,
   };
 
   L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
