@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="uk"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>Етап 3 | Квест для Елі</title><style>
+        body { font-family: Arial, sans-serif; padding: 10px; background-image: url("/map/elia/fonfor.jpg") }
+        .stage { display: none; border: 2px solid #e05858; padding: 10px; margin: 10px 0; border-radius: 10px;}
+        .active { display: block; }
+        .hidden { display: none; }
+        input { width: 97%; padding: 8px; font-size: 16px; margin-bottom: 15px;}
+        button { width: 97%; padding: 15px; font-size: 16px; cursor: pointer; margin-top: 5px; background-color: #ef7b95;border-radius: 10px;color: black; }
+        img { max-width: 97%; height: auto; display: block; margin: 10px 0; }
+        .message { padding: 5px; margin-top: 5px; text-align: center; font-weight: bold; }
+        .correct { color: green; padding: 10px;}
+        .incorrect { color: red; }
+        .txt { text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5); text-align: center;}
+        p {margin: 1px;}
+        audio {width: 97%;}
+    </style></head><body><h2 class="txt">Квест для Елі!!! Погнали!)</h2><div class="stage active" id="stage3">
+<h2>Етап 3<button onclick="toggleStage(3)">Сховати/Показати</button></h2>
+<div id="content3">
+<label>Завдання 1: <input id="task3_1" type="text"/></label>
+<label>Завдання 2: <input id="task3_2" type="text"/></label>
+<label>Завдання 3: <input id="task3_3" type="text"/></label>
+<label>Завдання 4: <input id="task3_4" type="text"/></label>
+<button onclick="checkAnswers(3)">Перевірка</button>
+<div class="message" id="message3"></div>
+<div class="hidden" id="bonus3">
+<div id="riddle3"></div>
+<label>Завдання 5: <input id="bonusTask3" type="text"/></label>
+<button onclick="checkBonus(3)">Перевірка</button>
+<div class="message" id="bonusMessage3"></div>
+</div>
+</div>
+</div><script>
+        let stageTitles = [
+            "Зал Легенд", "Печера Скарбів", "Лабораторія Шефа", "Джерело Життя", "Прихисток", "УРА ФІНАЛ!!!"
+        ];
+        
+        let riddles = [
+            { text: "Відгадай де в хаті шукати - по смайликам  -  Напиши, яка це частина хати", image: "/map/elia/elia1.jpg"   },
+            { text: "Відгадай де в хаті шукати - по смайликам  -  Напиши, яка це частина хати", image: "/map/elia/elia25.jpg" },
+            { text: "Відгадай де в хаті шукати - по смайликам  -  Напиши, яка це частина хати", image: "/map/elia/elia35.jpg" },
+            { text: "Відгадай де в хаті шукати - по смайликам  -  Напиши, яка це частина хати", image: "/map/elia/elia45.jpg" },
+            { text: "Відгадай де в хаті шукати - по смайликам   - Напиши, яка це частина хати", image: "/map/elia/elia55.jpg" },
+            { text: "Одна з цукерок покаже шлях!" }
+        ];
+        
+        // Оновлений масив finalHints з підтримкою тексту, картинок або їх комбінації
+        let finalHints = [
+            { text: "Вірно! Тепер на основі відгаданих відповідей знайди, де шукати знахідку. Успіхів тобі!" }, // Текст + картинка
+            { text: "Вірно! Шукай в Майстерні Смаку!" }, // Тільки текст
+            { text: "Вірно! Шукай в Головній Залі!" }, // Тільки картинка
+            { text: "Вірно! Шукай в Оазис Свіжості!" }, // Пустий елемент
+            { text: "Вірно! Шукай в Затишному Куточку!" }, // Текст + картинка
+            { text: "Вірно! Шукай в Сховищі Таємниць!" } // Тільки текст
+        ];
+
+        let correctAnswers = [
+            ["шлях", "задня сторона", "година", "холодильник"],
+            ["заєць", "молекулярна дисципліна", "14", "8+2-6"],
+            ["фахверк", "конструктивізм", "контрфорсовий", "5"],
+            ["сходи", "сорбе", "олівець", "42"],
+            ["спазмо", "ліганд", "загадка", "ранок"],
+            ["741", "2 тимофія 4:7", "квитанція", "гематогенетичний"]
+        ];
+
+        let finalAnswers = ["тунель часу", "майстерня смаку", "головна зала", "оазис свіжості", "затишний куточок", "цукерка"];
+
+        function checkAnswers(stage) {
+            let valid = true;
+            let messageDiv = document.getElementById(`message${stage}`);
+            messageDiv.innerHTML = "";
+            for (let i = 1; i <= 4; i++) {
+                let answer = document.getElementById(`task${stage}_${i}`).value.trim().toLowerCase();
+                if (answer !== correctAnswers[stage - 1][i - 1]) {
+                    messageDiv.innerHTML += `<p class='incorrect'>Невірна відповідь у завданні ${i}</p>`;
+                    valid = false;
+                }
+            }
+            if (valid) {
+                messageDiv.innerHTML = `<p class='correct'>Молодець! Всі відповіді правильні!</p>`;
+                document.getElementById(`bonus${stage}`).classList.remove("hidden");
+                document.getElementById(`riddle${stage}`).innerHTML = `
+                    ${riddles[stage - 1].text && riddles[stage - 1].text !== "" ? `<p>${riddles[stage - 1].text}</p>` : ""}
+                    ${riddles[stage - 1].image && riddles[stage - 1].image !== "" ? `<img src="${riddles[stage - 1].image}" alt="Загадка ${stage}">` : ""}
+                `;
+            }
+        }
+        
+        function checkBonus(stage) {
+            let answer = document.getElementById(`bonusTask${stage}`).value.trim().toLowerCase();
+            let messageDiv = document.getElementById(`bonusMessage${stage}`);
+            if (answer === finalAnswers[stage - 1]) {
+        let link = document.createElement("a");
+        link.href = "elia4.html";
+        link.textContent = "➡ Наступний етап";
+        link.style = "display:block; margin-top: 15px; text-align: center; font-weight: bold;";
+        messageDiv.appendChild(link);
+        
+                // Оновлена логіка відображення підказок
+                messageDiv.innerHTML = `
+                    ${finalHints[stage - 1].text && finalHints[stage - 1].text !== "" ? `<p class='correct'>${finalHints[stage - 1].text}</p>` : ""}
+                    ${finalHints[stage - 1].image && finalHints[stage - 1].image !== "" ? `<img src="${finalHints[stage - 1].image}" alt="Підказка ${stage}">` : ""}
+                `;
+                let nextStage = document.getElementById(`stage${stage + 1}`);
+                if (nextStage) {
+                    nextStage.classList.add("active");
+                }
+            } else {
+                messageDiv.innerHTML = `<p class='incorrect'>Неправильна відповідь!</p>`;
+            }
+        }
+        
+        function toggleStage(stage) {
+            let content = document.getElementById(`content${stage}`);
+            content.classList.toggle("hidden");
+        }
+    </script></body></html>
