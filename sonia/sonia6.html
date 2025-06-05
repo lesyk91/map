@@ -1,0 +1,78 @@
+
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Квест для Соні - Етап 6</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 10px; background-image: url("/map/sonia/fonfor.jpg") }
+        .stage { border: 2px solid #e05858; padding: 10px; margin: 10px 0; border-radius: 10px;}
+        .hidden { display: none; }
+        input { width: 97%; padding: 8px; font-size: 16px; margin-bottom: 15px;}
+        button { width: 97%; padding: 15px; font-size: 16px; cursor: pointer; margin-top: 5px; background-color: #ef7b95;border-radius: 10px;color: black; }
+        img { max-width: 97%; height: auto; display: block; margin: 10px 0; }
+        .message { padding: 5px; margin-top: 5px; text-align: center; font-weight: bold; }
+        .correct { color: green; padding: 10px;}
+        .incorrect { color: red; }
+        .txt { text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5); text-align: center;}
+        p {margin: 1px;}
+        audio {width: 97%;}
+    </style>
+</head>
+<body>
+    <h2 class="txt">Квест для Соні - Етап 6</h2>
+
+    <div class="stage">
+        <h2>Етап 6</h2>
+        <label>Завдання 1: <input type="text" id="task6_1"></label>
+        <label>Завдання 2: <input type="text" id="task6_2"></label>
+        <label>Завдання 3: <input type="text" id="task6_3"></label>
+        <label>Завдання 4: <input type="text" id="task6_4"></label>
+        <button onclick="checkAnswers()">Перевірка</button>
+        <div id="message" class="message"></div>
+        <div id="bonus" class="hidden">
+            <p>Одна з цукерок покаже шлях!</p>
+            
+            <label>Завдання 5: <input type="text" id="bonusTask"></label>
+            <button onclick="checkBonus()">Перевірка</button>
+            <div id="bonusMessage" class="message"></div>
+        </div>
+    </div>
+    <div id="nextLink" class="hidden"><p>Кінець квесту! Молодець!</p></div>
+    
+    <script>
+    const finalAnswer = "шоколад";
+    const finalHint = "Вірно! Шукай в Печері Скарбів";
+
+    function checkAnswers() {
+        let valid = true;
+        let messageDiv = document.getElementById("message");
+        messageDiv.innerHTML = "";
+        for (let j = 1; j <= 4; j++) {
+            let val = document.getElementById("task6_" + j).value.trim();
+            if (!val) {
+                messageDiv.innerHTML += "<p class='incorrect'>Завдання " + j + " не заповнене</p>";
+                valid = false;
+            }
+        }
+        if (valid) {
+            messageDiv.innerHTML = "<p class='correct'>Молодець! Всі поля заповнені!</p>";
+            document.getElementById("bonus").classList.remove("hidden");
+        }
+    }
+
+    function checkBonus() {
+        let answer = document.getElementById("bonusTask").value.trim().toLowerCase();
+        let messageDiv = document.getElementById("bonusMessage");
+        if (answer === finalAnswer) {
+            messageDiv.innerHTML = "<p class='correct'>" + finalHint + "</p>";
+            document.getElementById("nextLink").classList.remove("hidden");
+        } else {
+            messageDiv.innerHTML = "<p class='incorrect'>Невірна відповідь!</p>";
+        }
+    }
+    </script>
+    </body>
+    </html>
+    
