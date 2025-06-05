@@ -55,6 +55,8 @@
 
   const district1 = L.layerGroup();
   const district2 = L.layerGroup();
+   const district55 = L.layerGroup();
+   const district56 = L.layerGroup();
 
   const districtCenters = [];
 
@@ -97,38 +99,38 @@
       }).addTo(district2);
     });
 
-   fetch('55.json')
+   fetch('district55.json')
     .then(res => res.json())
     .then(data => {
       const d2Layer = L.geoJSON(data, {
         onEachFeature: (feature, layer) => {
           const center = layer.getBounds().getCenter();
-          districtCenters.push({ name: feature.properties?.name || 'Територія 3', latlng: center });
-          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 3', center));
+          districtCenters.push({ name: feature.properties?.name || 'Територія 55', latlng: center });
+          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 55', center));
         },
         style: {
           color: 'green',
           fillColor: '#b6fcb6',
           fillOpacity: 0.4
         }
-      }).addTo(district3);
+      }).addTo(district55);
     });
 
-   fetch('56.json')
+   fetch('district56.json')
     .then(res => res.json())
     .then(data => {
       const d2Layer = L.geoJSON(data, {
         onEachFeature: (feature, layer) => {
           const center = layer.getBounds().getCenter();
-          districtCenters.push({ name: feature.properties?.name || 'Територія 4', latlng: center });
-          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 4', center));
+          districtCenters.push({ name: feature.properties?.name || 'Територія 56', latlng: center });
+          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 56', center));
         },
         style: {
           color: 'green',
           fillColor: '#b6fcb6',
           fillOpacity: 0.4
         }
-      }).addTo(district4);
+      }).addTo(district56);
     });
   
   const baseMaps = {
@@ -139,8 +141,8 @@
   const overlayMaps = {
     "Територія 1": district1,
     "Територія 2": district2,
-    "Територія 3": district3,
-    "Територія 4": district4,
+    "Територія 55": district55,
+    "Територія 56": district56,
   };
 
   L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
