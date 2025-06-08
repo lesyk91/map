@@ -2,10 +2,10 @@
 <html lang="uk">
 <head>
   <meta charset="utf-8" />
-  <title>Карта Територій "Іллінці"</title>
+  <title>Карта Територій "Іллінці" з Google Maps</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
   <style>
     html, body, #map {
       height: 100%;
@@ -28,130 +28,108 @@
     button.layer-toggle {
       top: 50px;
     }
+    #loader {
+      position: absolute;
+      top: 10px;
+      left: 100px;
+      z-index: 1000;
+      padding: 8px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
-
 <button onclick="findLocation()" class="locate-btn">📍 Показати моє місце</button>
 <button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
+<div id="loader"></div>
 <div id="map"></div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
 
 <script>
   const map = L.map('map').setView([49.1029, 29.2074], 14);
 
-  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap',
-    maxZoom: 19
+  // Google Maps шар (вулиці)
+  const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+    attribution: '© Google Maps'
   }).addTo(map);
 
-  const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' +
-    'World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  // Супутниковий шар (Esri)
+  const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     attribution: '© Esri',
     maxZoom: 19
   });
 
-  const district1 = L.layerGroup();
-  const district2 = L.layerGroup();
-   const district55 = L.layerGroup();
-   const district56 = L.layerGroup();
+  // Ініціалізація шарів районів
+  const districts = [
+    { id: 'district1', name: 'Територія 1', color: 'blue', fillColor: '#99ccff' },
+    { id: 'district2', name: 'Територія 2', color: 'green', fillColor: '#b6fcb6' },
+    { id: 'district55', name: 'Територія 55', color: 'green', fillColor: '#b6fcb6' },
+    { id: 'district56', name: 'Територія 56', color: 'green', fillColor: '#b6fcb6' }
+  ];
 
   const districtCenters = [];
+  const overlayMaps = {};
 
+  // Функція для створення попапу
   function createDistrictPopup(name, latlng) {
     return `<b>${name}</b><br>
       <button onclick="routeToDistrict(${latlng.lat}, ${latlng.lng}, '${name}')">📌 Прокласти маршрут сюди</button>`;
   }
 
-  fetch('district1.json')
-    .then(res => res.json())
-    .then(data => {
-      const d1Layer = L.geoJSON(data, {
-        onEachFeature: (feature, layer) => {
-          const center = layer.getBounds().getCenter();
-          districtCenters.push({ name: feature.properties?.name || 'Територія 1', latlng: center });
-          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 1', center));
-        },
-        style: {
-          color: 'blue',
-          fillColor: '#99ccff',
-          fillOpacity: 0.4
-        }
-      }).addTo(district1);
-    });
+  // Індикатор завантаження
+  function showLoading(show) {
+    let loader = document.getElementById('loader');
+    loader.innerText = show ? 'Завантаження...' : '';
+  }
 
-  fetch('district2.json')
-    .then(res => res.json())
-    .then(data => {
-      const d2Layer = L.geoJSON(data, {
-        onEachFeature: (feature, layer) => {
-          const center = layer.getBounds().getCenter();
-          districtCenters.push({ name: feature.properties?.name || 'Територія 2', latlng: center });
-          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 2', center));
-        },
-        style: {
-          color: 'green',
-          fillColor: '#b6fcb6',
-          fillOpacity: 0.4
-        }
-      }).addTo(district2);
-    });
+  // Завантаження районів
+  districts.forEach(d => {
+    const layer = L.layerGroup();
+    showLoading(true);
+    fetch(`${d.id}.json`)
+      .then(res => res.json())
+      .then(data => {
+        L.geoJSON(data, {
+          onEachFeature: (feature, layer) => {
+            const center = layer.getBounds().getCenter();
+            districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
+            layer.bindPopup(createDistrictPopup(feature.properties?.name || d.name, center));
+          },
+          style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
+        }).addTo(layer);
+        showLoading(false);
+      })
+      .catch(err => {
+        console.error(`Помилка завантаження ${d.id}.json:`, err);
+        alert(`⚠ Не вдалося завантажити дані для ${d.name}. Спробуйте ще раз.`);
+        showLoading(false);
+      });
+    overlayMaps[d.name] = layer;
+  });
 
-   fetch('district55.json')
-    .then(res => res.json())
-    .then(data => {
-      const d2Layer = L.geoJSON(data, {
-        onEachFeature: (feature, layer) => {
-          const center = layer.getBounds().getCenter();
-          districtCenters.push({ name: feature.properties?.name || 'Територія 55', latlng: center });
-          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 55', center));
-        },
-        style: {
-          color: 'green',
-          fillColor: '#b6fcb6',
-          fillOpacity: 0.4
-        }
-      }).addTo(district55);
-    });
-
-   fetch('district56.json')
-    .then(res => res.json())
-    .then(data => {
-      const d2Layer = L.geoJSON(data, {
-        onEachFeature: (feature, layer) => {
-          const center = layer.getBounds().getCenter();
-          districtCenters.push({ name: feature.properties?.name || 'Територія 56', latlng: center });
-          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 56', center));
-        },
-        style: {
-          color: 'green',
-          fillColor: '#b6fcb6',
-          fillOpacity: 0.4
-        }
-      }).addTo(district56);
-    });
-  
+  // Базові шари
   const baseMaps = {
-    "Стандартна карта": osm,
+    "Стандартна карта": googleStreets,
     "Супутникова карта": satellite
   };
 
-  const overlayMaps = {
-    "Територія 1": district1,
-    "Територія 2": district2,
-    "Територія 55": district55,
-    "Територія 56": district56
-  };
-
+  // Додавання контролера шарів
   L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
 
+  // Перемикання шарів
   function toggleLayers() {
     const control = document.querySelector('.leaflet-control-layers');
     if (control) {
       control.classList.toggle('leaflet-control-layers-expanded');
     }
+    const btn = document.querySelector('.layer-toggle');
+    btn.innerText = control.classList.contains('leaflet-control-layers-expanded') ? '🗺 Приховати шари' : '🗺 Показати шари';
   }
 
   let currentMarker = null;
@@ -159,7 +137,13 @@
   let routeControl = null;
   let currentLocation = null;
 
+  // Пошук місця
   function findLocation() {
+    if (!navigator.geolocation) {
+      alert('⚠ Ваш браузер не підтримує геолокацію.');
+      return;
+    }
+    showLoading(true);
     map.locate({
       setView: true,
       maxZoom: 16,
@@ -168,8 +152,10 @@
     });
   }
 
+  // Обробка геолокації
   map.on('locationfound', function (e) {
     currentLocation = e.latlng;
+    showLoading(false);
 
     if (currentMarker) map.removeLayer(currentMarker);
     if (currentCircle) map.removeLayer(currentCircle);
@@ -185,12 +171,15 @@
       .bindPopup("Ваше місцерозташування (точність " + Math.round(e.accuracy) + " м)").openPopup();
   });
 
+  // Обробка помилки геолокації
   map.on('locationerror', function (e) {
+    showLoading(false);
     alert("⚠ Не вдалося визначити місцерозташування: " + e.message +
-      "\n\nМожливі причини:\n- Вимкнені служби геолокації\n- Відсутній дозвіл у браузері\n- Повільне з'єднання або слабкий сигнал\n- Сайт повинен відкриватися через HTTPS");
+      "\n\nМожливі причини:\n- Вимкнені служби геолокації\n- Відсутній дозвіл у браузері\n- Повільне з'єднання\n- Сайт має працювати через HTTPS");
   });
 
-  window.routeToDistrict = function(lat, lng, name) {
+  // Прокладання маршруту
+  function routeToDistrict(lat, lng, name) {
     if (!currentLocation) {
       alert("⛔ Спочатку натисніть кнопку 📍 «Показати моє місце»");
       return;
@@ -216,8 +205,7 @@
         `Ваше місцерозташування<br>Маршрут до <b>${name}</b><br>Відстань: ${distText}`
       ).openPopup();
     }
-  };
+  }
 </script>
-
 </body>
 </html>
