@@ -1,4 +1,57 @@
-const map = L.map('map').setView([49.1029, 29.2074], 13);
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+  <meta charset="utf-8" />
+  <title>Карта Територій "Іллінці" з Google Maps</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+  <style>
+    html, body, #map {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    button.layer-toggle, button.locate-btn {
+      position: absolute;
+      left: 50px;
+      z-index: 1000;
+      padding: 8px 12px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button.locate-btn {
+      top: 10px;
+    }
+    button.layer-toggle {
+      top: 50px;
+    }
+    #loader {
+      position: absolute;
+      top: 10px;
+      left: 215px;
+      z-index: 1000;
+      padding: 8px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце</button>
+<button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
+<div id="loader"></div>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
+
+<script>
+  const map = L.map('map').setView([49.1029, 29.2074], 13);
 
 // Google Maps шар (вулиці)
 const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
@@ -224,3 +277,6 @@ function routeToNearestPoint(districtName) {
     ).openPopup();
   }
 }
+</script>
+</body>
+</html>
