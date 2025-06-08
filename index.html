@@ -81,8 +81,7 @@ const overlayMaps = {};
 // Функція для створення попапу
 function createDistrictPopup(name, latlng) {
   return `<b>${name}</b><br>
-    <button onclick="routeToDistrict(${latlng.lat}, ${latlng.lng}, '${name}')">📌 Прокласти маршрут сюди</button><br>
-    <button onclick="routeToNearestPoint('${name}')">📍 Прокласти маршрут до найближчої точки</button>`;
+    <button onclick="routeToDistrict('${name}')">📌 Прокласти маршрут сюди</button>`;
 }
 
 // Індикатор завантаження
@@ -182,37 +181,8 @@ map.on('locationerror', function (e) {
     "\n\nМожливі причини:\n- Вимкнені служби геолокації\n- Відсутній дозвіл у браузері\n- Повільне з'єднання\n- Сайт має працювати через HTTPS");
 });
 
-// Прокладання маршруту до центру
-function routeToDistrict(lat, lng, name) {
-  if (!currentLocation) {
-    alert("⛔ Спочатку натисніть кнопку 📍 «Показати моє місце»");
-    return;
-  }
-
-  if (routeControl) {
-    map.removeControl(routeControl);
-  }
-
-  routeControl = L.Routing.control({
-    waypoints: [currentLocation, L.latLng(lat, lng)],
-    routeWhileDragging: false,
-    addWaypoints: false,
-    show: false,
-    createMarker: () => null
-  }).addTo(map);
-
-  const dist = currentLocation.distanceTo(L.latLng(lat, lng));
-  const distText = dist > 1000 ? (dist / 1000).toFixed(2) + " км" : Math.round(dist) + " м";
-
-  if (currentMarker) {
-    currentMarker.bindPopup(
-      `Ваше місцерозташування<br>Маршрут до <b>${name}</b><br>Відстань: ${distText}`
-    ).openPopup();
-  }
-}
-
-// Прокладання маршруту до найближчої точки
-function routeToNearestPoint(districtName) {
+// Прокладання маршруту до найближчої точки території
+function routeToDistrict(districtName) {
   if (!currentLocation) {
     alert("⛔ Спочатку натисніть кнопку 📍 «Показати моє місце»");
     return;
@@ -273,7 +243,7 @@ function routeToNearestPoint(districtName) {
   const distText = minDist > 1000 ? (minDist / 1000).toFixed(2) + " км" : Math.round(minDist) + " м";
   if (currentMarker) {
     currentMarker.bindPopup(
-      `Ваше місцерозташування<br>Маршрут до найближчої точки <b>${districtName}</b><br>Відстань: ${distText}`
+      `Ваше місцерозташування<br>Маршрут до <b>${districtName}</b><br>Відстань: ${distText}`
     ).openPopup();
   }
 }
