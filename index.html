@@ -95,17 +95,44 @@ districts.forEach(d => {
   const layer = L.layerGroup();
   showLoading(true);
   fetch(`${d.id}.json`)
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP помилка: ${res.status}`);
+      return res.json();
+    })
     .then(data => {
-      L.geoJSON(data, {
+      console.log(`Завантажено дані для ${d.name}:`, data);
+      const geoJsonLayer = L.geoJSON(data, {
         onEachFeature: (feature, layer) => {
           const center = layer.getBounds().getCenter();
           districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
-          districtGeometries.push({ name: feature.properties?.name || d.name, geometry: layer });
           layer.bindPopup(createDistrictPopup(feature.properties?.name || d.name, center));
         },
         style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
       }).addTo(layer);
+      
+      // Витягуємо координати для GeometryCollection
+      const coordinates = [];
+      if (data.type === "GeometryCollection") {
+        data.geometries.forEach(geom => {
+          if (geom.type === "Polygon" || geom.type === "MultiPolygon") {
+            const coords = geom.coordinates;
+            if (geom.type === "Polygon") {
+              coords.forEach(ring => coordinates.push(...ring.map(c => L.latLng(c[1], c[0]))));
+            } else if (geom.type === "MultiPolygon") {
+              coords.forEach(polygon => polygon.forEach(ring => coordinates.push(...ring.map(c => L.latLng(c[1], c[0])))));
+            }
+          }
+        });
+      } else if (data.type === "Feature" && (data.geometry.type === "Polygon" || data.geometry.type === "MultiPolygon")) {
+        const coords = data.geometry.coordinates;
+        if (data.geometry.type === "Polygon") {
+          coords.forEach(ring => coordinates.push(...ring.map(c => L.latLng(c[1], c[0]))));
+        } else {
+          coords.forEach(polygon => polygon.forEach(ring => coordinates.push(...ring.map(c => L.latLng(c[1], c[0])))));
+        }
+      }
+      console.log(`Зібрані координати для ${d.name}:`, coordinates);
+      districtGeometries.push({ name: d.name, coordinates: coordinates });
       showLoading(false);
     })
     .catch(err => {
@@ -194,26 +221,9 @@ function routeToDistrict(districtName) {
     return;
   }
 
-  const coordinates = [];
-  const getCoords = (geom) => {
-    if (geom.getLatLngs) {
-      const latlngs = geom.getLatLngs();
-      if (Array.isArray(latlngs[0])) {
-        latlngs.forEach(ring => {
-          if (Array.isArray(ring[0])) {
-            ring.forEach(subring => coordinates.push(...subring));
-          } else {
-            coordinates.push(...ring);
-          }
-        });
-      } else {
-        coordinates.push(...latlngs);
-      }
-    }
-  };
-
-  getCoords(district.geometry);
-  if (coordinates.length === 0) {
+  const coordinates = district.coordinates;
+  console.log(`Зібрані координати для ${districtName}:`, coordinates);
+  if (!coordinates || coordinates.length === 0) {
     alert(`⚠ Немає координат для ${districtName}`);
     return;
   }
