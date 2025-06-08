@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <title>Карта Територій "Іллінці"</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+  <style>
+    html, body, #map { height: 100%; margin: 0; padding: 0; }
+    button.layer-toggle, button.locate-btn, button.auth-btn {
+      position: absolute;
+      left: 50px;
+      z-index: 1000;
+      padding: 8px 12px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button.locate-btn { top: 10px; }
+    button.layer-toggle { top: 50px; }
+    button.auth-btn { top: 90px; }
+  </style>
+</head>
+<body>
+
+<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце</button>
+<button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
+<button id="login-btn" class="auth-btn">🔐 Увійти</button>
+<button id="logout-btn" class="auth-btn" style="display:none; top: 130px;">🚪 Вийти</button>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+  // Firebase ініціалізація (замінити на свої дані!)
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "your-project.firebaseapp.com",
+    projectId: "your-project-id",
+    storageBucket: "your-project.appspot.com",
+    messagingSenderId: "...",
+    appId: "..."
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  let isEditor = false;
+  let currentLocation = null;
+  let currentMarker = null;
+  let currentCircle = null;
+  let routeControl = null;
+
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      document.getElementById('login-btn').style.display = 'none';
+      document.getElementById('logout-btn').style.display = 'block';
+      isEditor = user.email === "admin@example.com"; // 🔒 ваш редакторський email
+    } else {
+      document.getElementById('login-btn').style.display = 'block';
+      document.getElementById('logout-btn').style.display = 'none';
+      isEditor = false;
+    }
+  });
+
+  document.getElementById('login-btn').onclick = () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).catch(err => alert("Помилка входу: " + err.message));
+  };
+
+  document.getElementById('logout-btn').onclick = () => auth.signOut();
+
+  const map = L.map('map').setView([49.1029, 29.2074], 14);
+  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap', maxZoom: 19
+  }).addTo(map);
+  const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' +
+    'World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '© Esri', maxZoom: 19
+  });
+
+  const district1 = L.layerGroup();
+  const district2 = L.layerGroup();
+
+  function createDistrictPopup(name, latlng) {
+    let html = `<b>${name}</b><br>
+      <button onclick=\"routeToDistrict('${name}')\">📌 Прокласти маршрут</button>`;
+    if (isEditor) html += `<br><button onclick=\"editInfo('${name}')\">✏️ Редагувати</button>`;
+    return html;
+  }
+
+  function toggleLayers() {
+    const control = document.querySelector('.leaflet-control-layers');
+    if (control) control.classList.toggle('leaflet-control-layers-expanded');
+  }
+
+  const baseMaps = { "Стандартна карта": osm, "Супутникова карта": satellite };
+  const overlayMaps = { "Територія 1": district1, "Територія 2": district2 };
+  L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
+
+  fetch('district1.json')
+    .then(res => res.json())
+    .then(data => {
+      L.geoJSON(data, {
+        onEachFeature: (feature, layer) => {
+          const center = layer.getBounds().getCenter();
+          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 1', center));
+        },
+        style: { color: 'blue', fillColor: '#99ccff', fillOpacity: 0.4 }
+      }).addTo(district1);
+    });
+
+  fetch('district2.json')
+    .then(res => res.json())
+    .then(data => {
+      L.geoJSON(data, {
+        onEachFeature: (feature, layer) => {
+          const center = layer.getBounds().getCenter();
+          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 2', center));
+        },
+        style: { color: 'green', fillColor: '#b6fcb6', fillOpacity: 0.4 }
+      }).addTo(district2);
+    });
+
+  function findLocation() {
+    map.locate({ setView: true, maxZoom: 16, timeout: 20000, enableHighAccuracy: true });
+  }
+
+  map.on('locationfound', function (e) {
+    currentLocation = e.latlng;
+    if (currentMarker) map.removeLayer(currentMarker);
+    if (currentCircle) map.removeLayer(currentCircle);
+
+    currentCircle = L.circle(e.latlng, {
+      radius: e.accuracy,
+      color: 'blue', fillColor: '#30f', fillOpacity: 0.2
+    }).addTo(map);
+
+    currentMarker = L.marker(e.latlng).addTo(map)
+      .bindPopup("Ваше місцерозташування (точність " + Math.round(e.accuracy) + " м)").openPopup();
+  });
+
+  map.on('locationerror', function (e) {
+    alert("⚠ Не вдалося визначити місцерозташування: " + e.message);
+  });
+
+  window.routeToDistrict = function(name) {
+    alert("Функція маршруту до території: " + name);
+    // Тут реалізуйте actual routing при потребі
+  };
+
+  window.editInfo = function(name) {
+    alert("Редагування доступне лише для редакторів. Ви редагуєте: " + name);
+    // Відкрити форму або модальне вікно
+  };
+</script>
+
+</body>
+</html>
