@@ -1,165 +1,125 @@
+<!-- Базовий шаблон з Firebase підключенням -->
 <!DOCTYPE html>
 <html lang="uk">
 <head>
   <meta charset="utf-8" />
-  <title>Карта Територій "Іллінці"</title>
+  <title>Інтерактивна карта з Firebase</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; }
-    button.layer-toggle, button.locate-btn, button.auth-btn {
-      position: absolute;
-      left: 50px;
-      z-index: 1000;
-      padding: 8px 12px;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    button.locate-btn { top: 10px; }
-    button.layer-toggle { top: 50px; }
-    button.auth-btn { top: 90px; }
+    .auth-button { position: absolute; top: 10px; right: 10px; z-index: 1000; background: white; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+    .info-panel { position: absolute; bottom: 10px; right: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 5px; width: 300px; display: none; }
+    .info-panel textarea { width: 100%; height: 60px; }
+    .info-panel input { width: 100%; margin-bottom: 5px; }
   </style>
 </head>
 <body>
-
-<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце</button>
-<button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
-<button id="login-btn" class="auth-btn">🔐 Увійти</button>
-<button id="logout-btn" class="auth-btn" style="display:none; top: 130px;">🚪 Вийти</button>
 <div id="map"></div>
+<button class="auth-button" id="loginBtn">Увійти</button>
+<div class="info-panel" id="infoPanel">
+  <h3>Редагування території</h3>
+  <input type="text" id="editorName" placeholder="ПІБ вісника" />
+  <input type="date" id="receiveDate" placeholder="Дата отримання" />
+  <input type="date" id="processDate" placeholder="Дата опрацювання" />
+  <textarea id="extraInfo" placeholder="Додаткова інформація"></textarea>
+  <button id="saveBtn">Зберегти</button>
+</div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  // Firebase ініціалізація (замінити на свої дані!)
   const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "your-project.firebaseapp.com",
-    projectId: "your-project-id",
-    storageBucket: "your-project.appspot.com",
-    messagingSenderId: "...",
-    appId: "..."
+    apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+    authDomain: "map-illintsi.firebaseapp.com",
+    projectId: "map-illintsi",
+    storageBucket: "map-illintsi.firebasestorage.app",
+    messagingSenderId: "62267872375",
+    appId: "1:62267872375:web:10945d2d63b93bccc5e272",
+    measurementId: "G-22L16KP5Z0"
   };
   firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
   const db = firebase.firestore();
+  const auth = firebase.auth();
 
-  let isEditor = false;
-  let currentLocation = null;
-  let currentMarker = null;
-  let currentCircle = null;
-  let routeControl = null;
+  let currentUser = null;
+  let selectedDistrict = null;
 
   auth.onAuthStateChanged(user => {
-    if (user) {
-      document.getElementById('login-btn').style.display = 'none';
-      document.getElementById('logout-btn').style.display = 'block';
-      isEditor = user.email === "admin@example.com"; // 🔒 ваш редакторський email
+    currentUser = user;
+    document.getElementById('loginBtn').textContent = user ? 'Вийти' : 'Увійти';
+  });
+
+  document.getElementById('loginBtn').addEventListener('click', () => {
+    if (currentUser) {
+      auth.signOut();
     } else {
-      document.getElementById('login-btn').style.display = 'block';
-      document.getElementById('logout-btn').style.display = 'none';
-      isEditor = false;
+      const email = prompt("Введіть email:");
+      const password = prompt("Введіть пароль:");
+      if (email && password) {
+        auth.signInWithEmailAndPassword(email, password)
+          .catch(err => alert("Помилка входу: " + err.message));
+      }
     }
   });
 
-  document.getElementById('login-btn').onclick = () => {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider).catch(err => alert("Помилка входу: " + err.message));
-  };
-
-  document.getElementById('logout-btn').onclick = () => auth.signOut();
-
-  const map = L.map('map').setView([49.1029, 29.2074], 14);
-  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap', maxZoom: 19
+  const map = L.map('map').setView([49.1029, 29.2074], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19
   }).addTo(map);
-  const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' +
-    'World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: '© Esri', maxZoom: 19
-  });
 
-  const district1 = L.layerGroup();
-  const district2 = L.layerGroup();
-
-  function createDistrictPopup(name, latlng) {
-    let html = `<b>${name}</b><br>
-      <button onclick=\"routeToDistrict('${name}')\">📌 Прокласти маршрут</button>`;
-    if (isEditor) html += `<br><button onclick=\"editInfo('${name}')\">✏️ Редагувати</button>`;
-    return html;
-  }
-
-  function toggleLayers() {
-    const control = document.querySelector('.leaflet-control-layers');
-    if (control) control.classList.toggle('leaflet-control-layers-expanded');
-  }
-
-  const baseMaps = { "Стандартна карта": osm, "Супутникова карта": satellite };
-  const overlayMaps = { "Територія 1": district1, "Територія 2": district2 };
-  L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
-
+  // Завантаження одного прикладного шару (можна цикл на всі .json)
   fetch('district1.json')
     .then(res => res.json())
     .then(data => {
-      L.geoJSON(data, {
+      const geoLayer = L.geoJSON(data, {
         onEachFeature: (feature, layer) => {
-          const center = layer.getBounds().getCenter();
-          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 1', center));
+          layer.on('click', () => {
+            selectedDistrict = feature.properties.name || 'district1';
+            document.getElementById('infoPanel').style.display = currentUser ? 'block' : 'none';
+            loadLastEntry(selectedDistrict);
+          });
         },
         style: { color: 'blue', fillColor: '#99ccff', fillOpacity: 0.4 }
-      }).addTo(district1);
+      }).addTo(map);
     });
 
-  fetch('district2.json')
-    .then(res => res.json())
-    .then(data => {
-      L.geoJSON(data, {
-        onEachFeature: (feature, layer) => {
-          const center = layer.getBounds().getCenter();
-          layer.bindPopup(createDistrictPopup(feature.properties?.name || 'Територія 2', center));
-        },
-        style: { color: 'green', fillColor: '#b6fcb6', fillOpacity: 0.4 }
-      }).addTo(district2);
-    });
-
-  function findLocation() {
-    map.locate({ setView: true, maxZoom: 16, timeout: 20000, enableHighAccuracy: true });
+  async function loadLastEntry(sectorId) {
+    const docRef = db.collection('sectors').doc(sectorId);
+    const docSnap = await docRef.get();
+    if (docSnap.exists) {
+      const data = docSnap.data();
+      const history = data.history || [];
+      if (history.length > 0) {
+        const last = history[history.length - 1];
+        alert("Останній запис:\nПІБ: " + last.pib + "\nДата отримання: " + last.date_get + "\nДата опрацювання: " + last.date_process);
+      }
+    }
   }
 
-  map.on('locationfound', function (e) {
-    currentLocation = e.latlng;
-    if (currentMarker) map.removeLayer(currentMarker);
-    if (currentCircle) map.removeLayer(currentCircle);
+  document.getElementById('saveBtn').addEventListener('click', async () => {
+    if (!selectedDistrict || !currentUser) return;
+    const pib = document.getElementById('editorName').value;
+    const date_get = document.getElementById('receiveDate').value;
+    const date_process = document.getElementById('processDate').value;
+    const extra = document.getElementById('extraInfo').value;
 
-    currentCircle = L.circle(e.latlng, {
-      radius: e.accuracy,
-      color: 'blue', fillColor: '#30f', fillOpacity: 0.2
-    }).addTo(map);
+    const newEntry = {
+      pib,
+      date_get,
+      date_process,
+      extra,
+      editedBy: currentUser.email,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    };
 
-    currentMarker = L.marker(e.latlng).addTo(map)
-      .bindPopup("Ваше місцерозташування (точність " + Math.round(e.accuracy) + " м)").openPopup();
+    const docRef = db.collection('sectors').doc(selectedDistrict);
+    await docRef.set({ history: firebase.firestore.FieldValue.arrayUnion(newEntry) }, { merge: true });
+    alert("Дані збережено");
   });
-
-  map.on('locationerror', function (e) {
-    alert("⚠ Не вдалося визначити місцерозташування: " + e.message);
-  });
-
-  window.routeToDistrict = function(name) {
-    alert("Функція маршруту до території: " + name);
-    // Тут реалізуйте actual routing при потребі
-  };
-
-  window.editInfo = function(name) {
-    alert("Редагування доступне лише для редакторів. Ви редагуєте: " + name);
-    // Відкрити форму або модальне вікно
-  };
 </script>
-
 </body>
 </html>
