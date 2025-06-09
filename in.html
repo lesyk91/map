@@ -1,246 +1,212 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Карта Іллінців з 150 територіями</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <style>
-    #map { height: 600px; width: 100%; }
-    .info { padding: 10px; background: white; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-    .hidden { display: none; }
-    .login-form, .edit-form { max-width: 400px; margin: 20px auto; padding: 20px; background: #f9f9f9; border-radius: 10px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Карта Іллінці</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map { height: 600px; }
+        .auth-container { position: absolute; top: 10px; right: 10px; z-index: 1000; }
+        .info-panel { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 5px; }
+        .hidden { display: none; }
+    </style>
 </head>
-<body class="bg-gray-100">
-  <div class="container mx-auto p-4">
-    <h1 class="text-2xl font-bold text-center mb-4">Карта Іллінців</h1>
-    
-    <!-- Кнопка входу та форма авторизації -->
-    <div id="auth-section" class="text-center mb-4">
-      <button id="login-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Увійти</button>
-      <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 hidden">Вийти</button>
-      <div id="login-form" class="login-form hidden">
-        <input type="text" id="username" placeholder="Ім'я користувача" class="w-full p-2 mb-2 border rounded">
-        <input type="password" id="password" placeholder="Пароль" class="w-full p-2 mb-2 border rounded">
-        <button id="submit-login" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Увійти</button>
-      </div>
-    </div>
-
-    <!-- Кнопки управління -->
-    <div class="flex justify-center space-x-4 mb-4">
-      <button id="my-location" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">📍 Показати моє місце</button>
-      <button id="layers" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">🗺 Шари</button>
-    </div>
-
-    <!-- Карта -->
-    <div id="map"></div>
-
-    <!-- Форма редагування (для авторизованих) -->
-    <div id="edit-section" class="edit-form hidden">
-      <h2 class="text-xl font-bold mb-2">Редагувати територію</h2>
-      <input type="hidden" id="edit-id">
-      <input type="text" id="edit-received" placeholder="Дата отримання" class="w-full p-2 mb-2 border rounded">
-      <input type="text" id="edit-processed" placeholder="Дата опрацювання" class="w-full p-2 mb-2 border rounded">
-      <input type="text" id="edit-bulletin" placeholder="Вісник" class="w-full p-2 mb-2 border rounded">
-      <input type="text" id="edit-additional" placeholder="Додатково" class="w-full p-2 mb-2 border rounded">
-      <button id="save-edit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Зберегти</button>
-    </div>
-
-    <!-- Історія (для авторизованих) -->
-    <div id="history-section" class="hidden">
-      <h2 class="text-xl font-bold text-center mb-2">Історія змін</h2>
-      <div id="history" class="bg-white p-4 rounded shadow"></div>
-      <button id="export-history" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-2">Експорт історії</button>
-    </div>
-  </div>
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-  <script>
-    // Ініціалізація карти
-    const map = L.map('map').setView([49.105, 29.210], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    }).addTo(map);
-
-    // Зразок бази даних (замініть на реальний бекенд)
-    let territories = Array.from({ length: 150 }, (_, i) => ({
-      id: i + 1,
-      name: `Територія ${i + 1}`,
-      coords: [
-        [49.105 + (i % 10) * 0.01, 29.210 + Math.floor(i / 10) * 0.01],
-        [49.105 + (i % 10) * 0.01 + 0.005, 29.210 + Math.floor(i / 10) * 0.01],
-        [49.105 + (i % 10) * 0.01 + 0.005, 29.210 + Math.floor(i / 10) * 0.01 + 0.005],
-        [49.105 + (i % 10) * 0.01, 29.210 + Math.floor(i / 10) * 0.01 + 0.005]
-      ],
-      data: { received: '', processed: '', bulletin: '', additional: '' },
-      history: []
-    }));
-
-    let isAuthenticated = false;
-
-    // Відображення територій
-    territories.forEach(territory => {
-      const polygon = L.polygon(territory.coords, { color: 'blue' }).addTo(map);
-      polygon.bindPopup(`
-        <b>${territory.name}</b><br>
-        <a href="https://www.openstreetmap.org/directions?from=&to=${territory.coords[0][0]},${territory.coords[0][1]}" target="_blank">Прокласти маршрут</a>
-        <div class="info ${isAuthenticated ? '' : 'hidden'}">
-          <b>Дата отримання:</b> ${territory.data.received || 'Немає даних'}<br>
-          <b>Дата опрацювання:</b> ${territory.data.processed || 'Немає даних'}<br>
-          <b>Вісник:</b> ${territory.data.bulletin || 'Немає даних'}<br>
-          <b>Додатково:</b> ${territory.data.additional || 'Немає даних'}<br>
-          <button onclick="editTerritory(${territory.id})" class="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600">Редагувати</button>
+<body>
+    <div class="auth-container">
+        <button id="loginBtn">Увійти</button>
+        <div id="authForm" class="hidden">
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Пароль">
+            <button id="signIn">Увійти</button>
+            <button id="signOut" class="hidden">Вийти</button>
         </div>
-      `);
-    });
+    </div>
+    <div id="map"></div>
+    <div class="info-panel hidden" id="infoPanel">
+        <h3>Інформація про територію</h3>
+        <div id="territoryInfo"></div>
+        <div id="editForm" class="hidden">
+            <input type="text" id="messengerName" placeholder="ПІБ Вісника">
+            <input type="date" id="receivedDate" placeholder="Дата отримання">
+            <input type="date" id="processedDate" placeholder="Дата опрацювання">
+            <textarea id="additionalInfo" placeholder="Додаткова інформація"></textarea>
+            <button id="saveInfo">Зберегти</button>
+        </div>
+        <button id="showHistory">Показати історію</button>
+        <div id="history" class="hidden"></div>
+    </div>
 
-    // Показати моє місце
-    document.getElementById('my-location').addEventListener('click', () => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(position => {
-          const { latitude, longitude } = position.coords;
-          map.setView([latitude, longitude], 13);
-          L.marker([latitude, longitude]).addTo(map)
-            .bindPopup('Ви тут!').openPopup();
-        }, () => alert('Не вдалося визначити місце'));
-      } else {
-        alert('Геолокація не підтримується');
-      }
-    });
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // Шари (приклад)
-    document.getElementById('layers').addEventListener('click', () => {
-      alert('Тут можна додати перемикання шарів: супутник, дороги тощо');
-    });
+        const firebaseConfig = {
+            apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+            authDomain: "map-illintsi.firebaseapp.com",
+            projectId: "map-illintsi",
+            storageBucket: "map-illintsi.firebasestorage.app",
+            messagingSenderId: "62267872375",
+            appId: "1:62267872375:web:10945d2d63b93bccc5e272",
+            measurementId: "G-22L16KP5Z0"
+        };
 
-    // Авторизація
-    document.getElementById('login-btn').addEventListener('click', () => {
-      document.getElementById('login-form').classList.toggle('hidden');
-    });
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
-    document.getElementById('submit-login').addEventListener('click', () => {
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
-      // Зразок авторизації (замініть на реальний бекенд)
-      if (username === 'admin' && password === 'password') {
-        isAuthenticated = true;
-        document.getElementById('login-btn').classList.add('hidden');
-        document.getElementById('logout-btn').classList.remove('hidden');
-        document.getElementById('login-form').classList.add('hidden');
-        document.getElementById('edit-section').classList.remove('hidden');
-        document.getElementById('history-section').classList.remove('hidden');
-        updateMap();
-        updateHistory();
-      } else {
-        alert('Невірне ім’я користувача або пароль');
-      }
-    });
+        let map = L.map('map').setView([49.3747, 29.2092], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
 
-    document.getElementById('logout-btn').addEventListener('click', () => {
-      isAuthenticated = false;
-      document.getElementById('login-btn').classList.remove('hidden');
-      document.getElementById('logout-btn').classList.add('hidden');
-      document.getElementById('edit-section').classList.add('hidden');
-      document.getElementById('history-section').classList.add('hidden');
-      updateMap();
-    });
+        let userLocation = null;
+        let selectedTerritory = null;
+        let currentUser = null;
 
-    // Редагування території
-    window.editTerritory = function(id) {
-      if (!isAuthenticated) return;
-      const territory = territories.find(t => t.id === id);
-      document.getElementById('edit-id').value = id;
-      document.getElementById('edit-received').value = territory.data.received;
-      document.getElementById('edit-processed').value = territory.data.processed;
-      document.getElementById('edit-bulletin').value = territory.data.bulletin;
-      document.getElementById('edit-additional').value = territory.data.additional;
-    };
+        // Authentication handling
+        const loginBtn = document.getElementById('loginBtn');
+        const authForm = document.getElementById('authForm');
+        const signInBtn = document.getElementById('signIn');
+        const signOutBtn = document.getElementById('signOut');
+        const infoPanel = document.getElementById('infoPanel');
+        const editForm = document.getElementById('editForm');
+        const territoryInfo = document.getElementById('territoryInfo');
+        const showHistoryBtn = document.getElementById('showHistory');
+        const historyDiv = document.getElementById('history');
 
-    document.getElementById('save-edit').addEventListener('click', () => {
-      const id = parseInt(document.getElementById('edit-id').value);
-      const territory = territories.find(t => t.id === id);
-      const newData = {
-        received: document.getElementById('edit-received').value,
-        processed: document.getElementById('edit-processed').value,
-        bulletin: document.getElementById('edit-bulletin').value,
-        additional: document.getElementById('edit-additional').value
-      };
-      const timestamp = new Date().toISOString();
-      territory.history.push({ timestamp, ...territory.data });
-      territory.data = newData;
-      updateMap();
-      updateHistory();
-      // Скидаємо форму
-      document.getElementById('edit-id').value = '';
-      document.getElementById('edit-received').value = '';
-      document.getElementById('edit-processed').value = '';
-      document.getElementById('edit-bulletin').value = '';
-      document.getElementById('edit-additional').value = '';
-    });
-
-    // Оновлення карти
-    function updateMap() {
-      map.eachLayer(layer => {
-        if (layer instanceof L.Polygon) map.removeLayer(layer);
-      });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-      }).addTo(map);
-      territories.forEach(territory => {
-        const polygon = L.polygon(territory.coords, { color: 'blue' }).addTo(map);
-        polygon.bindPopup(`
-          <b>${territory.name}</b><br>
-          <a href="https://www.openstreetmap.org/directions?from=&to=${territory.coords[0][0]},${territory.coords[0][1]}" target="_blank">Прокласти маршрут</a>
-          <div class="info ${isAuthenticated ? '' : 'hidden'}">
-            <b>Дата отримання:</b> ${territory.data.received || 'Немає даних'}<br>
-            <b>Дата опрацювання:</b> ${territory.data.processed || 'Немає даних'}<br>
-            <b>Вісник:</b> ${territory.data.bulletin || 'Немає даних'}<br>
-            <b>Додатково:</b> ${territory.data.additional || 'Немає даних'}<br>
-            <button onclick="editTerritory(${territory.id})" class="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600">Редагувати</button>
-          </div>
-        `);
-      });
-    }
-
-    // Оновлення історії
-    function updateHistory() {
-      const historyDiv = document.getElementById('history');
-      historyDiv.innerHTML = '';
-      territories.forEach(territory => {
-        territory.history.forEach(entry => {
-          historyDiv.innerHTML += `
-            <p><b>${territory.name}</b> (${entry.timestamp}):<br>
-            Дата отримання: ${entry.received || 'Немає даних'}, 
-            Дата опрацювання: ${entry.processed || 'Немає даних'}, 
-            Вісник: ${entry.bulletin || 'Немає даних'}, 
-            Додатково: ${entry.additional || 'Немає даних'}</p>
-          `;
+        loginBtn.addEventListener('click', () => {
+            authForm.classList.toggle('hidden');
         });
-      });
-    }
 
-    // Експорт історії
-    document.getElementById('export-history').addEventListener('click', () => {
-      const historyContent = territories.map(territory => 
-        territory.history.map(entry => 
-          `${territory.name} (${entry.timestamp}):\n` +
-          `Дата отримання: ${entry.received || 'Немає даних'}\n` +
-          `Дата опрацювання: ${entry.processed || 'Немає даних'}\n` +
-          `Вісник: ${entry.bulletin || 'Немає даних'}\n` +
-          `Додатково: ${entry.additional || 'Немає даних'}\n`
-        ).join('\n')
-      ).join('\n');
-      const blob = new Blob([historyContent], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'history.txt';
-      a.click();
-      URL.revokeObjectURL(url);
-    });
-  </script>
+        signInBtn.addEventListener('click', async () => {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                authForm.classList.add('hidden');
+            } catch (error) {
+                alert('Помилка входу: ' + error.message);
+            }
+        });
+
+        signOutBtn.addEventListener('click', async () => {
+            await signOut(auth);
+        });
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                loginBtn.classList.add('hidden');
+                signOutBtn.classList.remove('hidden');
+                editForm.classList.remove('hidden');
+            } else {
+                loginBtn.classList.remove('hidden');
+                signOutBtn.classList.add('hidden');
+                editForm.classList.add('hidden');
+            }
+        });
+
+        // Map functionality
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((position) => {
+                userLocation = [position.coords.latitude, position.coords.longitude];
+                L.marker(userLocation).addTo(map).bindPopup('Ви тут').openPopup();
+                map.setView(userLocation, 13);
+            });
+        }
+
+        // Sample territory data (replace with your actual territory data)
+        const territories = [
+            { id: 't1', coords: [[49.375, 29.208], [49.376, 29.209], [49.376, 29.207], [49.375, 29.208]], name: 'Територія 1' }
+        ];
+
+        territories.forEach(territory => {
+            const polygon = L.polygon(territory.coords).addTo(map);
+            polygon.on('click', () => showTerritoryInfo(territory.id));
+        });
+
+        async function showTerritoryInfo(territoryId) {
+            selectedTerritory = territoryId;
+            infoPanel.classList.remove('hidden');
+            
+            const q = query(collection(db, 'territories'), 
+                           where('territoryId', '==', territoryId), 
+                           orderBy('createdAt', 'desc'));
+            const querySnapshot = await getDocs(q);
+            let latestRecord = null;
+            
+            territoryInfo.innerHTML = '';
+            querySnapshot.forEach((doc) => {
+                if (!latestRecord) {
+                    latestRecord = doc.data();
+                }
+            });
+
+            if (latestRecord) {
+                const status = latestRecord.processedDate ? 'Опрацьована' : 'На руках';
+                territoryInfo.innerHTML = `
+                    <p><strong>Статус:</strong> ${status}</p>
+                    <p><strong>Вісник:</strong> ${latestRecord.messengerName || 'Немає'}</p>
+                    <p><strong>Дата отримання:</strong> ${latestRecord.receivedDate || 'Немає'}</p>
+                    <p><strong>Дата опрацювання:</strong> ${latestRecord.processedDate || 'Немає'}</p>
+                    <p><strong>Додаткова інформація:</strong> ${latestRecord.additionalInfo || 'Немає'}</p>
+                    <p><strong>Останнє оновлення:</strong> ${new Date(latestRecord.createdAt.toDate()).toLocaleString()}</p>
+                    <p><strong>Оновив:</strong> ${latestRecord.updatedBy}</p>
+                `;
+            } else {
+                territoryInfo.innerHTML = '<p>Немає інформації про цю територію</p>';
+            }
+        }
+
+        document.getElementById('saveInfo').addEventListener('click', async () => {
+            if (!currentUser) {
+                alert('Потрібно увійти в систему');
+                return;
+            }
+
+            const data = {
+                territoryId: selectedTerritory,
+                messengerName: document.getElementById('messengerName').value,
+                receivedDate: document.getElementById('receivedDate').value,
+                processedDate: document.getElementById('processedDate').value,
+                additionalInfo: document.getElementById('additionalInfo').value,
+                createdAt: new Date(),
+                updatedBy: currentUser.email,
+                recordNumber: await getNextRecordNumber()
+            };
+
+            await addDoc(collection(db, 'territories'), data);
+            showTerritoryInfo(selectedTerritory);
+        });
+
+        async function getNextRecordNumber() {
+            const querySnapshot = await getDocs(collection(db, 'territories'));
+            return querySnapshot.size + 1;
+        }
+
+        showHistoryBtn.addEventListener('click', async () => {
+            historyDiv.classList.toggle('hidden');
+            if (!historyDiv.classList.contains('hidden')) {
+                const q = query(collection(db, 'territories'), 
+                               where('territoryId', '==', selectedTerritory), 
+                               orderBy('createdAt', 'desc'));
+                const querySnapshot = await getDocs(q);
+                historyDiv.innerHTML = '<h4>Історія</h4>';
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    historyDiv.innerHTML += `
+                        <p>Запис #${data.recordNumber}: ${data.messengerName}, 
+                        Отримав: ${data.receivedDate || 'Немає'}, 
+                        Опрацьовано: ${data.processedDate || 'Немає'}, 
+                        ${new Date(data.createdAt.toDate()).toLocaleString()}, 
+                        ${data.updatedBy}</p>
+                    `;
+                });
+            }
+        });
+    </script>
 </body>
 </html>
