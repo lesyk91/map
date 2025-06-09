@@ -1,125 +1,262 @@
-<!-- Базовий шаблон з Firebase підключенням -->
 <!DOCTYPE html>
 <html lang="uk">
 <head>
   <meta charset="utf-8" />
-  <title>Інтерактивна карта з Firebase</title>
+  <title>Карта Територій "Іллінці" з Google Maps</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; }
-    .auth-button { position: absolute; top: 10px; right: 10px; z-index: 1000; background: white; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
-    .info-panel { position: absolute; bottom: 10px; right: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 5px; width: 300px; display: none; }
-    .info-panel textarea { width: 100%; height: 60px; }
-    .info-panel input { width: 100%; margin-bottom: 5px; }
+    button.layer-toggle, button.locate-btn, button.auth-button {
+      position: absolute;
+      left: 50px;
+      z-index: 1000;
+      padding: 8px 12px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button.locate-btn { top: 10px; }
+    button.layer-toggle { top: 50px; }
+    button.auth-button { top: 90px; }
+    #loader {
+      position: absolute;
+      top: 10px;
+      left: 215px;
+      z-index: 1000;
+      padding: 8px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+    .info-panel {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      border-radius: 5px;
+      width: 300px;
+      display: none;
+    }
+    .info-panel input, .info-panel textarea {
+      width: 100%;
+      margin-bottom: 5px;
+    }
   </style>
 </head>
 <body>
+<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце</button>
+<button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
+<button id="authBtn" class="auth-button">🔐 Увійти</button>
+<div id="loader"></div>
 <div id="map"></div>
-<button class="auth-button" id="loginBtn">Увійти</button>
 <div class="info-panel" id="infoPanel">
   <h3>Редагування території</h3>
   <input type="text" id="editorName" placeholder="ПІБ вісника" />
   <input type="date" id="receiveDate" placeholder="Дата отримання" />
   <input type="date" id="processDate" placeholder="Дата опрацювання" />
   <textarea id="extraInfo" placeholder="Додаткова інформація"></textarea>
-  <button id="saveBtn">Зберегти</button>
+  <button id="saveBtn">💾 Зберегти</button>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
+
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
-    authDomain: "map-illintsi.firebaseapp.com",
-    projectId: "map-illintsi",
-    storageBucket: "map-illintsi.firebasestorage.app",
-    messagingSenderId: "62267872375",
-    appId: "1:62267872375:web:10945d2d63b93bccc5e272",
-    measurementId: "G-22L16KP5Z0"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  const auth = firebase.auth();
+const firebaseConfig = {
+  apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+  authDomain: "map-illintsi.firebaseapp.com",
+  projectId: "map-illintsi",
+  storageBucket: "map-illintsi.firebasestorage.app",
+  messagingSenderId: "62267872375",
+  appId: "1:62267872375:web:10945d2d63b93bccc5e272",
+  measurementId: "G-22L16KP5Z0"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
 
-  let currentUser = null;
-  let selectedDistrict = null;
+let currentUser = null;
+let selectedDistrict = null;
 
-  auth.onAuthStateChanged(user => {
-    currentUser = user;
-    document.getElementById('loginBtn').textContent = user ? 'Вийти' : 'Увійти';
-  });
+auth.onAuthStateChanged(user => {
+  currentUser = user;
+  document.getElementById('authBtn').textContent = user ? '🔓 Вийти' : '🔐 Увійти';
+});
 
-  document.getElementById('loginBtn').addEventListener('click', () => {
-    if (currentUser) {
-      auth.signOut();
-    } else {
-      const email = prompt("Введіть email:");
-      const password = prompt("Введіть пароль:");
-      if (email && password) {
-        auth.signInWithEmailAndPassword(email, password)
-          .catch(err => alert("Помилка входу: " + err.message));
-      }
-    }
-  });
-
-  const map = L.map('map').setView([49.1029, 29.2074], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19
-  }).addTo(map);
-
-  // Завантаження одного прикладного шару (можна цикл на всі .json)
-  fetch('district1.json')
-    .then(res => res.json())
-    .then(data => {
-      const geoLayer = L.geoJSON(data, {
-        onEachFeature: (feature, layer) => {
-          layer.on('click', () => {
-            selectedDistrict = feature.properties.name || 'district1';
-            document.getElementById('infoPanel').style.display = currentUser ? 'block' : 'none';
-            loadLastEntry(selectedDistrict);
-          });
-        },
-        style: { color: 'blue', fillColor: '#99ccff', fillOpacity: 0.4 }
-      }).addTo(map);
-    });
-
-  async function loadLastEntry(sectorId) {
-    const docRef = db.collection('sectors').doc(sectorId);
-    const docSnap = await docRef.get();
-    if (docSnap.exists) {
-      const data = docSnap.data();
-      const history = data.history || [];
-      if (history.length > 0) {
-        const last = history[history.length - 1];
-        alert("Останній запис:\nПІБ: " + last.pib + "\nДата отримання: " + last.date_get + "\nДата опрацювання: " + last.date_process);
-      }
+document.getElementById('authBtn').addEventListener('click', () => {
+  if (currentUser) {
+    auth.signOut();
+  } else {
+    const email = prompt("Email:");
+    const password = prompt("Пароль:");
+    if (email && password) {
+      auth.signInWithEmailAndPassword(email, password).catch(err => alert("❌ " + err.message));
     }
   }
+});
 
-  document.getElementById('saveBtn').addEventListener('click', async () => {
-    if (!selectedDistrict || !currentUser) return;
-    const pib = document.getElementById('editorName').value;
-    const date_get = document.getElementById('receiveDate').value;
-    const date_process = document.getElementById('processDate').value;
-    const extra = document.getElementById('extraInfo').value;
+const map = L.map('map').setView([49.1029, 29.2074], 13);
+const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+  maxZoom: 20,
+  subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+  attribution: '© Google Maps'
+}).addTo(map);
+const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  attribution: '© Esri',
+  maxZoom: 20
+});
 
-    const newEntry = {
-      pib,
-      date_get,
-      date_process,
-      extra,
-      editedBy: currentUser.email,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    };
+const districts = [
+  { id: 'district1', name: 'Територія 1', color: 'blue', fillColor: '#99ccff' },
+  { id: 'district2', name: 'Територія 2', color: 'green', fillColor: '#b6fcb6' },
+  { id: 'district55', name: 'Територія 55', color: 'green', fillColor: '#b6fcb6' },
+  { id: 'district56', name: 'Територія 56', color: 'green', fillColor: '#b6fcb6' }
+];
 
-    const docRef = db.collection('sectors').doc(selectedDistrict);
-    await docRef.set({ history: firebase.firestore.FieldValue.arrayUnion(newEntry) }, { merge: true });
-    alert("Дані збережено");
+const districtCenters = [];
+const districtGeometries = [];
+const overlayMaps = {};
+
+function createDistrictPopup(name, latlng) {
+  return `<b>${name}</b><br>
+    <button onclick="routeToDistrict('${name}')">📌 Прокласти маршрут сюди</button>`;
+}
+
+function showLoading(show) {
+  document.getElementById('loader').innerText = show ? 'Завантаження...' : '';
+}
+
+districts.forEach(d => {
+  const layer = L.layerGroup();
+  showLoading(true);
+  fetch(`${d.id}.json`).then(res => res.json()).then(data => {
+    const geoJsonLayer = L.geoJSON(data, {
+      onEachFeature: (feature, lyr) => {
+        const center = lyr.getBounds().getCenter();
+        districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
+        lyr.bindPopup(createDistrictPopup(feature.properties?.name || d.name, center));
+        lyr.on('click', () => {
+          selectedDistrict = feature.properties?.name || d.name;
+          if (currentUser) document.getElementById('infoPanel').style.display = 'block';
+          else document.getElementById('infoPanel').style.display = 'none';
+          loadLastEntry(selectedDistrict);
+        });
+      },
+      style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
+    }).addTo(layer);
+
+    overlayMaps[d.name] = layer;
+    showLoading(false);
+  }).catch(err => {
+    console.error(`Помилка ${d.id}.json:`, err);
+    alert(`⚠ Не вдалося завантажити ${d.name}`);
+    showLoading(false);
   });
+});
+
+L.control.layers({ "Стандартна карта": googleStreets, "Супутникова карта": satellite }, overlayMaps, { collapsed: true }).addTo(map);
+
+function toggleLayers() {
+  const control = document.querySelector('.leaflet-control-layers');
+  if (control) {
+    control.classList.toggle('leaflet-control-layers-expanded');
+  }
+  const btn = document.querySelector('.layer-toggle');
+  btn.innerText = control.classList.contains('leaflet-control-layers-expanded') ? '🗺 Приховати шари' : '🗺 Показати шари';
+}
+
+let currentMarker = null;
+let currentCircle = null;
+let routeControl = null;
+let currentLocation = null;
+
+function findLocation() {
+  if (!navigator.geolocation) {
+    alert('⚠ Ваш браузер не підтримує геолокацію.');
+    return;
+  }
+  showLoading(true);
+  map.locate({ setView: true, maxZoom: 16, timeout: 20000, enableHighAccuracy: true });
+}
+
+map.on('locationfound', function (e) {
+  currentLocation = e.latlng;
+  showLoading(false);
+  if (currentMarker) map.removeLayer(currentMarker);
+  if (currentCircle) map.removeLayer(currentCircle);
+  currentCircle = L.circle(e.latlng, { radius: e.accuracy, color: 'blue', fillColor: '#30f', fillOpacity: 0.2 }).addTo(map);
+  currentMarker = L.marker(e.latlng).addTo(map).bindPopup("Ваше місцерозташування (точність " + Math.round(e.accuracy) + " м)").openPopup();
+});
+
+map.on('locationerror', function (e) {
+  showLoading(false);
+  alert("⚠ Не вдалося визначити місцерозташування: " + e.message);
+});
+
+function routeToDistrict(districtName) {
+  if (!currentLocation) {
+    alert("⛔ Спочатку натисніть кнопку 📍 «Показати моє місце»");
+    return;
+  }
+  const district = districtGeometries.find(d => d.name === districtName);
+  if (!district || !district.coordinates?.length) return alert("⚠ Немає координат для " + districtName);
+  let nearestPoint = district.coordinates[0];
+  let minDist = currentLocation.distanceTo(nearestPoint);
+  district.coordinates.forEach(coord => {
+    const dist = currentLocation.distanceTo(coord);
+    if (dist < minDist) {
+      minDist = dist;
+      nearestPoint = coord;
+    }
+  });
+  if (routeControl) map.removeControl(routeControl);
+  routeControl = L.Routing.control({
+    waypoints: [currentLocation, nearestPoint], routeWhileDragging: false, addWaypoints: false, show: false, createMarker: () => null
+  }).addTo(map);
+  if (currentMarker) currentMarker.bindPopup(`Ваше місцерозташування<br>Маршрут до <b>${districtName}</b><br>Відстань: ${minDist > 1000 ? (minDist/1000).toFixed(2) + " км" : Math.round(minDist) + " м"}`).openPopup();
+}
+
+async function loadLastEntry(sectorId) {
+  const docRef = db.collection('sectors').doc(sectorId);
+  const docSnap = await docRef.get();
+  if (docSnap.exists) {
+    const data = docSnap.data();
+    const history = data.history || [];
+    if (history.length > 0) {
+      const last = history[history.length - 1];
+      alert("Останній запис:\nПІБ: " + last.pib + "\nДата отримання: " + last.date_get + "\nДата опрацювання: " + last.date_process + "\nРедагував: " + (last.editedBy || 'невідомо'));
+    }
+  }
+}
+
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  if (!selectedDistrict || !currentUser) return;
+  const pib = document.getElementById('editorName').value;
+  const date_get = document.getElementById('receiveDate').value;
+  const date_process = document.getElementById('processDate').value;
+  const extra = document.getElementById('extraInfo').value;
+
+  const newEntry = {
+    pib,
+    date_get,
+    date_process,
+    extra,
+    editedBy: currentUser.email,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  const docRef = db.collection('sectors').doc(selectedDistrict);
+  await docRef.set({ history: firebase.firestore.FieldValue.arrayUnion(newEntry) }, { merge: true });
+  alert("✅ Дані збережено");
+});
 </script>
 </body>
 </html>
