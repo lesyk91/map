@@ -1,212 +1,178 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Карта Іллінці</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        #map { height: 600px; }
-        .auth-container { position: absolute; top: 10px; right: 10px; z-index: 1000; }
-        .info-panel { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 5px; }
-        .hidden { display: none; }
-    </style>
+  <meta charset="utf-8" />
+  <title>Карта Територій "Іллінці"</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+  <style>
+    html, body, #map { height: 100%; margin: 0; padding: 0; }
+    .control-btn { position: absolute; left: 50px; z-index: 1000; padding: 8px 12px; background: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; }
+    .locate-btn { top: 10px; }
+    .layer-toggle { top: 50px; }
+    .auth-btn { top: 90px; }
+    #loader { position: absolute; top: 10px; left: 215px; z-index: 1000; padding: 8px; background: white; border: 1px solid #ccc; border-radius: 10px; }
+    #auth-container, #form-container { position: absolute; top: 140px; left: 50px; background: white; padding: 10px; z-index: 1001; border-radius: 6px; display: none; }
+  </style>
 </head>
 <body>
-    <div class="auth-container">
-        <button id="loginBtn">Увійти</button>
-        <div id="authForm" class="hidden">
-            <input type="email" id="email" placeholder="Email">
-            <input type="password" id="password" placeholder="Пароль">
-            <button id="signIn">Увійти</button>
-            <button id="signOut" class="hidden">Вийти</button>
-        </div>
-    </div>
-    <div id="map"></div>
-    <div class="info-panel hidden" id="infoPanel">
-        <h3>Інформація про територію</h3>
-        <div id="territoryInfo"></div>
-        <div id="editForm" class="hidden">
-            <input type="text" id="messengerName" placeholder="ПІБ Вісника">
-            <input type="date" id="receivedDate" placeholder="Дата отримання">
-            <input type="date" id="processedDate" placeholder="Дата опрацювання">
-            <textarea id="additionalInfo" placeholder="Додаткова інформація"></textarea>
-            <button id="saveInfo">Зберегти</button>
-        </div>
-        <button id="showHistory">Показати історію</button>
-        <div id="history" class="hidden"></div>
-    </div>
+<button onclick="findLocation()" class="control-btn locate-btn">📍 Показати моє місце</button>
+<button onclick="toggleLayers()" class="control-btn layer-toggle">🗺 Шари</button>
+<button onclick="toggleAuth()" class="control-btn auth-btn" id="authButton">🔐 Увійти</button>
+<div id="loader"></div>
+<div id="auth-container">
+  <input type="email" id="email" placeholder="Email"><br>
+  <input type="password" id="password" placeholder="Пароль"><br>
+  <button onclick="login()">Увійти</button>
+  <button onclick="logout()">Вийти</button>
+</div>
+<div id="form-container">
+  <div id="form-content"></div>
+</div>
+<div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, query, where, getDocs, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
-            authDomain: "map-illintsi.firebaseapp.com",
-            projectId: "map-illintsi",
-            storageBucket: "map-illintsi.firebasestorage.app",
-            messagingSenderId: "62267872375",
-            appId: "1:62267872375:web:10945d2d63b93bccc5e272",
-            measurementId: "G-22L16KP5Z0"
-        };
+const firebaseConfig = {
+  apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+  authDomain: "map-illintsi.firebaseapp.com",
+  projectId: "map-illintsi",
+  storageBucket: "map-illintsi.firebasestorage.app",
+  messagingSenderId: "62267872375",
+  appId: "1:62267872375:web:10945d2d63b93bccc5e272",
+  measurementId: "G-22L16KP5Z0"
+};
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth();
+const db = getFirestore(app);
 
-        let map = L.map('map').setView([49.3747, 29.2092], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        }).addTo(map);
+let currentUser = null;
+let selectedDistrict = null;
 
-        let userLocation = null;
-        let selectedTerritory = null;
-        let currentUser = null;
+onAuthStateChanged(auth, (user) => {
+  currentUser = user;
+  document.getElementById('auth-container').style.display = user ? 'none' : 'block';
+  document.getElementById('authButton').innerText = user ? '🔓 Вийти' : '🔐 Увійти';
+});
 
-        // Authentication handling
-        const loginBtn = document.getElementById('loginBtn');
-        const authForm = document.getElementById('authForm');
-        const signInBtn = document.getElementById('signIn');
-        const signOutBtn = document.getElementById('signOut');
-        const infoPanel = document.getElementById('infoPanel');
-        const editForm = document.getElementById('editForm');
-        const territoryInfo = document.getElementById('territoryInfo');
-        const showHistoryBtn = document.getElementById('showHistory');
-        const historyDiv = document.getElementById('history');
+window.toggleAuth = () => {
+  const container = document.getElementById('auth-container');
+  container.style.display = container.style.display === 'block' ? 'none' : 'block';
+};
 
-        loginBtn.addEventListener('click', () => {
-            authForm.classList.toggle('hidden');
-        });
+window.login = async () => {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (e) {
+    alert('Помилка входу: ' + e.message);
+  }
+};
 
-        signInBtn.addEventListener('click', async () => {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-                authForm.classList.add('hidden');
-            } catch (error) {
-                alert('Помилка входу: ' + error.message);
-            }
-        });
+window.logout = () => {
+  signOut(auth);
+};
 
-        signOutBtn.addEventListener('click', async () => {
-            await signOut(auth);
-        });
+const map = L.map('map').setView([49.1029, 29.2074], 13);
+const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+  maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '© Google Maps'
+}).addTo(map);
+const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  attribution: '© Esri', maxZoom: 20
+});
 
-        onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            if (user) {
-                loginBtn.classList.add('hidden');
-                signOutBtn.classList.remove('hidden');
-                editForm.classList.remove('hidden');
-            } else {
-                loginBtn.classList.remove('hidden');
-                signOutBtn.classList.add('hidden');
-                editForm.classList.add('hidden');
-            }
-        });
+const baseMaps = {"Стандартна карта": googleStreets, "Супутникова карта": satellite};
+const overlayMaps = {}; L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
 
-        // Map functionality
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((position) => {
-                userLocation = [position.coords.latitude, position.coords.longitude];
-                L.marker(userLocation).addTo(map).bindPopup('Ви тут').openPopup();
-                map.setView(userLocation, 13);
-            });
-        }
+const districts = [
+  { id: 'district1', name: 'Територія 1', color: 'blue', fillColor: '#99ccff' },
+  { id: 'district2', name: 'Територія 2', color: 'green', fillColor: '#b6fcb6' },
+  { id: 'district55', name: 'Територія 55', color: 'green', fillColor: '#b6fcb6' },
+  { id: 'district56', name: 'Територія 56', color: 'green', fillColor: '#b6fcb6' }
+];
 
-        // Sample territory data (replace with your actual territory data)
-        const territories = [
-            { id: 't1', coords: [[49.375, 29.208], [49.376, 29.209], [49.376, 29.207], [49.375, 29.208]], name: 'Територія 1' }
-        ];
+function createDistrictPopup(name, latlng) {
+  return `<b>${name}</b><br>
+    <button onclick="routeToDistrict('${name}')">📌 Прокласти маршрут сюди</button><br>
+    ${currentUser ? `<button onclick="showForm('${name}')">✏️ Редагувати</button>` : ''}`;
+}
 
-        territories.forEach(territory => {
-            const polygon = L.polygon(territory.coords).addTo(map);
-            polygon.on('click', () => showTerritoryInfo(territory.id));
-        });
+async function showForm(name) {
+  selectedDistrict = name;
+  const formDiv = document.getElementById('form-content');
+  formDiv.innerHTML = `
+    <h3>${name}</h3>
+    <input id="fullName" placeholder="ПІБ вісника"><br>
+    <input type="date" id="receivedDate"><br>
+    <input type="date" id="processedDate"><br>
+    <textarea id="extraInfo" placeholder="Додаткова інформація"></textarea><br>
+    <button onclick="saveRecord()">💾 Зберегти</button>
+  `;
+  document.getElementById('form-container').style.display = 'block';
+}
 
-        async function showTerritoryInfo(territoryId) {
-            selectedTerritory = territoryId;
-            infoPanel.classList.remove('hidden');
-            
-            const q = query(collection(db, 'territories'), 
-                           where('territoryId', '==', territoryId), 
-                           orderBy('createdAt', 'desc'));
-            const querySnapshot = await getDocs(q);
-            let latestRecord = null;
-            
-            territoryInfo.innerHTML = '';
-            querySnapshot.forEach((doc) => {
-                if (!latestRecord) {
-                    latestRecord = doc.data();
-                }
-            });
+window.saveRecord = async () => {
+  const record = {
+    territory: selectedDistrict,
+    pib: document.getElementById('fullName').value,
+    receivedDate: document.getElementById('receivedDate').value,
+    processedDate: document.getElementById('processedDate').value,
+    extraInfo: document.getElementById('extraInfo').value,
+    addedAt: Timestamp.now(),
+    addedBy: currentUser.email
+  };
+  try {
+    await addDoc(collection(db, 'territoryRecords'), record);
+    alert('✅ Запис збережено');
+    document.getElementById('form-container').style.display = 'none';
+  } catch (e) {
+    alert('❌ Помилка при збереженні: ' + e.message);
+  }
+};
 
-            if (latestRecord) {
-                const status = latestRecord.processedDate ? 'Опрацьована' : 'На руках';
-                territoryInfo.innerHTML = `
-                    <p><strong>Статус:</strong> ${status}</p>
-                    <p><strong>Вісник:</strong> ${latestRecord.messengerName || 'Немає'}</p>
-                    <p><strong>Дата отримання:</strong> ${latestRecord.receivedDate || 'Немає'}</p>
-                    <p><strong>Дата опрацювання:</strong> ${latestRecord.processedDate || 'Немає'}</p>
-                    <p><strong>Додаткова інформація:</strong> ${latestRecord.additionalInfo || 'Немає'}</p>
-                    <p><strong>Останнє оновлення:</strong> ${new Date(latestRecord.createdAt.toDate()).toLocaleString()}</p>
-                    <p><strong>Оновив:</strong> ${latestRecord.updatedBy}</p>
-                `;
-            } else {
-                territoryInfo.innerHTML = '<p>Немає інформації про цю територію</p>';
-            }
-        }
+function toggleLayers() {
+  const control = document.querySelector('.leaflet-control-layers');
+  control?.classList.toggle('leaflet-control-layers-expanded');
+  document.querySelector('.layer-toggle').innerText = control.classList.contains('leaflet-control-layers-expanded') ? '🗺 Приховати шари' : '🗺 Шари';
+}
 
-        document.getElementById('saveInfo').addEventListener('click', async () => {
-            if (!currentUser) {
-                alert('Потрібно увійти в систему');
-                return;
-            }
+let currentLocation = null;
+window.findLocation = () => {
+  if (!navigator.geolocation) return alert('⚠ Браузер не підтримує геолокацію');
+  map.locate({ setView: true, maxZoom: 16 });
+};
 
-            const data = {
-                territoryId: selectedTerritory,
-                messengerName: document.getElementById('messengerName').value,
-                receivedDate: document.getElementById('receivedDate').value,
-                processedDate: document.getElementById('processedDate').value,
-                additionalInfo: document.getElementById('additionalInfo').value,
-                createdAt: new Date(),
-                updatedBy: currentUser.email,
-                recordNumber: await getNextRecordNumber()
-            };
+map.on('locationfound', (e) => {
+  currentLocation = e.latlng;
+  L.marker(e.latlng).addTo(map).bindPopup('Ваше місцерозташування').openPopup();
+});
 
-            await addDoc(collection(db, 'territories'), data);
-            showTerritoryInfo(selectedTerritory);
-        });
+window.routeToDistrict = (name) => {
+  if (!currentLocation) return alert('📍 Спочатку визначіть своє місце');
+};
 
-        async function getNextRecordNumber() {
-            const querySnapshot = await getDocs(collection(db, 'territories'));
-            return querySnapshot.size + 1;
-        }
-
-        showHistoryBtn.addEventListener('click', async () => {
-            historyDiv.classList.toggle('hidden');
-            if (!historyDiv.classList.contains('hidden')) {
-                const q = query(collection(db, 'territories'), 
-                               where('territoryId', '==', selectedTerritory), 
-                               orderBy('createdAt', 'desc'));
-                const querySnapshot = await getDocs(q);
-                historyDiv.innerHTML = '<h4>Історія</h4>';
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    historyDiv.innerHTML += `
-                        <p>Запис #${data.recordNumber}: ${data.messengerName}, 
-                        Отримав: ${data.receivedDate || 'Немає'}, 
-                        Опрацьовано: ${data.processedDate || 'Немає'}, 
-                        ${new Date(data.createdAt.toDate()).toLocaleString()}, 
-                        ${data.updatedBy}</p>
-                    `;
-                });
-            }
-        });
-    </script>
+districts.forEach(d => {
+  const layer = L.layerGroup();
+  fetch(`${d.id}.json`).then(res => res.json()).then(data => {
+    const geoJsonLayer = L.geoJSON(data, {
+      onEachFeature: (feature, l) => {
+        const center = l.getBounds().getCenter();
+        l.bindPopup(createDistrictPopup(d.name, center));
+      },
+      style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
+    });
+    geoJsonLayer.addTo(layer);
+  });
+  overlayMaps[d.name] = layer;
+});
+</script>
 </body>
 </html>
