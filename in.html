@@ -7,7 +7,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, orderBy, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, addDoc, updateDoc, deleteDoc, query, orderBy, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -69,8 +69,10 @@
       const q = query(colRef, orderBy("timestamp", "desc"));
       const snap = await getDocs(q);
 
-      snap.forEach(doc => {
-        const data = doc.data();
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        const docId = docSnap.id;
+
         const entry = document.createElement("div");
         entry.innerHTML = `
           <hr />
@@ -81,7 +83,12 @@
           <strong>Хто додав:</strong> ${data.user || "-"} <br/>
           <strong>Дата запису:</strong> ${data.timestamp?.toDate().toLocaleString() || "-"} <br/>
           <strong>Статус:</strong> ${data.status || "-"} <br/>
+          <strong>Час опрацювання (днів):</strong> ${data.processingTime || "-"} <br/>
+          <strong>Час від останнього опрацювання (днів):</strong> ${data.timeSinceLast || "-"} <br/>
+          <button onclick="editEntry('${number}', '${docId}')">Редагувати</button>
+          <button onclick="deleteEntry('${number}', '${docId}')">Видалити</button>
         `;
+
         territoryData.appendChild(entry);
       });
 
@@ -121,11 +128,62 @@
 
       territoryData.appendChild(form);
     }
+
+    window.editEntry = async (territoryNumber, docId) => {
+      const docRef = doc(db, `territories/${territoryNumber}/history/${docId}`);
+      const docSnap = await getDoc(docRef);
+      const data = docSnap.data();
+
+      const form = document.createElement("form");
+      form.innerHTML = `
+        <h3>Редагувати запис</h3>
+        <input required name="pib" value="${data.pib}" /><br/>
+        <input required name="dateGet" type="date" value="${data.dateGet}" /><br/>
+        <input name="dateProcess" type="date" value="${data.dateProcess || ''}" /><br/>
+        <textarea name="note">${data.note || ''}</textarea><br/>
+        <button type="submit">Оновити</button>
+      `;
+
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const dateGet = formData.get("dateGet");
+        const dateProcess = formData.get("dateProcess");
+        const status = dateProcess ? "вільно" : "на руках";
+        const diffDays = dateProcess ? Math.ceil((new Date(dateProcess) - new Date(dateGet)) / 86400000) : null;
+        const lastDiff = dateProcess ? Math.ceil((new Date() - new Date(dateProcess)) / 86400000) : null;
+
+        await updateDoc(docRef, {
+          pib: formData.get("pib"),
+          dateGet,
+          dateProcess,
+          note: formData.get("note"),
+          user: auth.currentUser.email,
+          status,
+          processingTime: diffDays,
+          timeSinceLast: lastDiff
+        });
+
+        openTerritory(territoryNumber);
+      };
+
+      territoryData.innerHTML = "";
+      territoryData.appendChild(form);
+    };
+
+    window.deleteEntry = async (territoryNumber, docId) => {
+      if (confirm("Ви впевнені, що хочете видалити цей запис?")) {
+        await deleteDoc(doc(db, `territories/${territoryNumber}/history/${docId}`));
+        openTerritory(territoryNumber);
+      }
+    };
+
   </script>
   <style>
     body { font-family: sans-serif; padding: 20px; }
     #territories button { margin: 5px; }
     #login-form, #app { display: none; }
+    form input, form textarea { width: 100%; margin-bottom: 10px; }
   </style>
 </head>
 <body>
