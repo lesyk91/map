@@ -5,12 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Території Іллінці</title>
   <script type="module">
-    // --- Імпортуємо Firebase-модулі для роботи з авторизацією та Firestore ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, collection, addDoc, updateDoc, deleteDoc, query, orderBy, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-    // --- Конфігурація Firebase ---
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
       authDomain: "map-illintsi.firebaseapp.com",
@@ -21,11 +19,8 @@
       measurementId: "G-22L16KP5Z0"
     };
 
-    // --- Ініціалізація Firebase додатку ---
     const app = initializeApp(firebaseConfig);
-    // --- Ініціалізація модуля авторизації ---
     const auth = getAuth();
-    // --- Ініціалізація Firestore ---
     const db = getFirestore(app);
 
     const loginForm = document.getElementById("login-form");
@@ -34,7 +29,21 @@
     const territoryData = document.getElementById("territory-data");
     const logoutBtn = document.getElementById("logout");
 
-    // --- Обробка події входу ---
+    const formatDate = (dateStr) => {
+      if (!dateStr) return "-";
+      const d = new Date(dateStr);
+      return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
+    };
+
+    const calculateDiffDays = (dateGet, dateProcess) => {
+      if (!dateGet) return null;
+      if (dateProcess) {
+        return Math.ceil((new Date(dateProcess) - new Date(dateGet)) / 86400000);
+      } else {
+        return Math.ceil((new Date() - new Date(dateGet)) / 86400000);
+      }
+    };
+
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = loginForm.email.value;
@@ -46,10 +55,8 @@
       }
     });
 
-    // --- Обробка виходу ---
     logoutBtn.onclick = () => signOut(auth);
 
-    // --- Слухач змін авторизації ---
     onAuthStateChanged(auth, (user) => {
       if (user) {
         loginForm.style.display = "none";
@@ -61,7 +68,6 @@
       }
     });
 
-    // --- Завантаження кнопок територій ---
     async function loadTerritories() {
       territoriesList.innerHTML = "";
       for (let i = 1; i <= 150; i++) {
@@ -72,54 +78,65 @@
       }
     }
 
-    // --- Завантаження і відображення конкретної території ---
     async function openTerritory(number) {
-      territoryData.innerHTML = `<h2>Територія ${number}</h2>`;
+      territoryData.innerHTML = "";
       const colRef = collection(db, `territories/${number}/history`);
       const q = query(colRef, orderBy("timestamp", "desc"));
       const snap = await getDocs(q);
 
-      
+      let territoryStatus = "вільно";
+      let allowNew = true;
+      if (!snap.empty) {
+        const latest = snap.docs[0].data();
+        territoryStatus = latest.status === "на руках" ? "на руках" : "вільно";
+        if (latest.status === "на руках") allowNew = false;
+      }
+      territoryData.innerHTML = `<h2>Територія ${number} (${territoryStatus})</h2>`;
 
-      const form = document.createElement("form");
-      form.innerHTML = `
-        <h3>Новий запис</h3>
-        <input required name="pib" placeholder="ПІБ вісника" /><br/>
-        <input required name="dateGet" type="date" placeholder="Дата отримання" /><br/>
-        <input name="dateProcess" type="date" placeholder="Дата опрацювання (необов’язково)" /><br/>
-        <textarea name="note" placeholder="Додаткова інформація"></textarea><br/>
-        <button type="submit">Зберегти</button>
-      `;
+      if (allowNew) {
+        const form = document.createElement("form");
+        form.innerHTML = `
+          <h3>Новий запис</h3>
+          <input required name="pib" placeholder="ПІБ вісника" /><br/>
+          <input required name="dateGet" type="date" placeholder="Дата отримання" /><br/>
+          <input name="dateProcess" type="date" placeholder="Дата опрацювання (необов’язково)" /><br/>
+          <textarea name="note" placeholder="Додаткова інформація"></textarea><br/>
+          <button type="submit">Зберегти</button>
+        `;
 
-      form.onsubmit = async (e) => {
-        e.preventDefault();
-        const formData = new FormData(form);
-        const dateGet = formData.get("dateGet");
-        const dateProcess = formData.get("dateProcess");
-        const status = dateProcess ? "вільно" : "на руках";
-        const diffDays = dateProcess ? Math.ceil((new Date(dateProcess) - new Date(dateGet)) / 86400000) : null;
-        const lastDiff = dateProcess ? Math.ceil((new Date() - new Date(dateProcess)) / 86400000) : null;
+        form.onsubmit = async (e) => {
+          e.preventDefault();
+          const formData = new FormData(form);
+          const dateGet = formData.get("dateGet");
+          const dateProcess = formData.get("dateProcess");
+          const status = dateProcess ? "вільно" : "на руках";
+          const diffDays = calculateDiffDays(dateGet, dateProcess);
+          const lastDiff = dateProcess ? Math.ceil((new Date() - new Date(dateProcess)) / 86400000) : null;
 
-        await addDoc(collection(db, `territories/${number}/history`), {
-          pib: formData.get("pib"),
-          dateGet,
-          dateProcess,
-          note: formData.get("note"),
-          user: auth.currentUser.email,
-          timestamp: serverTimestamp(),
-          status,
-          processingTime: diffDays,
-          timeSinceLast: lastDiff
-        });
+          await addDoc(collection(db, `territories/${number}/history`), {
+            pib: formData.get("pib"),
+            dateGet,
+            dateProcess,
+            note: formData.get("note"),
+            user: auth.currentUser.email,
+            timestamp: serverTimestamp(),
+            status,
+            processingTime: diffDays,
+            timeSinceLast: lastDiff
+          });
 
-        openTerritory(number);
-      };
+          openTerritory(number);
+        };
 
-      territoryData.appendChild(form);
+        territoryData.appendChild(form);
+      } else {
+        const msg = document.createElement("p");
+        msg.style.color = "red";
+        msg.innerText = "Неможливо створити новий запис: Територія ще на руках. Введіть дату опрацювання.";
+        territoryData.appendChild(msg);
+      }
 
-	    
-	     // --- Історія записів (відображення) ---
-	  snap.forEach(docSnap => {
+      snap.forEach(docSnap => {
         const data = docSnap.data();
         const docId = docSnap.id;
 
@@ -127,24 +144,22 @@
         entry.innerHTML = `
           <hr />
           <strong>ПІБ:</strong> ${data.pib || "-"} <br/>
-          <strong>Дата отримання:</strong> ${data.dateGet || "-"} <br/>
-          <strong>Дата опрацювання:</strong> ${data.dateProcess || "-"} <br/>
+          <strong>Дата отримання:</strong> ${formatDate(data.dateGet)} <br/>
+          <strong>Дата опрацювання:</strong> ${formatDate(data.dateProcess)} <br/>
           <strong>Додаткова інформація:</strong> ${data.note || "-"} <br/>
           <strong>Хто додав:</strong> ${data.user || "-"} <br/>
           <strong>Дата запису:</strong> ${data.timestamp?.toDate().toLocaleString() || "-"} <br/>
           <strong>Статус:</strong> ${data.status || "-"} <br/>
-          <strong>Час опрацювання (днів):</strong> ${data.processingTime || "-"} <br/>
-          <strong>Час від останнього опрацювання (днів):</strong> ${data.timeSinceLast || "-"} <br/>
+          <strong>Час опрацювання (днів):</strong> ${data.processingTime ?? "-"} <br/>
+          <strong>Час від останнього опрацювання (днів):</strong> ${data.timeSinceLast ?? "-"} <br/>
           <button onclick="editEntry('${number}', '${docId}')">Редагувати</button>
           <button onclick="deleteEntry('${number}', '${docId}')">Видалити</button>
         `;
 
-         territoryData.appendChild(entry);
+        territoryData.appendChild(entry);
       });
-	 
     }
 
-    // --- Функція редагування запису ---
     window.editEntry = async (territoryNumber, docId) => {
       const docRef = doc(db, `territories/${territoryNumber}/history/${docId}`);
       const docSnap = await getDoc(docRef);
@@ -165,8 +180,8 @@
         const formData = new FormData(form);
         const dateGet = formData.get("dateGet");
         const dateProcess = formData.get("dateProcess");
-        const status = dateProcess ? "вільно" : "на руках";
-        const diffDays = dateProcess ? Math.ceil((new Date(dateProcess) - new Date(dateGet)) / 86400000) : null;
+        const status = dateProcess ? "опрацьовано" : "на руках";
+        const diffDays = calculateDiffDays(dateGet, dateProcess);
         const lastDiff = dateProcess ? Math.ceil((new Date() - new Date(dateProcess)) / 86400000) : null;
 
         await updateDoc(docRef, {
@@ -187,14 +202,12 @@
       territoryData.appendChild(form);
     };
 
-    // --- Функція видалення запису ---
     window.deleteEntry = async (territoryNumber, docId) => {
       if (confirm("Ви впевнені, що хочете видалити цей запис?")) {
         await deleteDoc(doc(db, `territories/${territoryNumber}/history/${docId}`));
         openTerritory(territoryNumber);
       }
     };
-
   </script>
   <style>
     body { font-family: sans-serif; padding: 20px; }
@@ -211,11 +224,10 @@
     <input name="password" type="password" placeholder="Пароль" required />
     <button type="submit">Увійти</button>
   </form>
-
   <div id="app">
     <button id="logout">Вийти</button>
-        		<div id="territories"></div>
-				<div id="territory-data"></div>
+    <div id="territories"></div>
+    <div id="territory-data"></div>
   </div>
 </body>
 </html>
