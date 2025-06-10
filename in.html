@@ -1,25 +1,13 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ведення територій м. Іллінці</title>
-  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-</head>
-<body class="bg-gray-100 font-sans">
-  <div id="root"></div>
-
-  <script type="text/babel">
-    // Importing Firebase and initializing the app
-    const { initializeApp } = window.firebase;
-    const { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } = window.firebase.auth;
-    const { getFirestore, collection, addDoc, getDocs, query, orderBy, where, serverTimestamp } = window.firebase.firestore;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Території Іллінці</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, orderBy, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -32,269 +20,127 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
+    const auth = getAuth();
     const db = getFirestore(app);
 
-    // Formatting dates for display
-    const formatDate = (date) => date ? date.toLocaleDateString('uk-UA') : '';
-    const calculateDays = (start, end) => {
-      if (!start || !end) return 0;
-      const diff = Math.abs(new Date(end) - new Date(start));
-      return Math.ceil(diff / (1000 * 60 * 60 * 24));
-    };
+    const loginForm = document.getElementById("login-form");
+    const appContainer = document.getElementById("app");
+    const territoriesList = document.getElementById("territories");
+    const territoryData = document.getElementById("territory-data");
+    const logoutBtn = document.getElementById("logout");
 
-    // Main App component
-    const App = () => {
-      const [user, setUser] = React.useState(null);
-      const [email, setEmail] = React.useState('');
-      const [password, setPassword] = React.useState('');
-      const [error, setError] = React.useState('');
-      const [selectedTerritory, setSelectedTerritory] = React.useState(1);
-      const [formData, setFormData] = React.useState({
-        herald: '', receiveDate: '', processDate: '', additionalInfo: ''
-      });
-      const [history, setHistory] = React.useState([]);
-      const [loading, setLoading] = React.useState(false);
-
-      // Monitoring authentication state
-      React.useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-          setUser(currentUser);
-          if (currentUser) fetchHistory(currentUser);
-        });
-        return () => unsubscribe();
-      }, [selectedTerritory]);
-
-      // Fetching history for the selected territory
-      const fetchHistory = async (currentUser) => {
-        setLoading(true);
-        try {
-          const q = query(
-            collection(db, 'territories'),
-            where('territory', '==', `Територія ${selectedTerritory}`),
-            orderBy('recordNumber', 'desc')
-          );
-          const snapshot = await getDocs(q);
-          const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setHistory(records);
-        } catch (err) {
-          console.error(err);
-        }
-        setLoading(false);
-      };
-
-      // Handling login
-      const handleLogin = async () => {
-        setError('');
-        try {
-          await signInWithEmailAndPassword(auth, email, password);
-        } catch (err) {
-          setError('Помилка входу: ' + err.message);
-        }
-      };
-
-      // Handling logout
-      const handleLogout = async () => {
-        try {
-          await signOut(auth);
-          setHistory([]);
-          setFormData({ herald: '', receiveDate: '', processDate: '', additionalInfo: '' });
-        } catch (err) {
-          console.error(err);
-        }
-      };
-
-      // Handling form submission
-      const handleSubmit = async () => {
-        if (!formData.herald || !formData.receiveDate) {
-          setError('Заповніть обов’язкові поля: ПІБ Вісника та Дата отримання');
-          return;
-        }
-        setError('');
-        setLoading(true);
-        try {
-          const receiveDate = chrono.parseDate(formData.receiveDate);
-          const processDate = formData.processDate ? chrono.parseDate(formData.processDate) : null;
-          const currentDate = new Date();
-          const status = processDate ? 'вільно' : 'на руках';
-          const processingTime = processDate ? calculateDays(receiveDate, processDate) : 0;
-          const timeSinceLast = processDate ? calculateDays(processDate, currentDate) : 0;
-
-          const lastRecord = history.length > 0 ? history[0] : null;
-          const newRecordNumber = lastRecord ? lastRecord.recordNumber + 1 : 1;
-
-          await addDoc(collection(db, 'territories'), {
-            territory: `Територія ${selectedTerritory}`,
-            recordNumber: newRecordNumber,
-            herald: formData.herald,
-            receiveDate: formatDate(receiveDate),
-            processDate: processDate ? formatDate(processDate) : '',
-            additionalInfo: formData.additionalInfo || '',
-            status,
-            currentDate: formatDate(currentDate),
-            user: user.email,
-            processingTime,
-            timeSinceLast,
-            timestamp: serverTimestamp()
-          });
-
-          setFormData({ herald: '', receiveDate: '', processDate: '', additionalInfo: '' });
-          fetchHistory(user);
-        } catch (err) {
-          setError('Помилка збереження: ' + err.message);
-          console.error(err);
-        }
-        setLoading(false);
-      };
-
-      // Rendering login form if not authenticated
-      if (!user) {
-        return (
-          <div className="flex items-center justify-center min-h-screen">
-            <div className="bg-white p-6 rounded shadow-md w-full max-w-md">
-              <h1 className="text-2xl font-bold mb-4 text-center">Вхід</h1>
-              {error && <p className="text-red-500 mb-4">{error}</p>}
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email"
-                className="w-full p-2 mb-4 border rounded"
-              />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Пароль"
-                className="w-full p-2 mb-4 border rounded"
-              />
-              <button
-                onClick={handleLogin}
-                className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
-              >
-                Увійти
-              </button>
-            </div>
-          </div>
-        );
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = loginForm.email.value;
+      const password = loginForm.password.value;
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (error) {
+        alert("Помилка входу: " + error.message);
       }
+    });
 
-      // Rendering main app interface
-      return (
-        <div className="container mx-auto p-4">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold">Ведення територій м. Іллінці</h1>
-            <button
-              onClick={handleLogout}
-              className="bg-red-500 text-white p-2 rounded hover:bg-red-600"
-            >
-              Вийти ({user.email})
-            </button>
-          </div>
+    logoutBtn.onclick = () => signOut(auth);
 
-          {/* Selecting territory */}
-          <div className="mb-4">
-            <label className="block text-lg font-medium mb-2">Оберіть територію:</label>
-            <select
-              value={selectedTerritory}
-              onChange={(e) => setSelectedTerritory(Number(e.target.value))}
-              className="w-full p-2 border rounded"
-            >
-              {Array.from({ length: 150 }, (_, i) => i + 1).map(num => (
-                <option key={num} value={num}>Територія {num}</option>
-              ))}
-            </select>
-          </div>
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        loginForm.style.display = "none";
+        appContainer.style.display = "block";
+        loadTerritories();
+      } else {
+        loginForm.style.display = "block";
+        appContainer.style.display = "none";
+      }
+    });
 
-          {/* Form for adding/editing records */}
-          <div className="bg-white p-4 rounded shadow-md mb-4">
-            <h2 className="text-xl font-semibold mb-4">Форма для редагування - Територія {selectedTerritory}</h2>
-            {error && <p className="text-red-500 mb-4">{error}</p>}
-            <input
-              type="text"
-              value={formData.herald}
-              onChange={(e) => setFormData({ ...formData, herald: e.target.value })}
-              placeholder="ПІБ Вісника"
-              className="w-full p-2 mb-4 border rounded"
-            />
-            <input
-              type="text"
-              value={formData.receiveDate}
-              onChange={(e) => setFormData({ ...formData, receiveDate: e.target.value })}
-              placeholder="Дата отримання (напр. 5/1/25)"
-              className="w-full p-2 mb-4 border rounded"
-            />
-            <input
-              type="text"
-              value={formData.processDate}
-              onChange={(e) => setFormData({ ...formData, processDate: e.target.value })}
-              placeholder="Дата опрацювання (напр. 6/5/25)"
-              className="w-full p-2 mb-4 border rounded"
-            />
-            <textarea
-              value={formData.additionalInfo}
-              onChange={(e) => setFormData({ ...formData, additionalInfo: e.target.value })}
-              placeholder="Додаткова інформація"
-              className="w-full p-2 mb-4 border rounded"
-            ></textarea>
-            <button
-              onClick={handleSubmit}
-              className="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600"
-              disabled={loading}
-            >
-              {loading ? 'Збереження...' : 'Зберегти'}
-            </button>
-          </div>
+    async function loadTerritories() {
+      territoriesList.innerHTML = "";
+      for (let i = 1; i <= 150; i++) {
+        const btn = document.createElement("button");
+        btn.textContent = `Територія ${i}`;
+        btn.onclick = () => openTerritory(i);
+        territoriesList.appendChild(btn);
+      }
+    }
 
-          {/* Displaying history */}
-          <div className="bg-white p-4 rounded shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Історія - Територія {selectedTerritory}</h2>
-            {loading ? (
-              <p>Завантаження...</p>
-            ) : history.length === 0 ? (
-              <p>Записів немає</p>
-            ) : (
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-gray-200">
-                    <th className="border p-2">№ запису</th>
-                    <th className="border p-2">Вісник ПІБ</th>
-                    <th className="border p-2">Дата отримання</th>
-                    <th className="border p-2">Дата опрацювання</th>
-                    <th className="border p-2">Додаткова інформація</th>
-                    <th className="border p-2">Статус</th>
-                    <th className="border p-2">Поточна дата</th>
-                    <th className="border p-2">Користувач</th>
-                    <th className="border p-2">Час опрацювання</th>
-                    <th className="border p-2">Часу від останнього</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.map(record => (
-                    <tr key={record.id} className="border">
-                      <td className="border p-2">{record.recordNumber}</td>
-                      <td className="border p-2">{record.herald}</td>
-                      <td className="border p-2">{record.receiveDate}</td>
-                      <td className="border p-2">{record.processDate}</td>
-                      <td className="border p-2">{record.additionalInfo}</td>
-                      <td className="border p-2">{record.status}</td>
-                      <td className="border p-2">{record.currentDate}</td>
-                      <td className="border p-2">{record.user}</td>
-                      <td className="border p-2">{record.processingTime}</td>
-                      <td className="border p-2">{record.timeSinceLast}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-      );
-    };
+    async function openTerritory(number) {
+      territoryData.innerHTML = `<h2>Територія ${number}</h2>`;
+      const colRef = collection(db, `territories/${number}/history`);
+      const q = query(colRef, orderBy("timestamp", "desc"));
+      const snap = await getDocs(q);
 
-    // Rendering the app
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+      snap.forEach(doc => {
+        const data = doc.data();
+        const entry = document.createElement("div");
+        entry.innerHTML = `
+          <hr />
+          <strong>ПІБ:</strong> ${data.pib || "-"} <br/>
+          <strong>Дата отримання:</strong> ${data.dateGet || "-"} <br/>
+          <strong>Дата опрацювання:</strong> ${data.dateProcess || "-"} <br/>
+          <strong>Додаткова інформація:</strong> ${data.note || "-"} <br/>
+          <strong>Хто додав:</strong> ${data.user || "-"} <br/>
+          <strong>Дата запису:</strong> ${data.timestamp?.toDate().toLocaleString() || "-"} <br/>
+          <strong>Статус:</strong> ${data.status || "-"} <br/>
+        `;
+        territoryData.appendChild(entry);
+      });
+
+      const form = document.createElement("form");
+      form.innerHTML = `
+        <h3>Новий запис</h3>
+        <input required name="pib" placeholder="ПІБ вісника" /><br/>
+        <input required name="dateGet" type="date" placeholder="Дата отримання" /><br/>
+        <input name="dateProcess" type="date" placeholder="Дата опрацювання (необов’язково)" /><br/>
+        <textarea name="note" placeholder="Додаткова інформація"></textarea><br/>
+        <button type="submit">Зберегти</button>
+      `;
+
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const dateGet = formData.get("dateGet");
+        const dateProcess = formData.get("dateProcess");
+        const status = dateProcess ? "вільно" : "на руках";
+        const diffDays = dateProcess ? Math.ceil((new Date(dateProcess) - new Date(dateGet)) / 86400000) : null;
+        const lastDiff = dateProcess ? Math.ceil((new Date() - new Date(dateProcess)) / 86400000) : null;
+
+        await addDoc(collection(db, `territories/${number}/history`), {
+          pib: formData.get("pib"),
+          dateGet,
+          dateProcess,
+          note: formData.get("note"),
+          user: auth.currentUser.email,
+          timestamp: serverTimestamp(),
+          status,
+          processingTime: diffDays,
+          timeSinceLast: lastDiff
+        });
+
+        openTerritory(number);
+      };
+
+      territoryData.appendChild(form);
+    }
   </script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    #territories button { margin: 5px; }
+    #login-form, #app { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Ведення територій м. Іллінці</h1>
+  <form id="login-form">
+    <h2>Вхід</h2>
+    <input name="email" type="email" placeholder="Email" required />
+    <input name="password" type="password" placeholder="Пароль" required />
+    <button type="submit">Увійти</button>
+  </form>
+
+  <div id="app">
+    <button id="logout">Вийти</button>
+    <div id="territories"></div>
+    <div id="territory-data"></div>
+  </div>
 </body>
 </html>
