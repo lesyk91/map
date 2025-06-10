@@ -109,7 +109,7 @@
           const formData = new FormData(form);
           const dateGet = formData.get("dateGet");
           const dateProcess = formData.get("dateProcess");
-          const status = dateProcess ? "вільно" : "на руках";
+          const status = dateProcess ? "опрацьовано" : "на руках";
           const diffDays = calculateDiffDays(dateGet, dateProcess);
           const lastDiff = dateProcess ? Math.ceil((new Date() - new Date(dateProcess)) / 86400000) : null;
 
