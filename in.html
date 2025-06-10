@@ -5,10 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Території Іллінці</title>
   <script type="module">
+    // --- Імпортуємо Firebase-модулі для роботи з авторизацією та Firestore ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, collection, addDoc, updateDoc, deleteDoc, query, orderBy, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
+    // --- Конфігурація Firebase ---
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
       authDomain: "map-illintsi.firebaseapp.com",
@@ -19,8 +21,11 @@
       measurementId: "G-22L16KP5Z0"
     };
 
+    // --- Ініціалізація Firebase додатку ---
     const app = initializeApp(firebaseConfig);
+    // --- Ініціалізація модуля авторизації ---
     const auth = getAuth();
+    // --- Ініціалізація Firestore ---
     const db = getFirestore(app);
 
     const loginForm = document.getElementById("login-form");
@@ -29,6 +34,7 @@
     const territoryData = document.getElementById("territory-data");
     const logoutBtn = document.getElementById("logout");
 
+    // --- Обробка події входу ---
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = loginForm.email.value;
@@ -40,8 +46,10 @@
       }
     });
 
+    // --- Обробка виходу ---
     logoutBtn.onclick = () => signOut(auth);
 
+    // --- Слухач змін авторизації ---
     onAuthStateChanged(auth, (user) => {
       if (user) {
         loginForm.style.display = "none";
@@ -53,6 +61,7 @@
       }
     });
 
+    // --- Завантаження кнопок територій ---
     async function loadTerritories() {
       territoriesList.innerHTML = "";
       for (let i = 1; i <= 150; i++) {
@@ -63,34 +72,14 @@
       }
     }
 
+    // --- Завантаження і відображення конкретної території ---
     async function openTerritory(number) {
       territoryData.innerHTML = `<h2>Територія ${number}</h2>`;
       const colRef = collection(db, `territories/${number}/history`);
       const q = query(colRef, orderBy("timestamp", "desc"));
       const snap = await getDocs(q);
 
-      snap.forEach(docSnap => {
-        const data = docSnap.data();
-        const docId = docSnap.id;
-
-        const entry = document.createElement("div");
-        entry.innerHTML = `
-          <hr />
-          <strong>ПІБ:</strong> ${data.pib || "-"} <br/>
-          <strong>Дата отримання:</strong> ${data.dateGet || "-"} <br/>
-          <strong>Дата опрацювання:</strong> ${data.dateProcess || "-"} <br/>
-          <strong>Додаткова інформація:</strong> ${data.note || "-"} <br/>
-          <strong>Хто додав:</strong> ${data.user || "-"} <br/>
-          <strong>Дата запису:</strong> ${data.timestamp?.toDate().toLocaleString() || "-"} <br/>
-          <strong>Статус:</strong> ${data.status || "-"} <br/>
-          <strong>Час опрацювання (днів):</strong> ${data.processingTime || "-"} <br/>
-          <strong>Час від останнього опрацювання (днів):</strong> ${data.timeSinceLast || "-"} <br/>
-          <button onclick="editEntry('${number}', '${docId}')">Редагувати</button>
-          <button onclick="deleteEntry('${number}', '${docId}')">Видалити</button>
-        `;
-
-        territoryData.appendChild(entry);
-      });
+      
 
       const form = document.createElement("form");
       form.innerHTML = `
@@ -127,8 +116,33 @@
       };
 
       territoryData.appendChild(form);
+	  
+	  snap.forEach(docSnap => {
+        const data = docSnap.data();
+        const docId = docSnap.id;
+
+        const entry = document.createElement("div");
+        entry.innerHTML = `
+          <hr />
+          <strong>ПІБ:</strong> ${data.pib || "-"} <br/>
+          <strong>Дата отримання:</strong> ${data.dateGet || "-"} <br/>
+          <strong>Дата опрацювання:</strong> ${data.dateProcess || "-"} <br/>
+          <strong>Додаткова інформація:</strong> ${data.note || "-"} <br/>
+          <strong>Хто додав:</strong> ${data.user || "-"} <br/>
+          <strong>Дата запису:</strong> ${data.timestamp?.toDate().toLocaleString() || "-"} <br/>
+          <strong>Статус:</strong> ${data.status || "-"} <br/>
+          <strong>Час опрацювання (днів):</strong> ${data.processingTime || "-"} <br/>
+          <strong>Час від останнього опрацювання (днів):</strong> ${data.timeSinceLast || "-"} <br/>
+          <button onclick="editEntry('${number}', '${docId}')">Редагувати</button>
+          <button onclick="deleteEntry('${number}', '${docId}')">Видалити</button>
+        `;
+
+         territoryData.appendChild(entry);
+      });
+	 
     }
 
+    // --- Функція редагування запису ---
     window.editEntry = async (territoryNumber, docId) => {
       const docRef = doc(db, `territories/${territoryNumber}/history/${docId}`);
       const docSnap = await getDoc(docRef);
@@ -171,6 +185,7 @@
       territoryData.appendChild(form);
     };
 
+    // --- Функція видалення запису ---
     window.deleteEntry = async (territoryNumber, docId) => {
       if (confirm("Ви впевнені, що хочете видалити цей запис?")) {
         await deleteDoc(doc(db, `territories/${territoryNumber}/history/${docId}`));
@@ -197,8 +212,8 @@
 
   <div id="app">
     <button id="logout">Вийти</button>
-    <div id="territories"></div>
-    <div id="territory-data"></div>
+        		<div id="territories"></div>
+				<div id="territory-data"></div>
   </div>
 </body>
 </html>
