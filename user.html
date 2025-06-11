@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Користувачі</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import {
+      getAuth, createUserWithEmailAndPassword, updatePassword,
+      signInWithEmailAndPassword, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import {
+      getFirestore, collection, getDocs, setDoc, doc, updateDoc
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+      authDomain: "map-illintsi.firebaseapp.com",
+      projectId: "map-illintsi",
+      storageBucket: "map-illintsi.appspot.com",
+      messagingSenderId: "62267872375",
+      appId: "1:62267872375:web:10945d2d63b93bccc5e272"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Додавання нового користувача
+    document.getElementById("register-form").onsubmit = async (e) => {
+      e.preventDefault();
+      const name = e.target.name.value;
+      const email = e.target.email.value;
+      const password = e.target.password.value;
+
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      const uid = cred.user.uid;
+
+      await setDoc(doc(db, "users", uid), {
+        uid,
+        email,
+        name
+      });
+
+      alert("Користувача додано");
+      e.target.reset();
+      loadUsers();
+    };
+
+    // Зміна паролю
+    document.getElementById("update-password").onsubmit = async (e) => {
+      e.preventDefault();
+      const email = e.target.email.value;
+      const oldPassword = e.target.oldPassword.value;
+      const newPassword = e.target.newPassword.value;
+
+      try {
+        const cred = await signInWithEmailAndPassword(auth, email, oldPassword);
+        await updatePassword(cred.user, newPassword);
+        alert("Пароль змінено");
+      } catch (err) {
+        alert("Помилка: " + err.message);
+      }
+    };
+
+    // Завантаження списку користувачів
+    async function loadUsers() {
+      const list = document.getElementById("user-list");
+      list.innerHTML = "<h3>Список користувачів:</h3>";
+
+      const snap = await getDocs(collection(db, "users"));
+      snap.forEach(docSnap => {
+        const d = docSnap.data();
+        const div = document.createElement("div");
+        div.innerHTML = `
+          <b>ПІБ:</b> <input value="${d.name}" id="name-${d.uid}" /><br/>
+          <b>Email:</b> ${d.email}<br/>
+          <button onclick="updateName('${d.uid}')">Оновити ПІБ</button>
+          <hr/>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    // Оновлення ПІБ
+    window.updateName = async (uid) => {
+      const input = document.getElementById(`name-${uid}`);
+      const newName = input.value.trim();
+      if (!newName) return alert("Ім’я не може бути порожнім");
+
+      await updateDoc(doc(db, "users", uid), { name: newName });
+      alert("ПІБ оновлено");
+    };
+
+    // Запуск завантаження після входу
+    onAuthStateChanged(auth, (user) => {
+      if (user) loadUsers();
+    });
+  </script>
+</head>
+<body>
+  <h1>Управління користувачами</h1>
+
+  <h3>Додати нового користувача</h3>
+  <form id="register-form">
+    <input name="name" placeholder="ПІБ" required /><br/>
+    <input name="email" type="email" placeholder="Email" required /><br/>
+    <input name="password" type="password" placeholder="Пароль" required /><br/>
+    <button>Додати</button>
+  </form>
+
+  <h3>Змінити пароль</h3>
+  <form id="update-password">
+    <input name="email" type="email" placeholder="Email" required /><br/>
+    <input name="oldPassword" type="password" placeholder="Старий пароль" required /><br/>
+    <input name="newPassword" type="password" placeholder="Новий пароль" required /><br/>
+    <button>Змінити</button>
+  </form>
+
+  <div id="user-list"></div>
+</body>
+</html>
