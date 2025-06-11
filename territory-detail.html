@@ -37,7 +37,8 @@ export const db = getFirestore(app);
       const number = params.get("number");
       const title = document.getElementById("title");
       const container = document.getElementById("territory");
-
+	  
+	
       onAuthStateChanged(auth, async (user) => {
         if (!user) return (location.href = "index.html");
 
@@ -47,6 +48,15 @@ export const db = getFirestore(app);
         const snap = await getDocs(q);
 
         let latest = snap.docs[0]?.data();
+		const statusElement = document.getElementById("territory-status");
+
+if (latest?.status === "на руках") {
+  statusElement.innerHTML = "<b>Статус території:</b> на руках";
+} else if (latest?.status === "опрацьовано") {
+  statusElement.innerHTML = "<b>Статус території:</b> вільно";
+} else {
+  statusElement.innerHTML = "<b>Статус території:</b> -";
+}
         const allowNew = latest?.status !== "на руках";
 
         if (allowNew) {
@@ -94,8 +104,14 @@ export const db = getFirestore(app);
             <b>Нотатки:</b> ${d.note || "-"}<br/>
             <b>Хто додав:</b> ${d.user}<br/>
             <b>Статус:</b> ${d.status}<br/>
-            <b>Час опрацювання:</b> ${d.processingTime ?? "-"} днів<br/>
-            <b>Після опрацювання:</b> ${d.timeSinceLast ?? "-"} днів<br/>
+            <b>Час опрацювання:</b> ${
+  d.processingTime !== null && d.processingTime !== undefined
+    ? d.processingTime + " день"
+    : (d.dateGet && !d.dateProcess)
+        ? diffDays(d.dateGet) + " день"
+        : "-"
+}<br/>
+            <b>Після опрацювання:</b> ${d.timeSinceLast ?? "-"} день<br/>
             <button onclick="edit('${number}','${docSnap.id}')">Редагувати</button>
             <button onclick="del('${number}','${docSnap.id}')">Видалити</button>
           `;
@@ -149,6 +165,7 @@ export const db = getFirestore(app);
 </head>
 <body>
   <h1 id="title"></h1>
+  <p id="territory-status"><b>Статус території:</b> </p>
   <a href="territories.html">← Назад</a>
   <div id="territory"></div>
 </body>
