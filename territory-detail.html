@@ -47,17 +47,20 @@ export const db = getFirestore(app);
         const q = query(colRef, orderBy("timestamp", "desc"));
         const snap = await getDocs(q);
 
-        let latest = snap.docs[0]?.data();
-		const statusElement = document.getElementById("territory-status");
+        const statusElement = document.getElementById("territory-status");
 
-if (latest?.status === "на руках") {
-  statusElement.innerHTML = "<b>Статус території:</b> на руках";
-} else if (latest?.status === "опрацьовано") {
-  statusElement.innerHTML = "<b>Статус території:</b> вільно";
-} else {
-  statusElement.innerHTML = "<b>Статус території:</b> -";
+let latest = snap.docs[0]?.data();
+let statusText = "вільно"; // За замовчуванням вільно
+
+if (latest) {
+  if (latest.status === "на руках") {
+    statusText = "на руках";
+  }
 }
-        const allowNew = latest?.status !== "на руках";
+
+statusElement.innerHTML = `<b>Статус території:</b> ${statusText}`;
+const allowNew = statusText !== "на руках";
+
 
         if (allowNew) {
           const form = document.createElement("form");
@@ -90,7 +93,7 @@ if (latest?.status === "на руках") {
           };
           container.appendChild(form);
         } else {
-          container.innerHTML += `<p style="color:red">Територія ще на руках. Спочатку закрийте попередній запис.</p>`;
+          container.innerHTML += `<p style="color:red">Територія ще на руках. Введіть дату опрацювання.</p>`;
         }
 
         snap.forEach(docSnap => {
@@ -99,21 +102,21 @@ if (latest?.status === "на руках") {
           entry.innerHTML = `
             <hr/>
             <b>ПІБ:</b> ${d.pib}<br/>
-            <b>Отримано:</b> ${formatDate(d.dateGet)}<br/>
-            <b>Опрацьовано:</b> ${formatDate(d.dateProcess)}<br/>
+            <b>Дата отримання:</b> ${formatDate(d.dateGet)}<br/>
+            <b>Дата опрацювання:</b> ${formatDate(d.dateProcess)}<br/>
             <b>Нотатки:</b> ${d.note || "-"}<br/>
             <b>Хто додав:</b> ${d.user}<br/>
             <b>Статус:</b> ${d.status}<br/>
-          <b>Час опрацювання:</b> ${
+          <b>Час опрацювання (днів):</b> ${
   d.dateGet
     ? (d.dateProcess
         ? diffDays(d.dateGet, d.dateProcess)
         : diffDays(d.dateGet)
-      ) + " днів"
+      ) 
     : "-"
 }<br/>
 
-            <b>Після опрацювання:</b> ${d.timeSinceLast ?? "-"} день<br/>
+            <b>Час від останнього опрацювання (днів):</b> ${d.timeSinceLast ?? "-"}<br/>
             <button onclick="edit('${number}','${docSnap.id}')">Редагувати</button>
             <button onclick="del('${number}','${docSnap.id}')">Видалити</button>
           `;
