@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Території</title>
+  <script type="module">
+    // firebase.js
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+  authDomain: "map-illintsi.firebaseapp.com",
+  projectId: "map-illintsi",
+  storageBucket: "map-illintsi.firebasestorage.app",
+  messagingSenderId: "62267872375",
+  appId: "1:62267872375:web:10945d2d63b93bccc5e272",
+  measurementId: "G-22L16KP5Z0"
+};
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const container = document.getElementById("territories");
+      const logoutBtn = document.getElementById("logout");
+
+      onAuthStateChanged(auth, (user) => {
+        if (!user) window.location.href = "index.html";
+        else loadTerritories();
+      });
+
+      logoutBtn.onclick = () => signOut(auth);
+
+      function loadTerritories() {
+        for (let i = 1; i <= 150; i++) {
+          const btn = document.createElement("button");
+          btn.textContent = `Територія ${i}`;
+          btn.onclick = () => {
+            window.location.href = `territory-detail.html?number=${i}`;
+          };
+          container.appendChild(btn);
+        }
+      }
+    });
+  </script>
+</head>
+<body>
+  <h1>Список територій</h1>
+  <button id="logout">Вийти</button>
+  <div id="territories"></div>
+</body>
+</html>

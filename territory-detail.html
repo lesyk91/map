@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Деталі території</title>
+  <script type="module">
+    // firebase.js
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+  authDomain: "map-illintsi.firebaseapp.com",
+  projectId: "map-illintsi",
+  storageBucket: "map-illintsi.firebasestorage.app",
+  messagingSenderId: "62267872375",
+  appId: "1:62267872375:web:10945d2d63b93bccc5e272",
+  measurementId: "G-22L16KP5Z0"
+};
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+;
+    import {
+      collection, addDoc, query, orderBy, getDocs, serverTimestamp,
+      doc, getDoc, updateDoc, deleteDoc
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
+    const formatDate = (str) => str ? new Date(str).toLocaleDateString("uk-UA") : "-";
+    const diffDays = (start, end = new Date()) => start ? Math.ceil((new Date(end) - new Date(start)) / 86400000) : null;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const params = new URLSearchParams(location.search);
+      const number = params.get("number");
+      const title = document.getElementById("title");
+      const container = document.getElementById("territory");
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) return (location.href = "index.html");
+
+        title.innerText = `Територія ${number}`;
+        const colRef = collection(db, `territories/${number}/history`);
+        const q = query(colRef, orderBy("timestamp", "desc"));
+        const snap = await getDocs(q);
+
+        let latest = snap.docs[0]?.data();
+        const allowNew = latest?.status !== "на руках";
+
+        if (allowNew) {
+          const form = document.createElement("form");
+          form.innerHTML = `
+            <h3>Новий запис</h3>
+            <input required name="pib" placeholder="ПІБ" /><br/>
+            <input required name="dateGet" type="date" /><br/>
+            <input name="dateProcess" type="date" /><br/>
+            <textarea name="note" placeholder="Нотатки"></textarea><br/>
+            <button>Зберегти</button>
+          `;
+          form.onsubmit = async (e) => {
+            e.preventDefault();
+            const f = new FormData(form);
+            const get = f.get("dateGet");
+            const proc = f.get("dateProcess");
+            const status = proc ? "опрацьовано" : "на руках";
+            await addDoc(colRef, {
+              pib: f.get("pib"),
+              dateGet: get,
+              dateProcess: proc,
+              note: f.get("note"),
+              user: auth.currentUser.email,
+              timestamp: serverTimestamp(),
+              status,
+              processingTime: diffDays(get, proc),
+              timeSinceLast: proc ? diffDays(proc) : null
+            });
+            location.reload();
+          };
+          container.appendChild(form);
+        } else {
+          container.innerHTML += `<p style="color:red">Територія ще на руках. Спочатку закрийте попередній запис.</p>`;
+        }
+
+        snap.forEach(docSnap => {
+          const d = docSnap.data();
+          const entry = document.createElement("div");
+          entry.innerHTML = `
+            <hr/>
+            <b>ПІБ:</b> ${d.pib}<br/>
+            <b>Отримано:</b> ${formatDate(d.dateGet)}<br/>
+            <b>Опрацьовано:</b> ${formatDate(d.dateProcess)}<br/>
+            <b>Нотатки:</b> ${d.note || "-"}<br/>
+            <b>Хто додав:</b> ${d.user}<br/>
+            <b>Статус:</b> ${d.status}<br/>
+            <b>Час опрацювання:</b> ${d.processingTime ?? "-"} днів<br/>
+            <b>Після опрацювання:</b> ${d.timeSinceLast ?? "-"} днів<br/>
+            <button onclick="edit('${number}','${docSnap.id}')">Редагувати</button>
+            <button onclick="del('${number}','${docSnap.id}')">Видалити</button>
+          `;
+          container.appendChild(entry);
+        });
+      });
+    });
+
+    window.edit = async (num, id) => {
+      const ref = doc(db, `territories/${num}/history/${id}`);
+      const snap = await getDoc(ref);
+      const d = snap.data();
+      const f = document.createElement("form");
+      f.innerHTML = `
+        <h3>Редагування</h3>
+        <input name="pib" value="${d.pib}" /><br/>
+        <input name="dateGet" type="date" value="${d.dateGet}" /><br/>
+        <input name="dateProcess" type="date" value="${d.dateProcess || ""}" /><br/>
+        <textarea name="note">${d.note || ""}</textarea><br/>
+        <button>Оновити</button>
+      `;
+      f.onsubmit = async (e) => {
+        e.preventDefault();
+        const fd = new FormData(f);
+        const get = fd.get("dateGet");
+        const proc = fd.get("dateProcess");
+        const status = proc ? "опрацьовано" : "на руках";
+        await updateDoc(ref, {
+          pib: fd.get("pib"),
+          dateGet: get,
+          dateProcess: proc,
+          note: fd.get("note"),
+          status,
+          user: auth.currentUser.email,
+          processingTime: diffDays(get, proc),
+          timeSinceLast: proc ? diffDays(proc) : null
+        });
+        location.reload();
+      };
+      document.getElementById("territory").innerHTML = "";
+      document.getElementById("territory").appendChild(f);
+    };
+
+    window.del = async (num, id) => {
+      if (confirm("Видалити запис?")) {
+        await deleteDoc(doc(db, `territories/${num}/history/${id}`));
+        location.reload();
+      }
+    };
+  </script>
+</head>
+<body>
+  <h1 id="title"></h1>
+  <a href="territories.html">← Назад</a>
+  <div id="territory"></div>
+</body>
+</html>
