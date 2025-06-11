@@ -104,13 +104,15 @@ if (latest?.status === "на руках") {
             <b>Нотатки:</b> ${d.note || "-"}<br/>
             <b>Хто додав:</b> ${d.user}<br/>
             <b>Статус:</b> ${d.status}<br/>
-            <b>Час опрацювання:</b> ${
-  d.processingTime !== null && d.processingTime !== undefined
-    ? d.processingTime + " день"
-    : (d.dateGet && !d.dateProcess)
-        ? diffDays(d.dateGet) + " день"
-        : "-"
+          <b>Час опрацювання:</b> ${
+  d.dateGet
+    ? (d.dateProcess
+        ? diffDays(d.dateGet, d.dateProcess)
+        : diffDays(d.dateGet)
+      ) + " днів"
+    : "-"
 }<br/>
+
             <b>Після опрацювання:</b> ${d.timeSinceLast ?? "-"} день<br/>
             <button onclick="edit('${number}','${docSnap.id}')">Редагувати</button>
             <button onclick="del('${number}','${docSnap.id}')">Видалити</button>
