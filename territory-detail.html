@@ -4,41 +4,38 @@
   <meta charset="UTF-8" />
   <title>Деталі території</title>
   <script type="module">
-    // firebase.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
-  authDomain: "map-illintsi.firebaseapp.com",
-  projectId: "map-illintsi",
-  storageBucket: "map-illintsi.firebasestorage.app",
-  messagingSenderId: "62267872375",
-  appId: "1:62267872375:web:10945d2d63b93bccc5e272",
-  measurementId: "G-22L16KP5Z0"
-};
-
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-;
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
     import {
-      collection, addDoc, query, orderBy, getDocs, serverTimestamp,
-      doc, getDoc, updateDoc, deleteDoc
+      getFirestore,
+      collection, addDoc, query, orderBy, getDocs,
+      doc, getDoc, updateDoc, deleteDoc, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+      authDomain: "map-illintsi.firebaseapp.com",
+      projectId: "map-illintsi",
+      storageBucket: "map-illintsi.appspot.com",
+      messagingSenderId: "62267872375",
+      appId: "1:62267872375:web:10945d2d63b93bccc5e272"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
     const formatDate = (str) => str ? new Date(str).toLocaleDateString("uk-UA") : "-";
-    const diffDays = (start, end = new Date()) => start ? Math.ceil((new Date(end) - new Date(start)) / 86400000) : null;
+    const diffDays = (start, end = new Date()) =>
+      start ? Math.ceil((new Date(end) - new Date(start)) / 86400000) : null;
 
     document.addEventListener("DOMContentLoaded", async () => {
       const params = new URLSearchParams(location.search);
       const number = params.get("number");
       const title = document.getElementById("title");
       const container = document.getElementById("territory");
-	  
-	
+      const statusElement = document.getElementById("territory-status");
+
       onAuthStateChanged(auth, async (user) => {
         if (!user) return (location.href = "index.html");
 
@@ -47,20 +44,15 @@ export const db = getFirestore(app);
         const q = query(colRef, orderBy("timestamp", "desc"));
         const snap = await getDocs(q);
 
-        const statusElement = document.getElementById("territory-status");
+        let latest = snap.docs[0]?.data();
+        let statusText = "вільно"; // За замовчуванням
 
-let latest = snap.docs[0]?.data();
-let statusText = "вільно"; // За замовчуванням вільно
+        if (latest && latest.status === "на руках") {
+          statusText = "на руках";
+        }
 
-if (latest) {
-  if (latest.status === "на руках") {
-    statusText = "на руках";
-  }
-}
-
-statusElement.innerHTML = `<b>Статус території:</b> ${statusText}`;
-const allowNew = statusText !== "на руках";
-
+        statusElement.innerHTML = `<b>Статус території:</b> ${statusText}`;
+        const allowNew = statusText !== "на руках";
 
         if (allowNew) {
           const form = document.createElement("form");
@@ -83,7 +75,7 @@ const allowNew = statusText !== "на руках";
               dateGet: get,
               dateProcess: proc,
               note: f.get("note"),
-              user: auth.currentUser.email,
+              user: auth.currentUser.uid,
               timestamp: serverTimestamp(),
               status,
               processingTime: diffDays(get, proc),
@@ -93,34 +85,46 @@ const allowNew = statusText !== "на руках";
           };
           container.appendChild(form);
         } else {
-          container.innerHTML += `<p style="color:red">Територія ще на руках. Введіть дату опрацювання.</p>`;
+          container.innerHTML += `<p style="color:red">Територія ще на руках. Спочатку закрийте попередній запис.</p>`;
         }
 
         snap.forEach(docSnap => {
           const d = docSnap.data();
           const entry = document.createElement("div");
+
           entry.innerHTML = `
             <hr/>
             <b>ПІБ:</b> ${d.pib}<br/>
             <b>Дата отримання:</b> ${formatDate(d.dateGet)}<br/>
             <b>Дата опрацювання:</b> ${formatDate(d.dateProcess)}<br/>
             <b>Нотатки:</b> ${d.note || "-"}<br/>
-            <b>Хто додав:</b> ${d.user}<br/>
+            <b>Хто додав:</b> <span id="user-${d.user}">Завантаження...</span><br/>
             <b>Статус:</b> ${d.status}<br/>
-          <b>Час опрацювання (днів):</b> ${
-  d.dateGet
-    ? (d.dateProcess
-        ? diffDays(d.dateGet, d.dateProcess)
-        : diffDays(d.dateGet)
-      ) 
-    : "-"
-}<br/>
-
+            <b>Час опрацювання (днів):</b> ${
+              d.dateGet
+                ? (d.dateProcess
+                    ? diffDays(d.dateGet, d.dateProcess)
+                    : diffDays(d.dateGet)
+                  )
+                : "-"
+            }<br/>
             <b>Час від останнього опрацювання (днів):</b> ${d.timeSinceLast ?? "-"}<br/>
             <button onclick="edit('${number}','${docSnap.id}')">Редагувати</button>
             <button onclick="del('${number}','${docSnap.id}')">Видалити</button>
           `;
+
           container.appendChild(entry);
+
+          // Підставити ПІБ за UID
+          const userSpan = entry.querySelector(`#user-${d.user}`);
+          const userRef = doc(db, "users", d.user);
+          getDoc(userRef).then(snap => {
+            if (snap.exists()) {
+              userSpan.innerText = snap.data().name;
+            } else {
+              userSpan.innerText = "Невідомо";
+            }
+          }).catch(() => userSpan.innerText = "Помилка");
         });
       });
     });
@@ -150,7 +154,7 @@ const allowNew = statusText !== "на руках";
           dateProcess: proc,
           note: fd.get("note"),
           status,
-          user: auth.currentUser.email,
+          user: auth.currentUser.uid,
           processingTime: diffDays(get, proc),
           timeSinceLast: proc ? diffDays(proc) : null
         });
@@ -170,7 +174,7 @@ const allowNew = statusText !== "на руках";
 </head>
 <body>
   <h1 id="title"></h1>
-  <p id="territory-status"><b>Статус території:</b> </p>
+  <p id="territory-status"><b>Статус території:</b></p>
   <a href="territories.html">← Назад</a>
   <div id="territory"></div>
 </body>
