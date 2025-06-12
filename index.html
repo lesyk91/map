@@ -9,41 +9,24 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
   <style>
     html, body, #map {
-      height: 100%;
-      margin: 0;
-      padding: 0;
+      height: 100%; margin: 0; padding: 0;
     }
     button.layer-toggle, button.locate-btn {
-      position: absolute;
-      left: 50px;
-      z-index: 1000;
-      padding: 8px 12px;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      cursor: pointer;
+      position: absolute; left: 50px; z-index: 1000;
+      padding: 8px 12px; background: white; border: 1px solid #ccc;
+      border-radius: 4px; cursor: pointer;
     }
-    button.locate-btn {
-      top: 10px;
-    }
-    button.layer-toggle {
-      top: 50px;
-    }
+    button.locate-btn { top: 10px; }
+    button.layer-toggle { top: 50px; }
     #loader {
-      position: absolute;
-      top: 10px;
-      left: 215px;
-      z-index: 1000;
-      padding: 8px;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 10px;
+      position: absolute; top: 10px; left: 215px; z-index: 1000;
+      padding: 8px; background: white; border: 1px solid #ccc; border-radius: 10px;
     }
   </style>
 </head>
 <body>
 <button onclick="findLocation()" class="locate-btn">📍 Показати моє місце</button>
-<button onclick="toggleLayers()" class="layer-toggle">🗚 Шари</button>
+<button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
 <div id="loader"></div>
 <div id="map"></div>
 
@@ -52,11 +35,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-  import {
-    getFirestore,
-    collection, query, orderBy, getDocs,
-    doc, getDoc
-  } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+  import { getFirestore, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -70,70 +49,64 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
-
   let currentUser = null;
 
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      currentUser = user;
-    }
+  onAuthStateChanged(auth, user => {
+    currentUser = user;
   });
 
-  async function fetchTerritoryStatus(number) {
-    try {
-      const colRef = collection(db, `territories/${number}/history`);
-      const q = query(colRef, orderBy("timestamp", "desc"));
-      const snap = await getDocs(q);
-      const latest = snap.docs[0]?.data();
-      if (!latest || latest.status !== "на руках") {
-        return "Статус: вільно";
+  window.getTerritoryStatusPopup = async (number, name) => {
+    if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
+    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+    const snap = await getDocs(q);
+    let popup = `<b>${name}</b><br>`;
+    if (snap.empty) {
+      popup += `<b>Статус:</b> вільно`;
+    } else {
+      const data = snap.docs[0].data();
+      popup += `<b>Статус:</b> ${data.status}<br>`;
+      if (data.status === "на руках") {
+        popup += `<b>ПІБ:</b> ${data.pib}<br>`;
+        popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`;
       }
-      const userSnap = await getDoc(doc(db, "users", latest.user));
-      const pib = userSnap.exists() ? userSnap.data().name : "Невідомо";
-      const date = latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "-";
-      return `Статус: <b>на руках</b><br>Дата отримання: ${date}<br>ПІБ: ${pib}`;
-    } catch (e) {
-      console.error("Помилка при завантаженні статусу:", e);
-      return "⚠ Не вдалося завантажити статус.";
     }
-  }
-
-  window.createDistrictPopup = (name, latlng) => {
-    const number = name.match(/\d+/)?.[0];
-    let html = `<b>${name}</b><br><button onclick="routeToDistrict('${name}')">📌 Прокласти маршрут</button>`;
-    if (currentUser && number) {
-      html += `<br><span id="status-${number}">Завантаження статусу...</span>`;
-      setTimeout(async () => {
-        const statusText = await fetchTerritoryStatus(number);
-        const el = document.getElementById(`status-${number}`);
-        if (el) el.innerHTML = statusText;
-      }, 100);
-    }
-    return html;
+    return popup;
   };
 </script>
+
 <script>
   const map = L.map('map').setView([49.1029, 29.2074], 13);
+
   const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
     maxZoom: 20,
     subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
     attribution: '© Google Maps'
   }).addTo(map);
+
   const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: '© Esri',
-    maxZoom: 20
+    attribution: '© Esri', maxZoom: 20
   });
+
   const districts = [
     { id: 'district1', name: 'Територія 1', color: 'blue', fillColor: '#99ccff' },
     { id: 'district2', name: 'Територія 2', color: 'green', fillColor: '#b6fcb6' },
     { id: 'district55', name: 'Територія 55', color: 'green', fillColor: '#b6fcb6' },
     { id: 'district56', name: 'Територія 56', color: 'green', fillColor: '#b6fcb6' }
   ];
-  const districtCenters = [], districtGeometries = [], overlayMaps = {};
+
+  const districtCenters = [];
+  const districtGeometries = [];
+  const overlayMaps = {};
+
+  function toggleLayers() {
+    const control = document.querySelector('.leaflet-control-layers');
+    if (control) control.classList.toggle('leaflet-control-layers-expanded');
+    const btn = document.querySelector('.layer-toggle');
+    btn.innerText = control.classList.contains('leaflet-control-layers-expanded') ? '🗺 Приховати шари' : '🗺 Шари';
+  }
 
   function showLoading(show) {
-    let loader = document.getElementById('loader');
-    loader.innerText = show ? 'Завантаження...' : '';
+    document.getElementById('loader').innerText = show ? 'Завантаження...' : '';
   }
 
   districts.forEach(d => {
@@ -146,77 +119,68 @@
           onEachFeature: (feature, layer) => {
             const center = layer.getBounds().getCenter();
             districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
-            layer.bindPopup(createDistrictPopup(feature.properties?.name || d.name, center));
+
+            layer.on("click", async () => {
+              const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
+              layer.bindPopup(popupContent + `<br><button onclick=\"routeToDistrict('${d.name}')\">📌 Прокласти маршрут сюди</button>`).openPopup();
+            });
           },
           style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
         }).addTo(layer);
 
+        overlayMaps[d.name] = layer;
+
         const coordinates = [];
-        if (data.type === "GeometryCollection") {
-          data.geometries.forEach(geom => {
-            if (geom.type === "Polygon" || geom.type === "MultiPolygon") {
-              const coords = geom.coordinates;
-              if (geom.type === "Polygon") {
-                coords.forEach(ring => coordinates.push(...ring.map(c => L.latLng(c[1], c[0]))));
-              } else {
-                coords.forEach(polygon => polygon.forEach(ring => coordinates.push(...ring.map(c => L.latLng(c[1], c[0])))));
-              }
-            }
-          });
-        }
+        const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
+        geometries.forEach(geom => {
+          const coords = geom.coordinates;
+          const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
+          if (geom.type === "Polygon") coords.forEach(pushCoords);
+          if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
+        });
+
         districtGeometries.push({ name: d.name, coordinates });
         showLoading(false);
       })
       .catch(err => {
-        alert(`⚠ Не вдалося завантажити дані для ${d.name}`);
+        alert(`⚠ Не вдалося завантажити ${d.id}.json`);
         showLoading(false);
       });
-    overlayMaps[d.name] = layer;
   });
 
-  const baseMaps = {"Стандартна карта": googleStreets,"Супутникова карта": satellite};
-  L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
-
-  function toggleLayers() {
-    const control = document.querySelector('.leaflet-control-layers');
-    control.classList.toggle('leaflet-control-layers-expanded');
-    const btn = document.querySelector('.layer-toggle');
-    btn.innerText = control.classList.contains('leaflet-control-layers-expanded') ? '🗺 Приховати шари' : '🗺 Показати шари';
-  }
+  L.control.layers({ "Стандартна карта": googleStreets, "Супутникова карта": satellite }, overlayMaps, { collapsed: true }).addTo(map);
 
   let currentMarker = null, currentCircle = null, routeControl = null, currentLocation = null;
+
   function findLocation() {
     if (!navigator.geolocation) return alert('⚠ Ваш браузер не підтримує геолокацію.');
     showLoading(true);
-    map.locate({setView: true, maxZoom: 16, timeout: 20000, enableHighAccuracy: true});
+    map.locate({ setView: true, maxZoom: 16, timeout: 20000, enableHighAccuracy: true });
   }
-  map.on('locationfound', function (e) {
+
+  map.on('locationfound', e => {
     currentLocation = e.latlng;
     showLoading(false);
     if (currentMarker) map.removeLayer(currentMarker);
     if (currentCircle) map.removeLayer(currentCircle);
-    currentCircle = L.circle(e.latlng, {radius: e.accuracy, color: 'blue', fillColor: '#30f', fillOpacity: 0.2}).addTo(map);
-    currentMarker = L.marker(e.latlng).addTo(map)
-      .bindPopup("Ваше місцерозташування (точність " + Math.round(e.accuracy) + " м)").openPopup();
+    currentCircle = L.circle(e.latlng, { radius: e.accuracy, color: 'blue', fillColor: '#30f', fillOpacity: 0.2 }).addTo(map);
+    currentMarker = L.marker(e.latlng).addTo(map).bindPopup("Ваше місцерозташування (точність " + Math.round(e.accuracy) + " м)").openPopup();
   });
-  map.on('locationerror', function (e) {
+
+  map.on('locationerror', e => {
     showLoading(false);
     alert("⚠ Не вдалося визначити місцерозташування: " + e.message);
   });
 
   function routeToDistrict(districtName) {
-    if (!currentLocation) return alert("⛔ Спочатку натисніть кнопку 📍 «Показати моє місце»");
+    if (!currentLocation) return alert("⛔ Спочатку натисніть 📍 «Показати моє місце»");
     const district = districtGeometries.find(d => d.name === districtName);
     if (!district || !district.coordinates.length) return alert(`⚠ Немає координат для ${districtName}`);
-    let nearestPoint = district.coordinates[0];
-    let minDist = currentLocation.distanceTo(nearestPoint);
-    district.coordinates.forEach(coord => {
-      const dist = currentLocation.distanceTo(coord);
-      if (dist < minDist) {minDist = dist; nearestPoint = coord;}
-    });
+    let nearestPoint = district.coordinates.reduce((nearest, coord) => currentLocation.distanceTo(coord) < currentLocation.distanceTo(nearest) ? coord : nearest);
     if (routeControl) map.removeControl(routeControl);
-    routeControl = L.Routing.control({waypoints: [currentLocation, nearestPoint],routeWhileDragging: false,addWaypoints: false,show: false,createMarker: () => null}).addTo(map);
-    const distText = minDist > 1000 ? (minDist / 1000).toFixed(2) + " км" : Math.round(minDist) + " м";
+    routeControl = L.Routing.control({ waypoints: [currentLocation, nearestPoint], routeWhileDragging: false, addWaypoints: false, show: false, createMarker: () => null }).addTo(map);
+    const dist = currentLocation.distanceTo(nearestPoint);
+    const distText = dist > 1000 ? (dist / 1000).toFixed(2) + " км" : Math.round(dist) + " м";
     currentMarker?.bindPopup(`Ваше місцерозташування<br>Маршрут до <b>${districtName}</b><br>Відстань: ${distText}`).openPopup();
   }
 </script>
