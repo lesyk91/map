@@ -11,13 +11,20 @@
     html, body, #map {
       height: 100%; margin: 0; padding: 0;
     }
-    button.layer-toggle, button.locate-btn {
-      position: absolute; left: 50px; z-index: 1000;
-      padding: 8px 12px; background: white; border: 1px solid #ccc;
-      border-radius: 4px; cursor: pointer;
-    }
-    button.locate-btn { top: 10px; }
-    button.layer-toggle { top: 50px; }
+    button.layer-toggle, button.locate-btn, button.login-btn {
+  position: absolute;
+  left: 50px;
+  z-index: 1000;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+}
+button.locate-btn { top: 10px; }
+button.layer-toggle { top: 50px; }
+button.login-btn { top: 90px; }  
+
     #loader {
       position: absolute; top: 10px; left: 215px; z-index: 1000;
       padding: 8px; background: white; border: 1px solid #ccc; border-radius: 10px;
@@ -27,6 +34,7 @@
 <body>
 <button onclick="findLocation()" class="locate-btn">📍 Показати моє місце</button>
 <button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
+<a href="enter.html"><button class="login-btn">🔐 Увійти</button></a>	
 <div id="loader"></div>
 <div id="map"></div>
 
