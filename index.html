@@ -129,6 +129,9 @@
         }).addTo(layer);
 
         overlayMaps[d.name] = layer;
+		loadedLayers.push(d.name);
+tryAddLayersControl();
+
 
         const coordinates = [];
         const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
@@ -148,7 +151,19 @@
       });
   });
 
-  L.control.layers({ "Стандартна карта": googleStreets, "Супутникова карта": satellite }, overlayMaps, { collapsed: true }).addTo(map);
+ let layersControl = null;
+const loadedLayers = [];
+
+function tryAddLayersControl() {
+  if (loadedLayers.length === districts.length) {
+    layersControl = L.control.layers(
+      { "Стандартна карта": googleStreets, "Супутникова карта": satellite },
+      overlayMaps,
+      { collapsed: true }
+    ).addTo(map);
+  }
+}
+
 
   let currentMarker = null, currentCircle = null, routeControl = null, currentLocation = null;
 
