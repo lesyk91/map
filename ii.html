@@ -81,9 +81,10 @@ onAuthStateChanged(auth, user => {
 
 logoutBtn?.addEventListener("click", async () => {
   await signOut(auth);
-  layersControl = null; // додано
+  layersControl = null;
   location.reload();
 });
+
 
 
 
@@ -273,7 +274,11 @@ function tryAddLayersControl() {
     currentMarker?.bindPopup(`Ваше місцерозташування<br>Маршрут до <b>${districtName}</b><br>Відстань: ${distText}`).openPopup();
   }
   
-  let toggleInput = null; // зробимо глобально
+  
+ let toggleInput = null;
+let toggleLabel = null;
+let layersControl = null;
+const loadedLayers = [];
 
 function tryAddLayersControl() {
   if (layersControl || loadedLayers.length !== districts.length) return;
@@ -284,11 +289,10 @@ function tryAddLayersControl() {
     { collapsed: false }
   ).addTo(map);
 
-  // Додаємо чекбокс "Показати всі / Приховати всі"
   const layersContainer = document.querySelector('.leaflet-control-layers-overlays');
   if (layersContainer && !document.querySelector('#toggle-all-layers')) {
     const toggleDiv = document.createElement('div');
-    toggleDiv.style.marginTop = '8px';
+    toggleDiv.style.marginBottom = '8px'; // трішки відступу знизу
 
     toggleInput = document.createElement('input');
     toggleInput.type = 'checkbox';
@@ -296,24 +300,30 @@ function tryAddLayersControl() {
     toggleInput.checked = true;
     toggleInput.style.marginRight = '5px';
 
-    const toggleLabel = document.createElement('label');
+    toggleLabel = document.createElement('label');
     toggleLabel.htmlFor = 'toggle-all-layers';
     toggleLabel.innerText = 'Приховати всі';
 
     toggleDiv.appendChild(toggleInput);
     toggleDiv.appendChild(toggleLabel);
-    layersContainer.appendChild(toggleDiv);
+
+    // ✅ Додаємо ВГОРУ списку шарів
+    layersContainer.insertBefore(toggleDiv, layersContainer.firstChild);
 
     toggleInput.addEventListener('change', () => {
       const show = toggleInput.checked;
       toggleLabel.innerText = show ? 'Приховати всі' : 'Показати всі';
       Object.values(overlayMaps).forEach(layer => {
-        if (show) map.addLayer(layer);
-        else map.removeLayer(layer);
+        if (show) {
+          map.addLayer(layer);
+        } else {
+          map.removeLayer(layer);
+        }
       });
     });
   }
 }
+
 
 
 </script>
