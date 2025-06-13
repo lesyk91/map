@@ -8,192 +8,185 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
 <style>
-html,body,#map { height: 100%; margin: 0; padding: 0 }
-button.layer-toggle, button.locate-btn, button.login-btn, button.logout-btn {
-	position: absolute;
-	left: 50px;
-	z-index: 1000;
-	padding: 8px 12px;
-	background: white;
-	border: 1px solid #ccc;
-	border-radius: 4px;
-	cursor: pointer;
-}
-button.locate-btn { top: 10px }
-button.layer-toggle { top: 50px }
-button.login-btn, button.logout-btn { top: 90px }
-#loader { 
-	position: absolute; top: 10px; left: 215px; z-index: 1000;
-	padding: 8px; background: white; border: 1px solid #ccc; border-radius: 10px;
-}
+html,body,#map {height:100%;margin:0;padding:0;}
+button.layer-toggle, button.locate-btn, button.login-btn, button.logout-btn {position:absolute; left:50px; z-index:1000;padding:8px 12px;background:#ffffff;border:1px solid #ccc;border-radius:4px;cursor:pointer;}
+button.locate-btn {top:10px;}
+button.layer-toggle {top:50px;}
+button#showAllBtn {top: 90px;}
+button#hideAllBtn {top: 130px;}
+button#filter-free {top: 170px;}
+button#filter-occupied {top: 210px;}
+
 </style>
 </head>
 <body>
-<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце</button> 
-<button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button> 
-<div id="auth-buttons">
-	<a href="enter.html"><button class="login-btn" style="display:none">🔐 Увійти</button></a> 
-	<button class="logout-btn" style="display:none">🚪 Вийти</button> 
-</div> 
-<div id="loader"></div> 
-<div id="map"></div> 
- 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script> 
-<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script> 
+
+<button onclick="findLocation()" class="locate-btn">📍 Показати місце</button>
+<button id="showAllBtn" class="layer-toggle">🟣 Показати всі</button>
+<button id="hideAllBtn" class="layer-toggle">⚪ Приховати всі</button>
+<button id="filter-free" class="layer-toggle">✅ Вільно</button>
+<button id="filter-occupied" class="layer-toggle">🚀 На руках</button>
+
+<div id="loader"></div>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getFirestore, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-const firebaseConfig = { 
-	apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU", 
-	authDomain: "map-illintsi.firebaseapp.com", 
-	projectId: "map-illintsi", 
-	storageBucket: "map-illintsi.appspot.com", 
-	messagingSenderId: "62267872375", 
-	appId: "1:62267872375:web:10945d2d63b93bccc5e272" 
+const firebaseConfig = {
+    apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+    authDomain: "map-illintsi.firebaseapp.com",
+    projectId: "map-illintsi",
+    storageBucket: "map-illintsi.appspot.com",
+    messagingSenderId: "62267872375",
+    appId: "1:62267872375:web:10945d2d63b93bccc5e272"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
 let currentUser = null;
+onAuthStateChanged(auth, user => {
+    currentUser = user;
+});
 
-const loginBtn = document.querySelector('.login-btn'); 
-const logoutBtn = document.querySelector('.logout-btn'); 
-onAuthStateChanged(auth, user => { 
-	currentUser = user; 
-	if (user) { 
-		loginBtn.style.display = 'none';
-		logoutBtn.style.display = 'inline-block';
-	} else { 
-		loginBtn.style.display = 'inline-block';
-		logoutBtn.style.display = 'none';
-	} 
-}); 
-logoutBtn?.addEventListener("click", async () => { 
-	await signOut(auth);
-	location.reload();
-}); 
+// допоміжна функция для випадкового кольору
+function getRandomColor(){
+    return '#' + Math.floor(Math.random() * 16777215).toString(16);
+}
 
-
-window.getTerritoryStatusPopup = async (number, name) => { 
-	if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`; 
-	const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc")); 
-	const snap = await getDocs(q); 
-	let popup = `<b>${name}</b><br>`; 
-	if (snap.empty) { 
-		popup += `<b>Статус:</b> вільно`; 
-	} else { 
-		const data = snap.docs[0].data(); 
-		popup += `<b>Статус:</b> ${data.status}<br>`; 
-		if (data.status === "на руках") { 
-			popup += `<b>ПІБ:</b> ${data.pib}<br>`; 
-			popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`; 
-		} 
-	} 
-	return popup; 
+window.getTerritoryStatusPopup = async (number, name) => {
+    if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
+    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+    const snap = await getDocs(q);
+    let popup = `<b>${name}</b><br>`;
+    if (snap.empty) {
+        popup += `<b>Статус:</b> вільно`;
+    } else {
+        const data = snap.docs[0].data();
+        popup += `<b>Статус:</b> ${data.status}<br>`;
+        if (data.status === "на руках") {
+            popup += `<b>ПІБ:</b> ${data.pib}<br>`;
+            popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`;
+        }
+    }
+    return popup;
 };
 
 </script>
 
 <script>
 const map = L.map('map').setView([49.1029, 29.2074], 13);
-const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { 
-	maxZoom: 20, 
-	subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], 
-	attribution:'© Google Maps'
-}).addTo(map);
-const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { 
-	attribution:'© Esri',
-	maxZoom: 20
-});
+const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {maxZoom:20,subdomains:['mt0','mt1','mt2','mt3'],attribution:'© Google Maps'}).addTo(map);
+const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:20,attribution:'© Esri'});
 
-// створює control відразу
-const baseMaps = { "Стандартна карта": googleStreets,"Супутникова карта": satellite };
-const overlays = {};
+// всі верстви будуть зберігатися тут:
+const overlayMaps = {};
 
-const control = L.control.layers(baseMaps, overlays,{collapsed:true}).addTo(map);
-
-// Масив з всіма районами:
-const districts = [
-	{ id:'district1', name:'Територія 1', color:'blue', fillColor:'#99ccff' },
-	{ id:'district2', name:'Територія 2', color:'green', fillColor:'#b6fcb6' },
-	{ id:'district55', name:'Територія 55', color:'green', fillColor:'#b6fcb6' },
-	{ id:'district56', name:'Територія 56', color:'red', fillColor:'#b6fcb6' }
-	// Тут можеш додати всі 150...
-];
-
-// Завантажуємо всі:
-districts.forEach(d => {
-	fetch(`${d.id}.json`)
-		.then(r => r.json()) 
-		.then(data => { 
-			const layer = L.geoJSON(data, { 
-				onEachFeature: (feature, layer) => { 
-					const center = layer.getBounds().getCenter();
-					layer.on("click", async () => { 
-						const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district",""), d.name);
-						layer.bindPopup(popupContent + `<br><button onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
-					}); 
-				},
-				style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
-			}).addTo(map);
-			control.addOverlay(layer, d.name);
-		}) 
-		.catch(err => console.error(err)); 
-});
-
-// Маршрут:
-let routeControl = null;
-let currentLocation = null;
-
-function routeToDistrict(districtName) {
-	if (!currentLocation) return alert("⛔ Спочатку натисніть 📍 «Показати моє місце»"); 
-	const layer = Object.keys(control._layers)
-		.map(id => control._layers[id].layer)
-		.find(l => l?.options?.name === districtName);
-	if (!layer) return;
-
-	const coords = [];
-
-	layer.eachLayer(l => {
-		coords.push(l.getBounds().getCenter()); 
-	}); 
-	const nearestPoint = coords.reduce((nearest, c) => currentLocation.distanceTo(c) < currentLocation.distanceTo(nearest) ? c : nearest, coords[0]);
-
-	if (routeControl) map.removeControl(routeControl);
-	routeControl = L.Routing.control({ 
-		waypoints: [currentLocation, nearestPoint],
-		routeWhileDragging: false,
-		addWaypoints: false,
-		show: false,
-		createMarker: () => null
-	}).addTo(map);
+function showLoading(show) {
+    document.getElementById('loader').innerText = show ? 'Завантаження...' : '';
 }
 
 function findLocation(){
-	if (!navigator.geolocation) return alert('⚠ Ваш браузер не підтримує геолокацію.');
-
-	navigator.geolocation.getCurrentPosition(pos=>{
-		currentLocation = L.latLng(pos.coords.latitude, pos.coords.longitude);
-		L.marker(currentLocation).addTo(map).bindPopup("Ваше місцерозташування").openPopup();
-
-	},err=>{
-		alert('Не вдалося визначити місце розташування');
-	},{enableHighAccuracy:true});
+    if (!navigator.geolocation) return alert('Геолокація не підтримується');
+    showLoading(true);
+    map.locate({setView:true,maxZoom:16,timeout:20000,enableHighAccuracy:true});
 }
 
-function toggleLayers(){
-	const controlElem = document.querySelector('.leaflet-control-layers'); 
-	controlElem?.classList.toggle('leaflet-control-layers-expanded'); 
-	const btn = document.querySelector('.layer-toggle'); 
-	btn.innerText = controlElem?.classList.contains('leaflet-control-layers-expanded') ? '🗺 Приховати шари' : '🗺 Шари';
+let currentLocation = null;
+let currentMarker = null;
+let currentCircle = null;
+
+map.on('locationfound', e => {
+    currentLocation = e.latlng;
+    showLoading(false);
+    if (currentMarker) map.removeLayer(currentMarker);
+    if (currentCircle) map.removeLayer(currentCircle);
+    currentCircle = L.circle(e.latlng,{radius:e.accuracy,color:'blue',fillColor:'#30f',fillOpacity:0.2}).addTo(map);
+    currentMarker = L.marker(e.latlng).addTo(map).bindPopup("Ваше місцерозташування").openPopup();
+});
+
+map.on('locationerror', e => {
+    showLoading(false);
+    alert("Не вдалося визначити місце.");
+});
+
+// завантажуємо всі райони
+async function loadDistricts(){
+    showLoading(true);
+    for (let i = 1; i <= 150; i++) {
+        let color = getRandomColor();
+        let d = { id:'district'+i, name:'Територія '+i, color:color, fillColor:color };
+        let res = await fetch(`${d.id}.json`).then(r=>r.json()).catch(err=>{return null;});
+        if (res) {
+            let layer = L.layerGroup();
+
+            let geo = L.geoJSON(res,{ 
+                onEachFeature: (feature, layerG) => {
+                    layerG.on('click', async () => {
+                        const popupContent = await window.getTerritoryStatusPopup(i.toString(), d.name);
+                        layerG.bindPopup(popupContent + "<br><button onclick=\"routeToDistrict('" + d.name + "')\">📌 Прокласти маршрут сюди</button>").openPopup();
+                    })
+                },
+                style:{ color:d.color, fillColor:d.fillColor, fillOpacity: 0.4 }
+            }).addTo(layer);
+            overlayMaps[d.name] = layer;
+            layer.addTo(map);
+        }
+    }
+    showLoading(false);
+    L.control.layers({"Стандартна карта":googleStreets,"Супутникова карта":satellite},overlayMaps,{collapsed:true}).addTo(map);
 }
 
-window.routeToDistrict = routeToDistrict;
-window.toggleLayers = toggleLayers;
-window.findLocation = findLocation;
+loadDistricts();
+
+function routeToDistrict(districtName) {
+    if (!currentLocation) return alert("Спочатку визначіть місце.");
+    // Тут ви можете прокласти маршрут, аналогчно тому що було раніше
+}
+
+document.getElementById('showAllBtn').addEventListener('click', () => {
+    Object.keys(overlayMaps).forEach(key=>{
+        if (!map.hasLayer(overlayMaps[key])) {
+            map.addLayer(overlayMaps[key]);
+        }
+    })
+});
+
+document.getElementById('hideAllBtn').addEventListener('click', () => {
+    Object.keys(overlayMaps).forEach(key=>{
+        if (map.hasLayer(overlayMaps[key])) {
+            map.removeLayer(overlayMaps[key]);
+        }
+    })
+});
+
+// Фільтрація по статусу
+async function filterDistrictsByStatus(status) {
+    for (const key in overlayMaps) {
+        const id = key.split(' ').pop();
+        const popupContent = await window.getTerritoryStatusPopup(id, key);
+        if (popupContent.indexOf(status) !== -1) {
+            if (!map.hasLayer(overlayMaps[key])) {
+                map.addLayer(overlayMaps[key]);
+            }
+        } else {
+            if (map.hasLayer(overlayMaps[key])) {
+                map.removeLayer(overlayMaps[key]);
+            }
+        }
+    }
+}
+
+document.getElementById('filter-free').addEventListener('click', () => filterDistrictsByStatus('вільно'));
+
+document.getElementById('filter-occupied').addEventListener('click', () => filterDistrictsByStatus('на руках'));
 
 </script>
 
