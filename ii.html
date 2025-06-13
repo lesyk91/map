@@ -81,8 +81,10 @@ onAuthStateChanged(auth, user => {
 
 logoutBtn?.addEventListener("click", async () => {
   await signOut(auth);
+  layersControl = null; // додано
   location.reload();
 });
+
 
 
   onAuthStateChanged(auth, user => {
@@ -172,6 +174,7 @@ logoutBtn?.addEventListener("click", async () => {
   
   
   // Сортуємо за номером, витягуючи число з id
+
 districts.sort((a, b) => {
   const numA = parseInt(a.id.replace("district", ""));
   const numB = parseInt(b.id.replace("district", ""));
@@ -270,47 +273,48 @@ function tryAddLayersControl() {
     currentMarker?.bindPopup(`Ваше місцерозташування<br>Маршрут до <b>${districtName}</b><br>Відстань: ${distText}`).openPopup();
   }
   
-  function tryAddLayersControl() {
-  if (loadedLayers.length === districts.length) {
-    layersControl = L.control.layers(
-      { "Стандартна карта": googleStreets, "Супутникова карта": satellite },
-      overlayMaps,
-      { collapsed: false }
-    ).addTo(map);
+  let toggleInput = null; // зробимо глобально
 
-    // Додаємо перемикач "Показати всі / Приховати всі"
-    const layersContainer = document.querySelector('.leaflet-control-layers-overlays');
-    if (layersContainer) {
-      const toggleDiv = document.createElement('div');
-      toggleDiv.style.marginTop = '8px';
-      const toggleInput = document.createElement('input');
-      toggleInput.type = 'checkbox';
-      toggleInput.id = 'toggle-all-layers';
-      toggleInput.checked = true;
-      toggleInput.style.marginRight = '5px';
-      const toggleLabel = document.createElement('label');
-      toggleLabel.htmlFor = 'toggle-all-layers';
-      toggleLabel.innerText = 'Показати всі';
+function tryAddLayersControl() {
+  if (layersControl || loadedLayers.length !== districts.length) return;
 
-      toggleDiv.appendChild(toggleInput);
-      toggleDiv.appendChild(toggleLabel);
-      layersContainer.appendChild(toggleDiv);
+  layersControl = L.control.layers(
+    { "Стандартна карта": googleStreets, "Супутникова карта": satellite },
+    overlayMaps,
+    { collapsed: false }
+  ).addTo(map);
 
-      toggleInput.addEventListener('change', () => {
-        Object.keys(overlayMaps).forEach(name => {
-          const layer = overlayMaps[name];
-          if (toggleInput.checked) {
-            map.addLayer(layer);
-            toggleLabel.innerText = 'Показати всі';
-          } else {
-            map.removeLayer(layer);
-            toggleLabel.innerText = 'Приховати всі';
-          }
-        });
+  // Додаємо чекбокс "Показати всі / Приховати всі"
+  const layersContainer = document.querySelector('.leaflet-control-layers-overlays');
+  if (layersContainer && !document.querySelector('#toggle-all-layers')) {
+    const toggleDiv = document.createElement('div');
+    toggleDiv.style.marginTop = '8px';
+
+    toggleInput = document.createElement('input');
+    toggleInput.type = 'checkbox';
+    toggleInput.id = 'toggle-all-layers';
+    toggleInput.checked = true;
+    toggleInput.style.marginRight = '5px';
+
+    const toggleLabel = document.createElement('label');
+    toggleLabel.htmlFor = 'toggle-all-layers';
+    toggleLabel.innerText = 'Приховати всі';
+
+    toggleDiv.appendChild(toggleInput);
+    toggleDiv.appendChild(toggleLabel);
+    layersContainer.appendChild(toggleDiv);
+
+    toggleInput.addEventListener('change', () => {
+      const show = toggleInput.checked;
+      toggleLabel.innerText = show ? 'Приховати всі' : 'Показати всі';
+      Object.values(overlayMaps).forEach(layer => {
+        if (show) map.addLayer(layer);
+        else map.removeLayer(layer);
       });
-    }
+    });
   }
 }
+
 
 </script>
 </body>
