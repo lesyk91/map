@@ -41,10 +41,7 @@ button.login-btn, button.logout-btn { top: 90px; }
   <button class="logout-btn" style="display:none">🚪 Вийти</button>
 </div>
 
-<div id="loader"></div>\<select id="territory-selector" style="position:absolute; top:130px; left:50px; z-index:1000; padding:6px; border-radius:4px;">
-  <option value="">🔍 Виберіть територію</option>
-</select>
-
+<div id="loader"></div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -141,12 +138,8 @@ for (let i = 1; i <= 150; i++) {
   const overlayMaps = {};
   
   const selector = document.getElementById('territory-selector');
-districts.forEach(d => {
-  const option = document.createElement("option");
-  option.value = d.id;
-  option.textContent = d.name;
-  selector.appendChild(option);
-});
+  
+
 
 
   function toggleLayers() {
@@ -265,6 +258,98 @@ function tryAddLayersControl() {
     const distText = dist > 1000 ? (dist / 1000).toFixed(2) + " км" : Math.round(dist) + " м";
     currentMarker?.bindPopup(`Ваше місцерозташування<br>Маршрут до <b>${districtName}</b><br>Відстань: ${distText}`).openPopup();
   }
+  
+  // === СЕЛЕКТОР ДЛЯ ВИБОРУ ТЕРИТОРІЙ ===
+const territorySelector = L.control({ position: 'topright' });
+
+territorySelector.onAdd = function(map) {
+  const div = L.DomUtil.create('div', 'leaflet-control-layers leaflet-control');
+  const label = document.createElement('label');
+  label.textContent = "🗂 Вибір територій:";
+  label.style.fontWeight = "bold";
+
+  const select = document.createElement('select');
+  select.id = 'territory-selector';
+  select.multiple = true;
+  select.size = 8;
+  select.style.width = "180px";
+  select.style.marginTop = "4px";
+
+  districts.forEach(d => {
+    const option = document.createElement("option");
+    option.value = d.id;
+    option.textContent = d.name;
+    select.appendChild(option);
+  });
+
+  div.appendChild(label);
+  div.appendChild(select);
+
+  // Заборонити переміщення карти під час вибору
+  L.DomEvent.disableClickPropagation(div);
+
+  return div;
+};
+
+territorySelector.addTo(map);
+
+const districtLayers = {}; // для збереження вже завантажених шарів
+
+document.getElementById("territory-selector").addEventListener("change", async (e) => {
+  const selectedIds = Array.from(e.target.selectedOptions).map(opt => opt.value);
+
+  // Видалити всі поточні шари
+  Object.values(districtLayers).forEach(layer => map.removeLayer(layer));
+
+  for (const id of selectedIds) {
+    const selected = districts.find(d => d.id === id);
+    if (!selected) continue;
+
+    if (districtLayers[id]) {
+      districtLayers[id].addTo(map);
+      continue;
+    }
+
+    showLoading(true);
+    try {
+      const res = await fetch(`${id}.json`);
+      const data = await res.json();
+      const layerGroup = L.layerGroup();
+
+      const geoJsonLayer = L.geoJSON(data, {
+        onEachFeature: (feature, layer) => {
+          const center = layer.getBounds().getCenter();
+          districtCenters.push({ name: feature.properties?.name || selected.name, latlng: center });
+          layer.on("click", async () => {
+            const popupContent = await window.getTerritoryStatusPopup(id.replace("district", ""), selected.name);
+            layer.bindPopup(popupContent + `<br><button onclick=\"routeToDistrict('${selected.name}')\">📌 Прокласти маршрут сюди</button>`).openPopup();
+          });
+        },
+        style: { color: selected.color, fillColor: selected.fillColor, fillOpacity: 0.4 }
+      }).addTo(layerGroup);
+
+      districtLayers[id] = layerGroup;
+      layerGroup.addTo(map);
+
+      // Додати координати для маршруту
+      const coordinates = [];
+      const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
+      geometries.forEach(geom => {
+        const coords = geom.coordinates;
+        const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
+        if (geom.type === "Polygon") coords.forEach(pushCoords);
+        if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
+      });
+      districtGeometries.push({ name: selected.name, coordinates });
+    } catch (err) {
+      alert(`⚠ Не вдалося завантажити ${id}.json`);
+    } finally {
+      showLoading(false);
+    }
+  }
+});
+
+
 </script>
 </body>
 </html>
