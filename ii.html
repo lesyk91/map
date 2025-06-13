@@ -36,10 +36,6 @@ button.login-btn, button.logout-btn { top: 90px; }
 <body>
 <button onclick="findLocation()" class="locate-btn">📍 Показати моє місце</button>
 <button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
-<button onclick="toggleAll()">Не показувати всі / Показати всі</button>
-<button onclick="highlightStatus('вільно')">Посвітити всі «вільно»</button>
-<button onclick="highlightStatus('на руках')">Посвітити всі «на руках»</button>
-
 <div id="auth-buttons">
   <a href="enter.html"><button class="login-btn" style="display:none">🔐 Увійти</button></a>
   <button class="logout-btn" style="display:none">🚪 Вийти</button>
@@ -126,8 +122,35 @@ logoutBtn?.addEventListener("click", async () => {
   });
 
   const districts = [
-    { id: 'district1', name: 'Територія 1', color: 'blue', fillColor: '#99ccff' },
-    { id: 'district2', name: 'Територія 2', color: 'green', fillColor: '#b6fcb6' },
+    { id: 'district1', name: 'Територія 1', color: 'blue', fillColor: '#add8e6' }, // Lighter blue
+    { id: 'district2', name: 'Територія 2', color: 'green', fillColor: '#90ee90' }, // Lighter green
+    { id: 'district3', name: 'Територія 3', color: 'Yellow', fillColor: '#ffffe0' }, // Lighter yellow
+    { id: 'district4', name: 'Територія 4', color: 'Orange', fillColor: '#ffdab9' }, // Lighter orange
+    { id: 'district5', name: 'Територія 5', color: 'Pink', fillColor: '#ffb6c1' }, // Lighter pink
+    { id: 'district6', name: 'Територія 6', color: 'Brown', fillColor: '#d2b48c' }, // Lighter brown
+    { id: 'district7', name: 'Територія 7', color: 'Purple', fillColor: '#e6e6fa' }, // Lighter purple
+    { id: 'district8', name: 'Територія 8', color: 'Gray', fillColor: '#d3d3d3' }, // Lighter gray
+    { id: 'district9', name: 'Територія 9', color: 'Cyan', fillColor: '#e0ffff' }, // Lighter cyan
+    { id: 'district10', name: 'Територія 10', color: 'Magenta', fillColor: '#ff80ff' }, // Lighter magenta
+    { id: 'district11', name: 'Територія 11', color: 'blue', fillColor: '#add8e6' }, // Lighter blue
+    { id: 'district12', name: 'Територія 12', color: 'green', fillColor: '#90ee90' }, // Lighter green
+    { id: 'district13', name: 'Територія 13', color: 'Yellow', fillColor: '#ffffe0' }, // Lighter yellow
+    { id: 'district14', name: 'Територія 14', color: 'Orange', fillColor: '#ffdab9' }, // Lighter orange
+    { id: 'district15', name: 'Територія 15', color: 'Pink', fillColor: '#ffb6c1' }, // Lighter pink
+    { id: 'district16', name: 'Територія 16', color: 'Brown', fillColor: '#d2b48c' }, // Lighter brown
+    { id: 'district17', name: 'Територія 17', color: 'Purple', fillColor: '#e6e6fa' }, // Lighter purple
+    { id: 'district18', name: 'Територія 18', color: 'Gray', fillColor: '#d3d3d3' }, // Lighter gray
+    { id: 'district19', name: 'Територія 19', color: 'Cyan', fillColor: '#e0ffff' }, // Lighter cyan
+    { id: 'district20', name: 'Територія 20', color: 'Magenta', fillColor: '#ff80ff' }, // Lighter magenta
+    { id: 'district21', name: 'Територія 21', color: 'blue', fillColor: '#add8e6' }, // Lighter blue
+    { id: 'district22', name: 'Територія 22', color: 'green', fillColor: '#90ee90' }, // Lighter green
+    { id: 'district23', name: 'Територія 23', color: 'Yellow', fillColor: '#ffffe0' }, // Lighter yellow
+    { id: 'district24', name: 'Територія 24', color: 'Orange', fillColor: '#ffdab9' }, // Lighter orange
+    { id: 'district25', name: 'Територія 25', color: 'Pink', fillColor: '#ffb6c1' }, // Lighter pink
+    { id: 'district26', name: 'Територія 26', color: 'Brown', fillColor: '#d2b48c' }, // Lighter brown
+    { id: 'district28', name: 'Територія 28', color: 'Gray', fillColor: '#d3d3d3' }, // Lighter gray
+    { id: 'district29', name: 'Територія 29', color: 'Cyan', fillColor: '#e0ffff' }, // Lighter cyan
+    { id: 'district30', name: 'Територія 30', color: 'Magenta', fillColor: '#ff80ff' }, // Lighter magenta
     { id: 'district55', name: 'Територія 55', color: 'green', fillColor: '#b6fcb6' },
     { id: 'district56', name: 'Територія 56', color: 'red', fillColor: '#b6fcb6' }
   ];
@@ -146,6 +169,16 @@ logoutBtn?.addEventListener("click", async () => {
   function showLoading(show) {
     document.getElementById('loader').innerText = show ? 'Завантаження...' : '';
   }
+  
+  
+  // Сортуємо за номером, витягуючи число з id
+districts.sort((a, b) => {
+  const numA = parseInt(a.id.replace("district", ""));
+  const numB = parseInt(b.id.replace("district", ""));
+  return numA - numB;
+});
+
+  
 
   districts.forEach(d => {
     const layer = L.layerGroup();
@@ -180,26 +213,7 @@ tryAddLayersControl();
           if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
         });
 
-        
-		districtGeometries.push({ 
-  id: d.id,
-  name: d.name, 
-  color: d.color,
-  fillColor: d.fillColor,
-  layer: geoJson, // щоб легше було потім з ним працювати
-  coords: coordinates,
-  status: '' // поки що порожній
-});
-
-// після завантажень історії:
-// (в місці де ви визначаєте popupContent)
-
-if (popupContent.indexOf("на руках") !== -1) {
-  districtGeometries.find(el=>el.id===d.id).status = "на руках";
-} else if (popupContent.indexOf("вільно") !== -1) {
-  districtGeometries.find(el=>el.id===d.id).status = "вільно";
-}
-
+        districtGeometries.push({ name: d.name, coordinates });
         showLoading(false);
       })
       .catch(err => {
@@ -255,22 +269,45 @@ function tryAddLayersControl() {
     const distText = dist > 1000 ? (dist / 1000).toFixed(2) + " км" : Math.round(dist) + " м";
     currentMarker?.bindPopup(`Ваше місцерозташування<br>Маршрут до <b>${districtName}</b><br>Відстань: ${distText}`).openPopup();
   }
-  function toggleAll(){
-  for (let d of districtGeometries){
-    if (map.hasLayer(d.layer)) {
-      map.removeLayer(d.layer);
-    } else {
-      d.layer.addTo(map);
-    }
-  }
-}
+  
+  function tryAddLayersControl() {
+  if (loadedLayers.length === districts.length) {
+    layersControl = L.control.layers(
+      { "Стандартна карта": googleStreets, "Супутникова карта": satellite },
+      overlayMaps,
+      { collapsed: false }
+    ).addTo(map);
 
-function highlightStatus(status){
-  for (let d of districtGeometries){
-    if (d.status === status){
-      d.layer.setStyle({ color:'yellow', fillColor:'yellow' });
-    } else {
-      d.layer.setStyle({ color: d.color, fillColor: d.fillColor });
+    // Додаємо перемикач "Показати всі / Приховати всі"
+    const layersContainer = document.querySelector('.leaflet-control-layers-overlays');
+    if (layersContainer) {
+      const toggleDiv = document.createElement('div');
+      toggleDiv.style.marginTop = '8px';
+      const toggleInput = document.createElement('input');
+      toggleInput.type = 'checkbox';
+      toggleInput.id = 'toggle-all-layers';
+      toggleInput.checked = true;
+      toggleInput.style.marginRight = '5px';
+      const toggleLabel = document.createElement('label');
+      toggleLabel.htmlFor = 'toggle-all-layers';
+      toggleLabel.innerText = 'Показати всі';
+
+      toggleDiv.appendChild(toggleInput);
+      toggleDiv.appendChild(toggleLabel);
+      layersContainer.appendChild(toggleDiv);
+
+      toggleInput.addEventListener('change', () => {
+        Object.keys(overlayMaps).forEach(name => {
+          const layer = overlayMaps[name];
+          if (toggleInput.checked) {
+            map.addLayer(layer);
+            toggleLabel.innerText = 'Показати всі';
+          } else {
+            map.removeLayer(layer);
+            toggleLabel.innerText = 'Приховати всі';
+          }
+        });
+      });
     }
   }
 }
