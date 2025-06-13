@@ -184,47 +184,59 @@ districts.sort((a, b) => {
 });
   
 
-  districts.forEach(d => {
-    const layer = L.layerGroup();
-    showLoading(true);
-    fetch(`${d.id}.json`)
-      .then(res => res.json())
-      .then(data => {
-        const geoJsonLayer = L.geoJSON(data, {
-          onEachFeature: (feature, layer) => {
-            const center = layer.getBounds().getCenter();
-            districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
-
-            layer.on("click", async () => {
-              const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-              layer.bindPopup(popupContent + `<br><button onclick=\"routeToDistrict('${d.name}')\">📌 Прокласти маршрут сюди</button>`).openPopup();
-            });
-          },
-          style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
-        }).addTo(layer);
-
-        overlayMaps[d.name] = layer;
-		loadedLayers.push(d.name);
-tryAddLayersControl();
 
 
-        const coordinates = [];
-        const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
-        geometries.forEach(geom => {
-          const coords = geom.coordinates;
-          const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
-          if (geom.type === "Polygon") coords.forEach(pushCoords);
-          if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
-        });
-
-        districtGeometries.push({ name: d.name, coordinates });
-        showLoading(false);
-      })
-      .catch(err => {
-        alert(`⚠ Не вдалося завантажити ${d.id}.json`);
-        showLoading(false);
-      });
+(async () => {
+  showLoading(true);
+  districts.sort((a, b) => {
+    const numA = parseInt(a.id.replace("district", ""), 10);
+    const numB = parseInt(b.id.replace("district", ""), 10);
+    return numA - numB;
   });
+
+  const promises = districts.map(async d => {
+    const layer = L.layerGroup();
+    try {
+      const res = await fetch(`${d.id}.json`);
+      const data = await res.json();
+
+      const geoJsonLayer = L.geoJSON(data, {
+        onEachFeature: (feature, layer) => {
+          const center = layer.getBounds().getCenter();
+          districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
+
+          layer.on("click", async () => {
+            const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
+            layer.bindPopup(popupContent + `<br><button onclick=\"routeToDistrict('${d.name}')\">📌 Прокласти маршрут сюди</button>`).openPopup();
+          });
+        },
+        style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
+      }).addTo(layer);
+
+      overlayMaps[d.name] = layer;
+      loadedLayers.push(d.name);
+
+      const coordinates = [];
+      const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
+      geometries.forEach(geom => {
+        const coords = geom.coordinates;
+        const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
+        if (geom.type === "Polygon") coords.forEach(pushCoords);
+        if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
+      });
+
+      districtGeometries.push({ name: d.name, coordinates });
+    } catch (err) {
+      alert(`⚠ Не вдалося завантажити ${d.id}.json`);
+    }
+  });
+
+  await Promise.all(promises);
+  showLoading(false);
+  tryAddLayersControl(); // тепер викликається гарантовано після всіх fetch
+})();
+
+
 
 
 
@@ -267,13 +279,15 @@ let layersControl = null;
 const loadedLayers = [];
 
 function tryAddLayersControl() {
-      if (loadedLayers.length === districts.length && !layersControl) {
-        layersControl = L.control.layers(
-          { "Стандартна карта": googleStreets, "Супутникова карта": satellite },
-          overlayMaps,
-          { collapsed: true }
-        ).addTo(map);
+  if (!layersControl) {
+    layersControl = L.control.layers(
+      { "Стандартна карта": googleStreets, "Супутникова карта": satellite },
+      overlayMaps,
+      { collapsed: true }
+    ).addTo(map);
 
+    map.once('layeradd', () => {
+      setTimeout(() => {  // Дати час DOM на оновлення
         const layersContainer = document.querySelector('.leaflet-control-layers-overlays');
         if (layersContainer && !document.querySelector('#toggle-all-layers')) {
           const toggleDiv = document.createElement('div');
@@ -291,7 +305,6 @@ function tryAddLayersControl() {
 
           toggleDiv.appendChild(toggleInput);
           toggleDiv.appendChild(toggleLabel);
-
           layersContainer.insertBefore(toggleDiv, layersContainer.firstChild);
 
           toggleInput.addEventListener('change', () => {
@@ -306,8 +319,11 @@ function tryAddLayersControl() {
             });
           });
         }
-      }
-    }
+      }, 500);
+    });
+  }
+}
+
 
 
 
