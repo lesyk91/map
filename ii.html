@@ -176,12 +176,12 @@ logoutBtn?.addEventListener("click", async () => {
   
   // Сортуємо за номером, витягуючи число з id
 
+
 districts.sort((a, b) => {
-  const numA = parseInt(a.id.replace("district", ""));
-  const numB = parseInt(b.id.replace("district", ""));
+  const numA = parseInt(a.id.replace("district", ""), 10);
+  const numB = parseInt(b.id.replace("district", ""), 10);
   return numA - numB;
 });
-
   
 
   districts.forEach(d => {
@@ -274,51 +274,49 @@ function tryAddLayersControl() {
     currentMarker?.bindPopup(`Ваше місцерозташування<br>Маршрут до <b>${districtName}</b><br>Відстань: ${distText}`).openPopup();
   }
   
- let toggleInput = null;
-let toggleLabel = null;
 let layersControl = null;
 const loadedLayers = [];
 
 function tryAddLayersControl() {
-  if (layersControl || loadedLayers.length !== districts.length) return;
+  if (loadedLayers.length === districts.length && !layersControl) {
+    layersControl = L.control.layers(
+      { "Стандартна карта": googleStreets, "Супутникова карта": satellite },
+      overlayMaps,
+      { collapsed: true }
+    ).addTo(map);
 
-  layersControl = L.control.layers(
-    { "Стандартна карта": googleStreets, "Супутникова карта": satellite },
-    overlayMaps,
-    { collapsed: false }
-  ).addTo(map);
+    const layersContainer = document.querySelector('.leaflet-control-layers-overlays');
+    if (layersContainer && !document.querySelector('#toggle-all-layers')) {
+      const toggleDiv = document.createElement('div');
+      toggleDiv.style.marginBottom = '8px';
 
-  const layersContainer = document.querySelector('.leaflet-control-layers-overlays');
-  if (layersContainer && !document.querySelector('#toggle-all-layers')) {
-    const toggleDiv = document.createElement('div');
-    toggleDiv.style.marginBottom = '8px';
+      const toggleInput = document.createElement('input');
+      toggleInput.type = 'checkbox';
+      toggleInput.id = 'toggle-all-layers';
+      toggleInput.checked = true;
+      toggleInput.style.marginRight = '5px';
 
-    toggleInput = document.createElement('input');
-    toggleInput.type = 'checkbox';
-    toggleInput.id = 'toggle-all-layers';
-    toggleInput.checked = true;
-    toggleInput.style.marginRight = '5px';
+      const toggleLabel = document.createElement('label');
+      toggleLabel.htmlFor = 'toggle-all-layers';
+      toggleLabel.innerText = 'Приховати всі';
 
-    toggleLabel = document.createElement('label');
-    toggleLabel.htmlFor = 'toggle-all-layers';
-    toggleLabel.innerText = 'Приховати всі';
+      toggleDiv.appendChild(toggleInput);
+      toggleDiv.appendChild(toggleLabel);
 
-    toggleDiv.appendChild(toggleInput);
-    toggleDiv.appendChild(toggleLabel);
+      layersContainer.insertBefore(toggleDiv, layersContainer.firstChild);
 
-    layersContainer.insertBefore(toggleDiv, layersContainer.firstChild);
-
-    toggleInput.addEventListener('change', () => {
-      const show = toggleInput.checked;
-      toggleLabel.innerText = show ? 'Приховати всі' : 'Показати всі';
-      Object.values(overlayMaps).forEach(layer => {
-        if (show) {
-          map.addLayer(layer);
-        } else {
-          map.removeLayer(layer);
-        }
+      toggleInput.addEventListener('change', () => {
+        const show = toggleInput.checked;
+        toggleLabel.innerText = show ? 'Приховати всі' : 'Показати всі';
+        Object.values(overlayMaps).forEach(layer => {
+          if (show) {
+            map.addLayer(layer);
+          } else {
+            map.removeLayer(layer);
+          }
+        });
       });
-    });
+    }
   }
 }
 
