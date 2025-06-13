@@ -275,10 +275,11 @@ function tryAddLayersControl() {
   }
   
   
- let toggleInput = null;
+let toggleInput = null;
 let toggleLabel = null;
 let layersControl = null;
 const loadedLayers = [];
+
 
 function tryAddLayersControl() {
   if (layersControl || loadedLayers.length !== districts.length) return;
@@ -292,7 +293,7 @@ function tryAddLayersControl() {
   const layersContainer = document.querySelector('.leaflet-control-layers-overlays');
   if (layersContainer && !document.querySelector('#toggle-all-layers')) {
     const toggleDiv = document.createElement('div');
-    toggleDiv.style.marginBottom = '8px'; // трішки відступу знизу
+    toggleDiv.style.marginBottom = '8px';
 
     toggleInput = document.createElement('input');
     toggleInput.type = 'checkbox';
@@ -307,7 +308,6 @@ function tryAddLayersControl() {
     toggleDiv.appendChild(toggleInput);
     toggleDiv.appendChild(toggleLabel);
 
-    // ✅ Додаємо ВГОРУ списку шарів
     layersContainer.insertBefore(toggleDiv, layersContainer.firstChild);
 
     toggleInput.addEventListener('change', () => {
