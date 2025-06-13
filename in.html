@@ -41,12 +41,9 @@ button.login-btn, button.logout-btn { top: 90px; }
   <button class="logout-btn" style="display:none">🚪 Вийти</button>
 </div>
 
-<div id="loader"></div>
-<select id="territory-select" style="position:absolute; top:130px; left:50px; z-index:1000; padding:6px;"></select>
-<button onclick="toggleAllTerritories(true)" class="layer-toggle" style="top:170px;">👁 Показати всі</button>
-<button onclick="toggleAllTerritories(false)" class="layer-toggle" style="top:210px;">🙈 Сховати всі</button>
-<button onclick="filterTerritoriesByStatus('вільно')" class="layer-toggle" style="top:250px;">✅ Вільні</button>
-<button onclick="filterTerritoriesByStatus('на руках')" class="layer-toggle" style="top:290px;">📕 На руках</button>
+<div id="loader"></div>\<select id="territory-selector" style="position:absolute; top:130px; left:50px; z-index:1000; padding:6px; border-radius:4px;">
+  <option value="">🔍 Виберіть територію</option>
+</select>
 
 <div id="map"></div>
 
@@ -127,13 +124,14 @@ logoutBtn?.addEventListener("click", async () => {
     attribution: '© Esri', maxZoom: 20
   });
 
-  const districts = [];
+  // Автоматично згенеруємо 150 територій
+const districts = [];
 for (let i = 1; i <= 150; i++) {
   districts.push({
     id: `district${i}`,
     name: `Територія ${i}`,
     color: 'blue',
-    fillColor: '#99ccff'
+    fillColor: '#cce5ff'
   });
 }
 
@@ -141,8 +139,14 @@ for (let i = 1; i <= 150; i++) {
   const districtCenters = [];
   const districtGeometries = [];
   const overlayMaps = {};
-  const districtLayers = {};
-const allTerritories = [];
+  
+  const selector = document.getElementById('territory-selector');
+districts.forEach(d => {
+  const option = document.createElement("option");
+  option.value = d.id;
+  option.textContent = d.name;
+  selector.appendChild(option);
+});
 
 
   function toggleLayers() {
@@ -155,63 +159,61 @@ const allTerritories = [];
   function showLoading(show) {
     document.getElementById('loader').innerText = show ? 'Завантаження...' : '';
   }
-districts.forEach(d => {
-  const layer = L.layerGroup();
+
+  const districtLayers = {}; // тут будемо зберігати завантажені шари
+
+selector.addEventListener("change", async (e) => {
+  const selectedId = e.target.value;
+  if (!selectedId) return;
+
+  const selected = districts.find(d => d.id === selectedId);
+  if (!selected) return;
+
+  // Видаляємо всі інші шари
+  Object.values(districtLayers).forEach(layer => map.removeLayer(layer));
+
+  if (districtLayers[selectedId]) {
+    districtLayers[selectedId].addTo(map);
+    return;
+  }
+
   showLoading(true);
-  fetch(`${d.id}.json`)
-    .then(res => res.json())
-    .then(data => {
-      const geoJsonLayer = L.geoJSON(data, {
-        onEachFeature: (feature, layer) => {
-          const center = layer.getBounds().getCenter();
-          districtCenters.push({ name: d.name, latlng: center });
-          layer.on("click", async () => {
-            const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-            layer.bindPopup(popupContent + `<br><button onclick=\"routeToDistrict('${d.name}')\">📌 Прокласти маршрут сюди</button>`).openPopup();
-          });
-        },
-        style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
-      }).addTo(layer);
+  try {
+    const res = await fetch(`${selectedId}.json`);
+    const data = await res.json();
+    const layerGroup = L.layerGroup();
 
-      // Зберігаємо шари
-      overlayMaps[d.name] = layer;
-      districtLayers[d.name] = layer;
-      allTerritories.push({ name: d.name, layer, id: d.id });
+    const geoJsonLayer = L.geoJSON(data, {
+      onEachFeature: (feature, layer) => {
+        const center = layer.getBounds().getCenter();
+        districtCenters.push({ name: feature.properties?.name || selected.name, latlng: center });
+        layer.on("click", async () => {
+          const popupContent = await window.getTerritoryStatusPopup(selected.id.replace("district", ""), selected.name);
+          layer.bindPopup(popupContent + `<br><button onclick=\"routeToDistrict('${selected.name}')\">📌 Прокласти маршрут сюди</button>`).openPopup();
+        });
+      },
+      style: { color: selected.color, fillColor: selected.fillColor, fillOpacity: 0.4 }
+    }).addTo(layerGroup);
 
-      loadedLayers.push(d.name);
-      tryAddLayersControl();
+    districtLayers[selectedId] = layerGroup;
+    layerGroup.addTo(map);
 
-      // Координати для прокладання маршруту
-      const coordinates = [];
-      const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
-      geometries.forEach(geom => {
-        const coords = geom.coordinates;
-        const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
-        if (geom.type === "Polygon") coords.forEach(pushCoords);
-        if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
-      });
-      districtGeometries.push({ name: d.name, coordinates });
-
-      // Додаємо до селектора
-      const option = document.createElement("option");
-      option.value = d.name;
-      option.textContent = d.name;
-      document.getElementById("territory-select").appendChild(option);
-
-      showLoading(false);
-    })
-    .catch(err => {
-      console.warn(`⚠ Не вдалося завантажити ${d.id}.json`);
-      showLoading(false);
+    // Підготовка до маршруту
+    const coordinates = [];
+    const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
+    geometries.forEach(geom => {
+      const coords = geom.coordinates;
+      const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
+      if (geom.type === "Polygon") coords.forEach(pushCoords);
+      if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
     });
+    districtGeometries.push({ name: selected.name, coordinates });
+  } catch (err) {
+    alert(`⚠ Не вдалося завантажити ${selectedId}.json`);
+  } finally {
+    showLoading(false);
+  }
 });
-
-
-
-
-
-
-
 
 
 
@@ -263,35 +265,6 @@ function tryAddLayersControl() {
     const distText = dist > 1000 ? (dist / 1000).toFixed(2) + " км" : Math.round(dist) + " м";
     currentMarker?.bindPopup(`Ваше місцерозташування<br>Маршрут до <b>${districtName}</b><br>Відстань: ${distText}`).openPopup();
   }
-  
-  function toggleAllTerritories(show) {
-  Object.values(districtLayers).forEach(layer => {
-    if (show) map.addLayer(layer);
-    else map.removeLayer(layer);
-  });
-}
-
-async function filterTerritoriesByStatus(status) {
-  showLoading(true);
-  toggleAllTerritories(false);
-  for (let territory of allTerritories) {
-    const number = territory.id.replace("district", "");
-    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-    const snap = await getDocs(q);
-    let currentStatus = "вільно";
-    if (!snap.empty) currentStatus = snap.docs[0].data().status || "вільно";
-    if (currentStatus === status) map.addLayer(territory.layer);
-  }
-  showLoading(false);
-}
-
-// Перехід до території при виборі
-document.getElementById("territory-select").addEventListener("change", e => {
-  const name = e.target.value;
-  const district = districtCenters.find(d => d.name === name);
-  if (district) map.setView(district.latlng, 15);
-});
-
 </script>
 </body>
 </html>
