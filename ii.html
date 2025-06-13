@@ -8,36 +8,32 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
 <style>
-html,body,#map {height:100%;margin:0;padding:0;}
+html,body,#map {height: 100%;margin: 0;padding: 0;}
 button.layer-toggle,button.locate-btn,button.login-btn,button.logout-btn {
-  position:absolute;left:50px;z-index:1000;padding:8px 12px;background:#fff;
-  border:1px solid #ccc;border-radius:4px;cursor:pointer;
+	position: absolute;
+	left: 50px;
+	z-index: 1000;
+	padding: 8px 12px;
+	background: white;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	cursor: pointer;
 }
 button.locate-btn {top: 10px;}
 button.layer-toggle {top: 50px;}
-button.login-btn, button.logout-btn {top: 90px;}
-
-#loader {position: absolute;top: 10px;left: 215px;z-index: 1000;padding: 8px;
-  background: #fff;border: 1px solid #ccc;border-radius: 10px;}
-
+button.login-btn,button.logout-btn {top: 90px;}
+#loader {position: absolute;top: 10px;left: 215px;z-index: 1000;padding: 8px;background: white;border: 1px solid #ccc;border-radius: 10px;}
 </style>
 </head>
 <body>
 <button onclick="findLocation()" class="locate-btn">📍 Показати моє місце</button>
 <button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
 <div id="auth-buttons">
-<a href="enter.html"><button class="login-btn" style="display:none">🔐 Увійти</button></a>
-<button class="logout-btn" style="display:none">🚪 Вийти</button>
+  <a href="enter.html"><button class="login-btn" style="display:none">🔐 Увійти</button></a>
+  <button class="logout-btn" style="display:none">🚪 Вийти</button>
 </div>
-
 <div id="loader"></div>
-
 <div id="map"></div>
-
-<!-- Додані кнопки для фільтрації -->
-<button id="filterFreeBtn" style="top: 130px; left: 50px;" class="filter-free">Фільтрація «вільно» </button>
-<button id="filterHandBtn" style="top: 170px; left: 50px;" class="filter-onHand">Фільтрація «на руках» </button>
-<button id="toggleAllBtn" style="top: 210px; left: 50px;" class="filter-all">Не показувати всі / Показати всі </button>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
@@ -47,7 +43,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebas
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getFirestore, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-const firebaseConfig = { 
+const firebaseConfig = {
   apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
   authDomain: "map-illintsi.firebaseapp.com",
   projectId: "map-illintsi",
@@ -61,170 +57,194 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 let currentUser = null;
 
-const loginBtn = document.querySelector('.login-btn'); 
-const logoutBtn = document.querySelector('.logout-btn'); 
-onAuthStateChanged(auth, user => { 
-  currentUser = user; 
-  if (user) { 
+const loginBtn = document.querySelector('.login-btn');
+const logoutBtn = document.querySelector('.logout-btn');
+
+onAuthStateChanged(auth, user => {
+  currentUser = user;
+  if (user) {
     loginBtn.style.display = 'none';
     logoutBtn.style.display = 'inline-block';
-  } else { 
+  } else {
     loginBtn.style.display = 'inline-block';
     logoutBtn.style.display = 'none';
   }
-}); 
-logoutBtn?.addEventListener("click", async () => { 
-  await signOut(auth);
-  location.reload();
-}); 
- 
-onAuthStateChanged(auth, user => { 
-  currentUser = user; 
-}); 
- 
-window.getTerritoryStatusPopup = async (number, name) => { 
-  if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`; 
-  const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc")); 
-  const snap = await getDocs(q); 
-  let popup = `<b>${name}</b><br>`; 
-  if (snap.empty) { 
-    popup += `<b>Статус:</b> вільно`; 
-    return popup;
-  } else { 
-    const data = snap.docs[0].data();
-    popup += `<b>Статус:</b> ${data.status}<br>`; 
-    if (data.status === "на руках") { 
-      popup += `<b>ПІБ:</b> ${data.pib}<br>`; 
-      popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`; 
-    }
-    return popup;
-  }
-};
-
-</script>
-
-<script>
-const map = L.map('map').setView([49.1029, 29.2074], 13);
-const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { 
-  maxZoom: 20, 
-  subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], 
-  attribution:'© Google Maps'
-}).addTo(map);
-const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { 
-  attribution:'© Esri', maxZoom: 20 
 });
 
-// Зараз всі 150 будуть згенеровані циклом з випадковими кольорами
-const districts = [];
+logoutBtn?.addEventListener("click", async () => {
+  await signOut(auth);
+  location.reload();
+});
 
-for (let i = 1; i <= 150; i++) {
-  districts.push({ 
-    id: `district${i}`,
-    name: `Територія ${i}`,
-    color: '#' + Math.floor(Math.random() * 16777215).toString(16),
-    fillColor: '#' + Math.floor(Math.random() * 16777215).toString(16)
-  });
+// findLocation функция
+function findLocation(){
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        L.marker([lat, lng]).addTo(map).bindPopup("Ти тут").openPopup();
+        map.setView([lat, lng], 15);
+      },
+      (err) => {
+        console.error(err);
+        alert("Не можу визначити місце розташування.");
+      }
+    )
+  } else {
+    alert("Геолокація не підтримується.");
+  }
 }
 
-const districtCenters = []; 
-const districtGeometries = []; 
-const overlayMaps = {};
+window.findLocation = findLocation;
 
-function toggleLayers() { 
-  const control = document.querySelector('.leaflet-control-layers'); 
-  if (control) control.classList.toggle('leaflet-control-layers-expanded'); 
-  const btn = document.querySelector('.layer-toggle'); 
-  btn.innerText = control.classList.contains('leaflet-control-layers-expanded') ? '🗺 Приховати шари' : '🗺 Шари';
-}
+// ініціалізація карти
+const map = L.map('map').setView([49.1029, 29.2074], 13);
+const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+  maxZoom: 20,
+  subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+  attribution: '© Google Maps'
+}).addTo(map);
+const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  attribution: '© Esri',
+  maxZoom: 20
+});
 
-function showLoading(show) { 
-  document.getElementById('loader').innerText = show ? 'Завантаження...' : '';
-}
+// створюємо control раніше
+const baseMaps = { "Стандартна карта": googleStreets, "Супутникова карта": satellite };
+const overlays = {};
+
+const layerControl = L.control.layers(baseMaps, overlays, { collapsed: true }).addTo(map);
+
+// Вказуємо всі райони
+const districts = [
+  { id:'district1', name:'Територія 1', color:'blue', fillColor:'#99ccff' },
+  { id:'district2', name:'Територія 2', color:'green', fillColor:'#b6fcb6' },
+  { id:'district55', name:'Територія 55', color:'green', fillColor:'#b6fcb6' },
+  { id:'district56', name:'Територія 56', color:'red', fillColor:'#b6fcb6' }
+  // Тут ви потім додасте всі 150...
+];
+
+// щоб легше було перейти потім до всієї логіки
+window.districts = districts;
 
 const loadedLayers = [];
 
-function tryAddLayersControl() { 
-  if (loadedLayers.length === districts.length) { 
-    L.control.layers( 
-      { "Стандартна карта": googleStreets, "Супутникова карта": satellite },
-      overlayMaps,
-      { collapsed: true }
-    ).addTo(map);
+function showLoading(show) {
+  document.getElementById('loader').innerText = show ? 'Завантаження...' : '';
+}
+
+function toggleLayers(){
+  const control = document.querySelector('.leaflet-control-layers'); 
+  if (control) control.classList.toggle('leaflet-control-layers-expanded'); 
+  const btn = document.querySelector('.layer-toggle'); 
+  btn.innerText = control?.classList.contains('leaflet-control-layers-expanded') ? '🗺 Приховати шари' : '🗺 Шари';
+}
+
+window.toggleLayers = toggleLayers;
+
+function routeToDistrict(districtName) {
+  if (!currentLocation) return alert("⛔ Спочатку натисніть 📍 «Показати місце»"); 
+  const district = districtGeometries.find(d => d.name === districtName);
+  if (!district || !district.coordinates.length) return alert(`⚠ Немає координат для ${districtName}`);
+
+  let nearestPoint = district.coordinates.reduce((nearest, coord) => currentLocation.distanceTo(coord) < currentLocation.distanceTo(nearest) ? coord : nearest);
+  if (routeControl) map.removeControl(routeControl);
+  routeControl = L.Routing.control({ 
+    waypoints: [currentLocation, nearestPoint],
+    routeWhileDragging: false,
+    addWaypoints: false,
+    show: false,
+    createMarker: () => null
+  }).addTo(map);
+}
+
+window.routeToDistrict = routeToDistrict;
+
+async function getTerritoryStatusPopup(number, name) {
+  if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
+  const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+  const snap = await getDocs(q);
+  let popup = `<b>${name}</b><br>`;
+  if (snap.empty) {
+    popup += `<b>Статус:</b> вільно`; 
+  } else {
+    const data = snap.docs[0].data();
+    popup += `<b>Статус:</b> ${data.status}<br>`;
+    if (data.status === "на руках") {
+      popup += `<b>ПІБ:</b> ${data.pib}<br>`;
+      popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`;
+
+    }
+  }
+  return popup;
+}
+
+window.getTerritoryStatusPopup = getTerritoryStatusPopup;
+
+// завантажуємо всі райони
+const districtGeometries = [];
+
+function tryAddToMap(){
+  if (loadedLayers.length === districts.length) {
+    for (let [name, layer] of Object.entries(overlays)) {
+      layerControl.addOverlay(layer, name);
+    }
   }
 }
 
-districts.forEach(d => { 
-  const layer = L.layerGroup();
+for (const d of districts) {
   showLoading(true);
-  fetch(`${d.id}.json`) 
+  fetch(`${d.id}.json`)
     .then(res => res.json()) 
-    .then(data => { 
-      const geoJsonLayer = L.geoJSON(data, { 
-        onEachFeature: (feature, layer) => { 
-          const center = layer.getBounds().getCenter();
-          districtCenters.push({ name: feature.properties?.name || d.name, latlng: center }); 
-          layer.on("click", async () => { 
-            const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-            layer.bindPopup(popupContent + `<br><button onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
+    .then(data => {
+      const layer = L.layerGroup();
 
-            // Тут можна зберегти статус для фільтрації
-            d.status = popupContent.indexOf('вільно') !== -1 ? 'вільно'
-                      : popupContent.indexOf('на руках') !== -1 ? 'на руках'
-                      : '';
-          }); 
+      const geoJson = L.geoJSON(data, {
+        onEachFeature: (feature, layerFeature) => {
+          const center = layerFeature.getBounds().getCenter();
+
+          layerFeature.on("click", async () => {
+            const popup = await getTerritoryStatusPopup(d.id.replace("district",""), d.name);
+            layerFeature.bindPopup(popup + `<br><button onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
+          });
+
         },
         style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
       }).addTo(layer);
-      overlayMaps[d.name] = layer;
+      overlays[d.name] = layer;
       loadedLayers.push(d.name);
-      tryAddLayersControl();
+      tryAddToMap();
 
-      // Координати
-      const coords = []; 
-      const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry]; 
-      geometries.forEach(geom => { 
-        const coords = geom.coordinates; 
-        const pushCoords = ring => ring.forEach(c => coordsArray.push(L.latLng(c[1], c[0]))); 
-        // (Не використовується тут, але можливо знадобиться для іншого) 
-      }); 
- 
+      // збираємо всі координати
+      const coords = [];
+
+      const geoms = data?.type === "Feature" ? [data.geometry] :
+                      data?.type === "FeatureCollection" ? data.features.map(f => f.geometry) :
+                      data?.type === "GeometryCollection" ? data.geometries :
+                      [data.geometry];
+      geoms?.forEach(geom => {
+        if (geom?.type === "Polygon") {
+          geom.coordinates[0].forEach(ringPoint => coords.push(L.latLng(ringPoint[1], ringPoint[0])));
+        }
+        if (geom?.type === "MultiPolygon") {
+          geom.coordinates?.forEach(polygon => {
+            polygon[0].forEach(ringPoint => coords.push(L.latLng(ringPoint[1], ringPoint[0])));
+          });
+        }
+      });
+
+      districtGeometries.push({ name: d.name, coordinates: coords });
+
       showLoading(false);
     })
     .catch(err => { 
-      console.log(err);
+      console.error(err);
       showLoading(false);
     });
-});
-
-// Фільтрація
-function highlightStatus(status) {
-  for (let d of districts) {
-    if (overlayMaps[d.name]) {
-      if (d.status === status) {
-        map.addLayer(overlayMaps[d.name]);
-      } else {
-        map.removeLayer(overlayMaps[d.name]);
-      }
-    }
-  }
 }
 
-document.getElementById('filterFreeBtn')?.addEventListener('click', () => highlightStatus('вільно'));
-
-document.getElementById('filterHandBtn')?.addEventListener('click', () => highlightStatus('на руках'));
-
-document.getElementById('toggleAllBtn')?.addEventListener('click', () => {
-  for (let d of districts) {
-    if (map.hasLayer(overlayMaps[d.name])) {
-      map.removeLayer(overlayMaps[d.name]);
-    } else {
-      map.addLayer(overlayMaps[d.name]);
-    }
-  }
-});
-
-// … інша логіка (geolocation, routeToDistrict) залишається без змін
-
 </script>
+
 </body>
 </html>
