@@ -274,12 +274,10 @@ function tryAddLayersControl() {
     currentMarker?.bindPopup(`Ваше місцерозташування<br>Маршрут до <b>${districtName}</b><br>Відстань: ${distText}`).openPopup();
   }
   
-  
-let toggleInput = null;
+ let toggleInput = null;
 let toggleLabel = null;
 let layersControl = null;
 const loadedLayers = [];
-
 
 function tryAddLayersControl() {
   if (layersControl || loadedLayers.length !== districts.length) return;
@@ -323,6 +321,7 @@ function tryAddLayersControl() {
     });
   }
 }
+
 
 
 
