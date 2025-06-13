@@ -36,6 +36,10 @@ button.login-btn, button.logout-btn { top: 90px; }
 <body>
 <button onclick="findLocation()" class="locate-btn">📍 Показати моє місце</button>
 <button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
+<button id="filterFreeBtn"> Віділити всі «вільно» </button>
+<button id="filterHandBtn"> Віділити всі «на руках» </button>
+<button id="toggleAllBtn"> Показати всі / приховати всі </button>
+
 <div id="auth-buttons">
   <a href="enter.html"><button class="login-btn" style="display:none">🔐 Увійти</button></a>
   <button class="logout-btn" style="display:none">🚪 Вийти</button>
@@ -165,6 +169,22 @@ for (let i = 1; i <= 150; i++) {
             });
           },
           style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
+		  const geoJsonLayer = L.geoJSON(data, {
+  onEachFeature: (feature, layer) => {
+    // старий код
+    layer.options.selected = false;
+    layer.options.originalColor = d.color;
+
+    layer.on('click', () => {
+      layer.options.selected = !layer.options.selected;
+      layer.setStyle({ color: layer.options.selected ? 'yellow' : layer.options.originalColor });
+    });
+
+    // інша логіка залишається...
+  },
+  style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
+}).addTo(layer);
+
         }).addTo(layer);
 
         overlayMaps[d.name] = layer;
@@ -189,6 +209,34 @@ tryAddLayersControl();
         showLoading(false);
       });
   });
+function highlightStatus(status) {
+  for (let d of districts) {
+    // Тут ви перевірите всі верстві
+    // Реалізація залежно від структури БД
+    // Тут я даю приблизний варіант:
+    // В цьому місці ви повинно завантажити статус з Firebase
+    // поки що припустімо всі "вільно":
+    if (status === "вільно") {
+      overlayMaps[d.name]?.setStyle({ color:'yellow' });
+    } else {
+      overlayMaps[d.name]?.setStyle({ color: d.color });
+    }
+  }
+}
+
+document.getElementById('filterFreeBtn')?.addEventListener('click', () => highlightStatus('вільно'));
+
+document.getElementById('filterHandBtn')?.addEventListener('click', () => highlightStatus('на руках'));
+
+document.getElementById('toggleAllBtn')?.addEventListener('click', () => {
+  for (let d of districts) {
+    if (map.hasLayer(overlayMaps[d.name])) {
+      map.removeLayer(overlayMaps[d.name]);
+    } else {
+      map.addLayer(overlayMaps[d.name]);
+    }
+  }
+});
 
  let layersControl = null;
 const loadedLayers = [];
