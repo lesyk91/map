@@ -98,28 +98,38 @@
 
   async function getTerritoryStatus(number) {
     if (!currentUser) return null;
-    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-    const snap = await getDocs(q);
-    if (snap.empty) return "вільно";
-    return snap.docs[0].data().status;
+    try {
+      const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+      const snap = await getDocs(q);
+      console.log(`Status for territory ${number}: ${snap.empty ? "вільно" : snap.docs[0].data().status}`);
+      return snap.empty ? "вільно" : snap.docs[0].data().status;
+    } catch (err) {
+      console.warn(`Error fetching status for territory ${number}: ${err.message}`);
+      return null;
+    }
   }
 
   window.getTerritoryStatusPopup = async (number, name) => {
     if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
-    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-    const snap = await getDocs(q);
-    let popup = `<b>${name}</b><br>`;
-    if (snap.empty) {
-      popup += `<b>Статус:</b> вільно`;
-    } else {
-      const data = snap.docs[0].data();
-      popup += `<b>Статус:</b> ${data.status}<br>`;
-      if (data.status === "на руках") {
-        popup += `<b>ПІБ:</b> ${data.pib}<br>`;
-        popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`;
+    try {
+      const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+      const snap = await getDocs(q);
+      let popup = `<b>${name}</b><br>`;
+      if (snap.empty) {
+        popup += `<b>Статус:</b> вільно`;
+      } else {
+        const data = snap.docs[0].data();
+        popup += `<b>Статус:</b> ${data.status}<br>`;
+        if (data.status === "на руках") {
+          popup += `<b>ПІБ:</b> ${data.pib}<br>`;
+          popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`;
+        }
       }
+      return popup;
+    } catch (err) {
+      console.warn(`Error fetching popup for territory ${number}: ${err.message}`);
+      return `<b>${name}</b><br><i>Помилка завантаження статусу</i>`;
     }
-    return popup;
   };
 </script>
 <script>
@@ -210,29 +220,21 @@
             districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
             layer.on("click", async () => {
               const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-              layer.bindPopup(popupContent + `<br><button onclick=\"routeToDistrict('${d.name}')\">📌 Прокласти маршрут сюди</button>`).openPopup();
+              layer.bindPopup(popupContent + `<br><button onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
             });
           },
           style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
         }).addTo(layer);
 
-        loadedLayers.push({ name: d.name, layer, status });
+        loadedLayers.push({ name: d.name, layer, status: status || "невідомо" });
         overlayMaps[d.name] = layer;
-
-        const coordinates = [];
-        const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
-        geometries.forEach(geom => {
-          const coords = geom.coordinates;
-          const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
-          if (geom.type === "Polygon") coords.forEach(pushCoords);
-          if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
-        });
-
-        districtGeometries.push({ name: d.name, coordinates });
+        console.log(`Loaded layer: ${d.name}, Status: ${status || "невідомо"}`);
       } catch (err) {
         console.warn(`Помилка при завантаженні ${d.id}.json: ${err.message}`);
       }
     }
+    console.log(`Total loaded layers: ${loadedLayers.length}`);
+    console.log(`OverlayMaps:`, Object.keys(overlayMaps));
     showLoading(false);
     tryAddLayersControl();
     initializeFilterControls();
@@ -284,6 +286,7 @@
         sortedOverlayMaps,
         { collapsed: true }
       ).addTo(map);
+      console.log(`Layers control added with ${Object.keys(sortedOverlayMaps).length} overlay layers`);
     }
   }
 
@@ -299,13 +302,11 @@
       toggleAllLabel.innerText = toggleAllInput.checked ? 'Приховати всі' : 'Показати всі';
       toggleFreeInput.disabled = toggleAllInput.checked;
       toggleTakenInput.disabled = toggleAllInput.checked;
-      updateLayerVisibility();
     } else {
       toggleAllInput.checked = true;
       toggleAllLabel.innerText = 'Приховати всі';
       toggleFreeInput.disabled = true;
       toggleTakenInput.disabled = true;
-      updateLayerVisibility();
     }
 
     toggleAllInput.addEventListener('change', () => {
@@ -323,6 +324,7 @@
 
     toggleFreeInput.addEventListener('change', updateLayerVisibility);
     toggleTakenInput.addEventListener('change', updateLayerVisibility);
+    updateLayerVisibility();
   }
 
   function updateLayerVisibility() {
@@ -339,8 +341,13 @@
         map.addLayer(layer);
       } else {
         const shouldShow = (showFree && status === "вільно") || (showTaken && status === "на руках");
-        if (shouldShow) map.addLayer(layer);
-        else map.removeLayer(layer);
+        if (shouldShow) {
+          map.addLayer(layer);
+          console.log(`Showing layer with status: ${status}`);
+        } else {
+          map.removeLayer(layer);
+          console.log(`Hiding layer with status: ${status}`);
+        }
       }
     });
   }
