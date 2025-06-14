@@ -47,6 +47,15 @@ button.login-btn, button.logout-btn { top: 90px; }
   <input type="checkbox" id="toggle-all-layers" checked>
   <label for="toggle-all-layers" id="toggle-all-label">Приховати всі</label>
 </div>
+<div style="position: absolute; top: 130px; left: 50px; z-index: 1000; background: white; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+  <input type="checkbox" id="filter-free" checked>
+  <label for="filter-free">Показати «вільно»</label>
+</div>
+<div style="position: absolute; top: 170px; left: 50px; z-index: 1000; background: white; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+  <input type="checkbox" id="filter-taken" checked>
+  <label for="filter-taken">Показати «на руках»</label>
+</div>
+<div id="map"></div>
 <div id="map"></div>
 <div id="map"></div>
 
@@ -99,22 +108,22 @@ logoutBtn?.addEventListener("click", async () => {
   });
 
   window.getTerritoryStatusPopup = async (number, name) => {
-    if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
-    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-    const snap = await getDocs(q);
-    let popup = `<b>${name}</b><br>`;
-    if (snap.empty) {
-      popup += `<b>Статус:</b> вільно`;
-    } else {
-      const data = snap.docs[0].data();
-      popup += `<b>Статус:</b> ${data.status}<br>`;
-      if (data.status === "на руках") {
-        popup += `<b>ПІБ:</b> ${data.pib}<br>`;
-        popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`;
-      }
+  if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
+  const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+  const snap = await getDocs(q);
+  let popup = `<b>${name}</b><br>`;
+  if (snap.empty) {
+    popup += `<b>Статус:</b> вільно`;
+  } else {
+    const data = snap.docs[0].data();
+    popup += `<b>Статус:</b> ${data.status}<br>`;
+    if (data.status === "на руках") {
+      popup += `<b>ПІБ:</b> ${data.pib}<br>`;
+      popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`;
     }
-    return popup;
-  };
+  }
+  return popup;
+};
 </script>
 
 <script>
@@ -287,27 +296,24 @@ districts.sort((a, b) => {
   
 let layersControl = null;
 const loadedLayers = [];
-
-
+const territoryStatuses = []; // Новий масив для зберігання статусів
 
 (async () => {
   showLoading(true);
 
-  // Сортування district заздалегідь
   districts.sort((a, b) => {
     const numA = parseInt(a.id.replace("district", ""), 10);
     const numB = parseInt(b.id.replace("district", ""), 10);
     return numA - numB;
   });
 
-  // Використовуємо for...of замість map, щоб обробляти запити послідовно
   for (const d of districts) {
     const layer = L.layerGroup();
     try {
       const res = await fetch(`${d.id}.json`);
       if (!res.ok) {
         console.warn(`Не вдалося завантажити ${d.id}.json: ${res.status}`);
-        continue; // Пропускаємо територію, якщо файл не завантажився
+        continue;
       }
       const data = await res.json();
 
@@ -324,9 +330,19 @@ const loadedLayers = [];
         style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
       }).addTo(layer);
 
-      // Додаємо шар у правильному порядку
-      loadedLayers.push({ name: d.name, layer });
+      // Отримання статусу території
+      let status = 'вільно';
+      if (currentUser) {
+        const q = query(collection(db, `territories/${d.id.replace("district", "")}/history`), orderBy("timestamp", "desc"));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          status = snap.docs[0].data().status;
+        }
+      }
+
+      loadedLayers.push({ name: d.name, layer, status });
       overlayMaps[d.name] = layer;
+      territoryStatuses.push({ name: d.name, status });
 
       const coordinates = [];
       const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
@@ -354,7 +370,6 @@ const loadedLayers = [];
 
 function tryAddLayersControl() {
   if (!layersControl) {
-    // Створюємо об'єкт overlayMaps у правильному порядку
     const sortedOverlayMaps = {};
     loadedLayers.forEach(({ name, layer }) => {
       sortedOverlayMaps[name] = layer;
@@ -366,32 +381,51 @@ function tryAddLayersControl() {
       { collapsed: true }
     ).addTo(map);
 
-    // Ініціалізація чекбокса
     const toggleInput = document.getElementById('toggle-all-layers');
     const toggleLabel = document.getElementById('toggle-all-label');
-    const savedState = localStorage.getItem('showAllLayers');
-    if (savedState !== null) {
-      toggleInput.checked = JSON.parse(savedState);
-      toggleLabel.innerText = toggleInput.checked ? 'Приховати всі' : 'Показати всі';
-      Object.values(sortedOverlayMaps).forEach(layer => {
-        if (toggleInput.checked) map.addLayer(layer);
-        else map.removeLayer(layer);
-      });
-    } else {
-      toggleInput.checked = true;
-      toggleLabel.innerText = 'Приховати всі';
-      Object.values(sortedOverlayMaps).forEach(layer => map.addLayer(layer));
-    }
+    const filterFreeInput = document.getElementById('filter-free');
+    const filterTakenInput = document.getElementById('filter-taken');
 
-    toggleInput.addEventListener('change', () => {
-      const show = toggleInput.checked;
-      toggleLabel.innerText = show ? 'Приховати всі' : 'Показати всі';
-      Object.values(sortedOverlayMaps).forEach(layer => {
-        if (show) map.addLayer(layer);
-        else map.removeLayer(layer);
+    const updateLayersVisibility = () => {
+      const showAll = toggleInput.checked;
+      const showFree = filterFreeInput.checked;
+      const showTaken = filterTakenInput.checked;
+
+      loadedLayers.forEach(({ layer, status }) => {
+        const shouldShow = showAll && (
+          (status === 'вільно' && showFree) ||
+          (status === 'на руках' && showTaken)
+        );
+        if (shouldShow) {
+          map.addLayer(layer);
+        } else {
+          map.removeLayer(layer);
+        }
       });
-      localStorage.setItem('showAllLayers', show);
-    });
+
+      toggleLabel.innerText = showAll ? 'Приховати всі' : 'Показати всі';
+      localStorage.setItem('showAllLayers', showAll);
+      localStorage.setItem('filterFree', showFree);
+      localStorage.setItem('filterTaken', showTaken);
+    };
+
+    // Ініціалізація стану чекбоксів
+    const savedShowAll = localStorage.getItem('showAllLayers');
+    const savedFilterFree = localStorage.getItem('filterFree');
+    const savedFilterTaken = localStorage.getItem('filterTaken');
+
+    toggleInput.checked = savedShowAll !== null ? JSON.parse(savedShowAll) : true;
+    filterFreeInput.checked = savedFilterFree !== null ? JSON.parse(savedFilterFree) : true;
+    filterTakenInput.checked = savedFilterTaken !== null ? JSON.parse(savedFilterTaken) : true;
+    toggleLabel.innerText = toggleInput.checked ? 'Приховати всі' : 'Показати всі';
+
+    // Початкове оновлення видимості шарів
+    updateLayersVisibility();
+
+    // Обробники подій для чекбоксів
+    toggleInput.addEventListener('change', updateLayersVisibility);
+    filterFreeInput.addEventListener('change', updateLayersVisibility);
+    filterTakenInput.addEventListener('change', updateLayersVisibility);
   }
 }
 </script>
