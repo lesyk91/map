@@ -121,7 +121,7 @@
   };
 
   window.getTerritoryStatus = async (number) => {
-    if (!currentUser) return "вільно"; // За замовчуванням, якщо користувач не авторизований
+    if (!currentUser) return "вільно";
     const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
     const snap = await getDocs(q);
     if (snap.empty) {
@@ -246,7 +246,15 @@
     for (const { name, layer } of loadedLayers) {
       const district = districts.find(d => d.name === name);
       const status = districtStatuses[district.id] || "вільно";
-      const shouldShow = showAll && ((status === "вільно" && showFree) || (status === "на руках" && showTaken));
+      let shouldShow = false;
+
+      if (showAll) {
+        shouldShow = true; // Показуємо всі території, якщо "Показати всі" активний
+      } else {
+        // Якщо "Приховати всі" активний, показуємо лише території, що відповідають фільтрам
+        shouldShow = (status === "вільно" && showFree) || (status === "на руках" && showTaken);
+      }
+
       if (shouldShow) {
         map.addLayer(layer);
       } else {
@@ -309,8 +317,9 @@
     showLoading(false);
     tryAddLayersControl();
 
-    document.getElementById('toggle-all-layers').addEventListener('change', () => {
-      document.getElementById('toggle-all-label').innerText = document.getElementById('toggle-all-layers').checked ? 'Приховати всі' : 'Показати всі';
+    const toggleAllInput = document.getElementById('toggle-all-layers');
+    toggleAllInput.addEventListener('change', () => {
+      document.getElementById('toggle-all-label').innerText = toggleAllInput.checked ? 'Приховати всі' : 'Показати всі';
       updateLayerVisibility();
     });
 
