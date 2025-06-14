@@ -29,9 +29,12 @@
       position: absolute; top: 10px; left: 215px; z-index: 1000;
       padding: 8px; background: white; border: 1px solid #ccc; border-radius: 10px;
     }
-    .filter-controls {
+    #filter-controls {
       position: absolute; top: 90px; left: 50px; z-index: 1000;
       background: white; padding: 8px; border: 1px solid #ccc; border-radius: 4px;
+    }
+    #filter-controls label {
+      margin-left: 5px;
     }
   </style>
 </head>
@@ -42,25 +45,16 @@
   <a href="enter.html"><button class="login-btn" style="display:none">🔐 Увійти</button></a>
   <button class="logout-btn" style="display:none">🚪 Вийти</button>
 </div>
-
 <div id="loader"></div>
-
-<div class="filter-controls">
-  <div>
-    <input type="checkbox" id="toggle-all-layers" checked>
-    <label for="toggle-all-layers" id="toggle-all-label">Приховати всі</label>
-  </div>
-  <div>
-    <input type="checkbox" id="toggle-free-layers" checked>
-    <label for="toggle-free-layers">Вільно</label>
-  </div>
-  <div>
-    <input type="checkbox" id="toggle-taken-layers" checked>
-    <label for="toggle-taken-layers">На руках</label>
-  </div>
+<div id="filter-controls">
+  <input type="checkbox" id="toggle-all-layers" checked>
+  <label for="toggle-all-layers" id="toggle-all-label">Приховати всі</label><br>
+  <input type="checkbox" id="toggle-free-layers" disabled>
+  <label for="toggle-free-layers">Вільно</label><br>
+  <input type="checkbox" id="toggle-taken-layers" disabled>
+  <label for="toggle-taken-layers">На руках</label>
 </div>
 <div id="map"></div>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
 <script type="module">
@@ -102,6 +96,14 @@
     location.reload();
   });
 
+  async function getTerritoryStatus(number) {
+    if (!currentUser) return null;
+    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+    const snap = await getDocs(q);
+    if (snap.empty) return "вільно";
+    return snap.docs[0].data().status;
+  }
+
   window.getTerritoryStatusPopup = async (number, name) => {
     if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
     const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
@@ -119,20 +121,7 @@
     }
     return popup;
   };
-
-  window.getTerritoryStatus = async (number) => {
-    if (!currentUser) return "вільно";
-    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-    const snap = await getDocs(q);
-    if (snap.empty) {
-      return "вільно";
-    } else {
-      const data = snap.docs[0].data();
-      return data.status;
-    }
-  };
 </script>
-
 <script>
   const map = L.map('map').setView([49.1029, 29.2074], 13);
 
@@ -182,7 +171,8 @@
   const districtCenters = [];
   const districtGeometries = [];
   const overlayMaps = {};
-  const districtStatuses = {};
+  let layersControl = null;
+  const loadedLayers = [];
 
   function toggleLayers() {
     const control = document.querySelector('.leaflet-control-layers');
@@ -200,6 +190,53 @@
     const numB = parseInt(b.id.replace("district", ""), 10);
     return numA - numB;
   });
+
+  (async () => {
+    showLoading(true);
+    for (const d of districts) {
+      const layer = L.layerGroup();
+      try {
+        const res = await fetch(`${d.id}.json`);
+        if (!res.ok) {
+          console.warn(`Не вдалося завантажити ${d.id}.json: ${res.status}`);
+          continue;
+        }
+        const data = await res.json();
+        const status = await getTerritoryStatus(d.id.replace("district", ""));
+
+        const geoJsonLayer = L.geoJSON(data, {
+          onEachFeature: (feature, layer) => {
+            const center = layer.getBounds().getCenter();
+            districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
+            layer.on("click", async () => {
+              const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
+              layer.bindPopup(popupContent + `<br><button onclick=\"routeToDistrict('${d.name}')\">📌 Прокласти маршрут сюди</button>`).openPopup();
+            });
+          },
+          style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
+        }).addTo(layer);
+
+        loadedLayers.push({ name: d.name, layer, status });
+        overlayMaps[d.name] = layer;
+
+        const coordinates = [];
+        const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
+        geometries.forEach(geom => {
+          const coords = geom.coordinates;
+          const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
+          if (geom.type === "Polygon") coords.forEach(pushCoords);
+          if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
+        });
+
+        districtGeometries.push({ name: d.name, coordinates });
+      } catch (err) {
+        console.warn(`Помилка при завантаженні ${d.id}.json: ${err.message}`);
+      }
+    }
+    showLoading(false);
+    tryAddLayersControl();
+    initializeFilterControls();
+  })();
 
   let currentMarker = null, currentCircle = null, routeControl = null, currentLocation = null;
 
@@ -235,98 +272,6 @@
     currentMarker?.bindPopup(`Ваше місцерозташування<br>Маршрут до <b>${districtName}</b><br>Відстань: ${distText}`).openPopup();
   }
 
-  let layersControl = null;
-  const loadedLayers = [];
-
-  async function updateLayerVisibility() {
-    const showAll = document.getElementById('toggle-all-layers').checked;
-    const showFree = document.getElementById('toggle-free-layers').checked;
-    const showTaken = document.getElementById('toggle-taken-layers').checked;
-
-    for (const { name, layer } of loadedLayers) {
-      const district = districts.find(d => d.name === name);
-      const status = districtStatuses[district.id] || "вільно";
-      let shouldShow = false;
-
-      if (showAll) {
-        shouldShow = true; // Показуємо всі території, якщо "Показати всі" активний
-      } else {
-        // Якщо "Приховати всі" активний, показуємо лише території, що відповідають фільтрам
-        shouldShow = (status === "вільно" && showFree) || (status === "на руках" && showTaken);
-      }
-
-      if (shouldShow) {
-        map.addLayer(layer);
-      } else {
-        map.removeLayer(layer);
-      }
-    }
-
-    localStorage.setItem('showAllLayers', showAll);
-    localStorage.setItem('showFreeLayers', showFree);
-    localStorage.setItem('showTakenLayers', showTaken);
-  }
-
-  (async () => {
-    showLoading(true);
-
-    for (const d of districts) {
-      const layer = L.layerGroup();
-      try {
-        const res = await fetch(`${d.id}.json`);
-        if (!res.ok) {
-          console.warn(`Не вдалося завантажити ${d.id}.json: ${res.status}`);
-          continue;
-        }
-        const data = await res.json();
-
-        const status = await window.getTerritoryStatus(d.id.replace("district", ""));
-        districtStatuses[d.id] = status;
-
-        const geoJsonLayer = L.geoJSON(data, {
-          onEachFeature: (feature, layer) => {
-            const center = layer.getBounds().getCenter();
-            districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
-
-            layer.on("click", async () => {
-              const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-              layer.bindPopup(popupContent + `<br><button onclick=\"routeToDistrict('${d.name}')\">📌 Прокласти маршрут сюди</button>`).openPopup();
-            });
-          },
-          style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
-        }).addTo(layer);
-
-        loadedLayers.push({ name: d.name, layer });
-        overlayMaps[d.name] = layer;
-
-        const coordinates = [];
-        const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
-        geometries.forEach(geom => {
-          const coords = geom.coordinates;
-          const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
-          if (geom.type === "Polygon") coords.forEach(pushCoords);
-          if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
-        });
-
-        districtGeometries.push({ name: d.name, coordinates });
-      } catch (err) {
-        console.warn(`Помилка при завантаженні ${d.id}.json: ${err.message}`);
-      }
-    }
-
-    showLoading(false);
-    tryAddLayersControl();
-
-    const toggleAllInput = document.getElementById('toggle-all-layers');
-    toggleAllInput.addEventListener('change', () => {
-      document.getElementById('toggle-all-label').innerText = toggleAllInput.checked ? 'Приховати всі' : 'Показати всі';
-      updateLayerVisibility();
-    });
-
-    document.getElementById('toggle-free-layers').addEventListener('change', updateLayerVisibility);
-    document.getElementById('toggle-taken-layers').addEventListener('change', updateLayerVisibility);
-  })();
-
   function tryAddLayersControl() {
     if (!layersControl) {
       const sortedOverlayMaps = {};
@@ -339,23 +284,65 @@
         sortedOverlayMaps,
         { collapsed: true }
       ).addTo(map);
+    }
+  }
 
-      const toggleAllInput = document.getElementById('toggle-all-layers');
-      const toggleFreeInput = document.getElementById('toggle-free-layers');
-      const toggleTakenInput = document.getElementById('toggle-taken-layers');
-      const toggleLabel = document.getElementById('toggle-all-label');
+  function initializeFilterControls() {
+    const toggleAllInput = document.getElementById('toggle-all-layers');
+    const toggleAllLabel = document.getElementById('toggle-all-label');
+    const toggleFreeInput = document.getElementById('toggle-free-layers');
+    const toggleTakenInput = document.getElementById('toggle-taken-layers');
 
-      const savedAllState = localStorage.getItem('showAllLayers');
-      const savedFreeState = localStorage.getItem('showFreeLayers');
-      const savedTakenState = localStorage.getItem('showTakenLayers');
-
-      toggleAllInput.checked = savedAllState !== null ? JSON.parse(savedAllState) : true;
-      toggleFreeInput.checked = savedFreeState !== null ? JSON.parse(savedFreeState) : true;
-      toggleTakenInput.checked = savedTakenState !== null ? JSON.parse(savedTakenState) : true;
-
-      toggleLabel.innerText = toggleAllInput.checked ? 'Приховати всі' : 'Показати всі';
+    const savedState = localStorage.getItem('showAllLayers');
+    if (savedState !== null) {
+      toggleAllInput.checked = JSON.parse(savedState);
+      toggleAllLabel.innerText = toggleAllInput.checked ? 'Приховати всі' : 'Показати всі';
+      toggleFreeInput.disabled = toggleAllInput.checked;
+      toggleTakenInput.disabled = toggleAllInput.checked;
+      updateLayerVisibility();
+    } else {
+      toggleAllInput.checked = true;
+      toggleAllLabel.innerText = 'Приховати всі';
+      toggleFreeInput.disabled = true;
+      toggleTakenInput.disabled = true;
       updateLayerVisibility();
     }
+
+    toggleAllInput.addEventListener('change', () => {
+      const show = toggleAllInput.checked;
+      toggleAllLabel.innerText = show ? 'Приховати всі' : 'Показати всі';
+      toggleFreeInput.disabled = show;
+      toggleTakenInput.disabled = show;
+      if (show) {
+        toggleFreeInput.checked = false;
+        toggleTakenInput.checked = false;
+      }
+      updateLayerVisibility();
+      localStorage.setItem('showAllLayers', show);
+    });
+
+    toggleFreeInput.addEventListener('change', updateLayerVisibility);
+    toggleTakenInput.addEventListener('change', updateLayerVisibility);
+  }
+
+  function updateLayerVisibility() {
+    const toggleAllInput = document.getElementById('toggle-all-layers');
+    const toggleFreeInput = document.getElementById('toggle-free-layers');
+    const toggleTakenInput = document.getElementById('toggle-taken-layers');
+
+    const showAll = toggleAllInput.checked;
+    const showFree = toggleFreeInput.checked;
+    const showTaken = toggleTakenInput.checked;
+
+    loadedLayers.forEach(({ layer, status }) => {
+      if (showAll) {
+        map.addLayer(layer);
+      } else {
+        const shouldShow = (showFree && status === "вільно") || (showTaken && status === "на руках");
+        if (shouldShow) map.addLayer(layer);
+        else map.removeLayer(layer);
+      }
+    });
   }
 </script>
 </body>
