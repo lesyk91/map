@@ -274,6 +274,37 @@ districts.sort((a, b) => {
 let layersControl = null;
 const loadedLayers = [];
 
+function createToggleAllLayersCheckbox() {
+  const layersContainer = document.querySelector('.leaflet-control-layers-overlays');
+  if (layersContainer && !document.querySelector('#toggle-all-layers')) {
+    const toggleDiv = document.createElement('div');
+    toggleDiv.style.marginBottom = '8px';
+
+    const toggleInput = document.createElement('input');
+    toggleInput.type = 'checkbox';
+    toggleInput.id = 'toggle-all-layers';
+    toggleInput.checked = true;
+    toggleInput.style.marginRight = '5px';
+
+    const toggleLabel = document.createElement('label');
+    toggleLabel.htmlFor = 'toggle-all-layers';
+    toggleLabel.innerText = 'Приховати всі';
+
+    toggleDiv.appendChild(toggleInput);
+    toggleDiv.appendChild(toggleLabel);
+    layersContainer.insertBefore(toggleDiv, layersContainer.firstChild);
+
+    toggleInput.addEventListener('change', () => {
+      const show = toggleInput.checked;
+      toggleLabel.innerText = show ? 'Приховати всі' : 'Показати всі';
+      Object.values(overlayMaps).forEach(layer => {
+        if (show) map.addLayer(layer);
+        else map.removeLayer(layer);
+      });
+    });
+  }
+}
+
 function tryAddLayersControl() {
   if (!layersControl) {
     layersControl = L.control.layers(
@@ -282,41 +313,10 @@ function tryAddLayersControl() {
       { collapsed: true }
     ).addTo(map);
 
-    setTimeout(() => {
-      const layersContainer = document.querySelector('.leaflet-control-layers-overlays');
-      if (layersContainer && !document.querySelector('#toggle-all-layers')) {
-        const toggleDiv = document.createElement('div');
-        toggleDiv.style.marginBottom = '8px';
-
-        const toggleInput = document.createElement('input');
-        toggleInput.type = 'checkbox';
-        toggleInput.id = 'toggle-all-layers';
-        toggleInput.checked = true;
-        toggleInput.style.marginRight = '5px';
-
-        const toggleLabel = document.createElement('label');
-        toggleLabel.htmlFor = 'toggle-all-layers';
-        toggleLabel.innerText = 'Приховати всі';
-
-        toggleDiv.appendChild(toggleInput);
-        toggleDiv.appendChild(toggleLabel);
-        layersContainer.insertBefore(toggleDiv, layersContainer.firstChild);
-
-        toggleInput.addEventListener('change', () => {
-          const show = toggleInput.checked;
-          toggleLabel.innerText = show ? 'Приховати всі' : 'Показати всі';
-          Object.values(overlayMaps).forEach(layer => {
-            if (show) {
-              map.addLayer(layer);
-            } else {
-              map.removeLayer(layer);
-            }
-          });
-        });
-      }
-    }, 500);
+    setTimeout(createToggleAllLayersCheckbox, 300);
   }
 }
+
 
 </script>
 </body>
