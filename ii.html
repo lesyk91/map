@@ -42,6 +42,12 @@ button.login-btn, button.logout-btn { top: 90px; }
 </div>
 
 <div id="loader"></div>
+
+<div style="position: absolute; top: 90px; left: 50px; z-index: 1000; background: white; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+  <input type="checkbox" id="toggle-all-layers" checked>
+  <label for="toggle-all-layers" id="toggle-all-label">Приховати всі</label>
+</div>
+<div id="map"></div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -189,6 +195,13 @@ districts.sort((a, b) => {
 (async () => {
   showLoading(true);
 
+  // Сортування district заздалегідь
+  districts.sort((a, b) => {
+    const numA = parseInt(a.id.replace("district", ""), 10);
+    const numB = parseInt(b.id.replace("district", ""), 10);
+    return numA - numB;
+  });
+
   const promises = districts.map(async d => {
     const layer = L.layerGroup();
     try {
@@ -208,8 +221,9 @@ districts.sort((a, b) => {
         style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
       }).addTo(layer);
 
+      // Зберігаємо шар у масиві, щоб зберегти порядок
+      loadedLayers.push({ name: d.name, layer });
       overlayMaps[d.name] = layer;
-      loadedLayers.push(d.name);
 
       const coordinates = [];
       const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
@@ -274,50 +288,94 @@ districts.sort((a, b) => {
 let layersControl = null;
 const loadedLayers = [];
 
+
+
+(async () => {
+  showLoading(true);
+
+  districts.sort((a, b) => {
+    const numA = parseInt(a.id.replace("district", ""), 10);
+    const numB = parseInt(b.id.replace("district", ""), 10);
+    return numA - numB;
+  });
+
+  const promises = districts.map(async d => {
+    const layer = L.layerGroup();
+    try {
+      const res = await fetch(`${d.id}.json`);
+      const data = await res.json();
+
+      const geoJsonLayer = L.geoJSON(data, {
+        onEachFeature: (feature, layer) => {
+          const center = layer.getBounds().getCenter();
+          districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
+
+          layer.on("click", async () => {
+            const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
+            layer.bindPopup(popupContent + `<br><button onclick=\"routeToDistrict('${d.name}')\">📌 Прокласти маршрут сюди</button>`).openPopup();
+          });
+        },
+        style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
+      }).addTo(layer);
+
+      loadedLayers.push({ name: d.name, layer });
+      overlayMaps[d.name] = layer;
+
+      const coordinates = [];
+      const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
+      geometries.forEach(geom => {
+        const coords = geom.coordinates;
+        const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
+        if (geom.type === "Polygon") coords.forEach(pushCoords);
+        if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
+      });
+
+      districtGeometries.push({ name: d.name, coordinates });
+    } catch (err) {
+      alert(`⚠ Не вдалося завантажити ${d.id}.json`);
+    }
+  });
+
+  await Promise.all(promises);
+  showLoading(false);
+  tryAddLayersControl();
+})();
+
 function tryAddLayersControl() {
   if (!layersControl) {
+    const sortedOverlayMaps = {};
+    loadedLayers.forEach(({ name, layer }) => {
+      sortedOverlayMaps[name] = layer;
+    });
+
     layersControl = L.control.layers(
       { "Стандартна карта": googleStreets, "Супутникова карта": satellite },
-      overlayMaps,
+      sortedOverlayMaps,
       { collapsed: true }
     ).addTo(map);
 
-    setTimeout(() => {
-      const layersContainer = document.querySelector('.leaflet-control-layers-overlays');
-      if (layersContainer && !document.querySelector('#toggle-all-layers')) {
-        const toggleDiv = document.createElement('div');
-        toggleDiv.style.marginBottom = '8px';
+    const toggleInput = document.getElementById('toggle-all-layers');
+    const toggleLabel = document.getElementById('toggle-all-label');
+    const savedState = localStorage.getItem('showAllLayers');
+    if (savedState !== null) {
+      toggleInput.checked = JSON.parse(savedState);
+      toggleLabel.innerText = toggleInput.checked ? 'Приховати всі' : 'Показати всі';
+    } else {
+      toggleInput.checked = true;
+      Object.values(sortedOverlayMaps).forEach(layer => map.addLayer(layer));
+    }
 
-        const toggleInput = document.createElement('input');
-        toggleInput.type = 'checkbox';
-        toggleInput.id = 'toggle-all-layers';
-        toggleInput.checked = true;
-        toggleInput.style.marginRight = '5px';
-
-        const toggleLabel = document.createElement('label');
-        toggleLabel.htmlFor = 'toggle-all-layers';
-        toggleLabel.innerText = 'Приховати всі';
-
-        toggleDiv.appendChild(toggleInput);
-        toggleDiv.appendChild(toggleLabel);
-        layersContainer.insertBefore(toggleDiv, layersContainer.firstChild);
-
-        toggleInput.addEventListener('change', () => {
-          const show = toggleInput.checked;
-          toggleLabel.innerText = show ? 'Приховати всі' : 'Показати всі';
-          Object.values(overlayMaps).forEach(layer => {
-            if (show) {
-              map.addLayer(layer);
-            } else {
-              map.removeLayer(layer);
-            }
-          });
-        });
-      }
-    }, 500);
+    toggleInput.addEventListener('change', () => {
+      const show = toggleInput.checked;
+      toggleLabel.innerText = show ? 'Приховати всі' : 'Показати всі';
+      Object.values(sortedOverlayMaps).forEach(layer => {
+        if (show) map.addLayer(layer);
+        else map.removeLayer(layer);
+      });
+      localStorage.setItem('showAllLayers', show);
+    });
   }
 }
-
 </script>
 </body>
 </html>
