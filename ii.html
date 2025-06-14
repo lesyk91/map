@@ -293,16 +293,22 @@ const loadedLayers = [];
 (async () => {
   showLoading(true);
 
+  // Сортування district заздалегідь
   districts.sort((a, b) => {
     const numA = parseInt(a.id.replace("district", ""), 10);
     const numB = parseInt(b.id.replace("district", ""), 10);
     return numA - numB;
   });
 
-  const promises = districts.map(async d => {
+  // Використовуємо for...of замість map, щоб обробляти запити послідовно
+  for (const d of districts) {
     const layer = L.layerGroup();
     try {
       const res = await fetch(`${d.id}.json`);
+      if (!res.ok) {
+        console.warn(`Не вдалося завантажити ${d.id}.json: ${res.status}`);
+        continue; // Пропускаємо територію, якщо файл не завантажився
+      }
       const data = await res.json();
 
       const geoJsonLayer = L.geoJSON(data, {
@@ -318,6 +324,7 @@ const loadedLayers = [];
         style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
       }).addTo(layer);
 
+      // Додаємо шар у правильному порядку
       loadedLayers.push({ name: d.name, layer });
       overlayMaps[d.name] = layer;
 
@@ -332,17 +339,22 @@ const loadedLayers = [];
 
       districtGeometries.push({ name: d.name, coordinates });
     } catch (err) {
-      alert(`⚠ Не вдалося завантажити ${d.id}.json`);
+      console.warn(`Помилка при завантаженні ${d.id}.json: ${err.message}`);
     }
-  });
+  }
 
-  await Promise.all(promises);
   showLoading(false);
   tryAddLayersControl();
 })();
 
+
+
+
+
+
 function tryAddLayersControl() {
   if (!layersControl) {
+    // Створюємо об'єкт overlayMaps у правильному порядку
     const sortedOverlayMaps = {};
     loadedLayers.forEach(({ name, layer }) => {
       sortedOverlayMaps[name] = layer;
@@ -354,14 +366,20 @@ function tryAddLayersControl() {
       { collapsed: true }
     ).addTo(map);
 
+    // Ініціалізація чекбокса
     const toggleInput = document.getElementById('toggle-all-layers');
     const toggleLabel = document.getElementById('toggle-all-label');
     const savedState = localStorage.getItem('showAllLayers');
     if (savedState !== null) {
       toggleInput.checked = JSON.parse(savedState);
       toggleLabel.innerText = toggleInput.checked ? 'Приховати всі' : 'Показати всі';
+      Object.values(sortedOverlayMaps).forEach(layer => {
+        if (toggleInput.checked) map.addLayer(layer);
+        else map.removeLayer(layer);
+      });
     } else {
       toggleInput.checked = true;
+      toggleLabel.innerText = 'Приховати всі';
       Object.values(sortedOverlayMaps).forEach(layer => map.addLayer(layer));
     }
 
