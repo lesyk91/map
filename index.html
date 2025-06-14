@@ -42,6 +42,12 @@ button.login-btn, button.logout-btn { top: 90px; }
 </div>
 
 <div id="loader"></div>
+
+<div style="position: absolute; top: 90px; left: 50px; z-index: 1000; background: white; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+  <input type="checkbox" id="toggle-all-layers" checked>
+  <label for="toggle-all-layers" id="toggle-all-label">Приховати всі</label>
+</div>
+<div id="map"></div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -81,8 +87,11 @@ onAuthStateChanged(auth, user => {
 
 logoutBtn?.addEventListener("click", async () => {
   await signOut(auth);
+  layersControl = null;
   location.reload();
 });
+
+
 
 
   onAuthStateChanged(auth, user => {
@@ -151,7 +160,6 @@ logoutBtn?.addEventListener("click", async () => {
     { id: 'district28', name: 'Територія 28', color: 'Gray', fillColor: '#d3d3d3' }, // Lighter gray
     { id: 'district29', name: 'Територія 29', color: 'Cyan', fillColor: '#e0ffff' }, // Lighter cyan
     { id: 'district30', name: 'Територія 30', color: 'Magenta', fillColor: '#ff80ff' }, // Lighter magenta
-    { id: 'district55', name: 'Територія 55', color: 'green', fillColor: '#b6fcb6' },
     { id: 'district56', name: 'Територія 56', color: 'red', fillColor: '#b6fcb6' }
   ];
 
@@ -169,61 +177,77 @@ logoutBtn?.addEventListener("click", async () => {
   function showLoading(show) {
     document.getElementById('loader').innerText = show ? 'Завантаження...' : '';
   }
-
-  districts.forEach(d => {
-    const layer = L.layerGroup();
-    showLoading(true);
-    fetch(`${d.id}.json`)
-      .then(res => res.json())
-      .then(data => {
-        const geoJsonLayer = L.geoJSON(data, {
-          onEachFeature: (feature, layer) => {
-            const center = layer.getBounds().getCenter();
-            districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
-
-            layer.on("click", async () => {
-              const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-              layer.bindPopup(popupContent + `<br><button onclick=\"routeToDistrict('${d.name}')\">📌 Прокласти маршрут сюди</button>`).openPopup();
-            });
-          },
-          style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
-        }).addTo(layer);
-
-        overlayMaps[d.name] = layer;
-		loadedLayers.push(d.name);
-tryAddLayersControl();
+  
+  
+  // Сортуємо за номером, витягуючи число з id
 
 
-        const coordinates = [];
-        const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
-        geometries.forEach(geom => {
-          const coords = geom.coordinates;
-          const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
-          if (geom.type === "Polygon") coords.forEach(pushCoords);
-          if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
-        });
+districts.sort((a, b) => {
+  const numA = parseInt(a.id.replace("district", ""), 10);
+  const numB = parseInt(b.id.replace("district", ""), 10);
+  return numA - numB;
+});
+  
 
-        districtGeometries.push({ name: d.name, coordinates });
-        showLoading(false);
-      })
-      .catch(err => {
-        alert(`⚠ Не вдалося завантажити ${d.id}.json`);
-        showLoading(false);
-      });
+
+
+(async () => {
+  showLoading(true);
+
+  // Сортування district заздалегідь
+  districts.sort((a, b) => {
+    const numA = parseInt(a.id.replace("district", ""), 10);
+    const numB = parseInt(b.id.replace("district", ""), 10);
+    return numA - numB;
   });
 
- let layersControl = null;
-const loadedLayers = [];
+  const promises = districts.map(async d => {
+    const layer = L.layerGroup();
+    try {
+      const res = await fetch(`${d.id}.json`);
+      const data = await res.json();
 
-function tryAddLayersControl() {
-  if (loadedLayers.length === districts.length) {
-    layersControl = L.control.layers(
-      { "Стандартна карта": googleStreets, "Супутникова карта": satellite },
-      overlayMaps,
-      { collapsed: true }
-    ).addTo(map);
-  }
-}
+      const geoJsonLayer = L.geoJSON(data, {
+        onEachFeature: (feature, layer) => {
+          const center = layer.getBounds().getCenter();
+          districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
+
+          layer.on("click", async () => {
+            const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
+            layer.bindPopup(popupContent + `<br><button onclick=\"routeToDistrict('${d.name}')\">📌 Прокласти маршрут сюди</button>`).openPopup();
+          });
+        },
+        style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
+      }).addTo(layer);
+
+      // Зберігаємо шар у масиві, щоб зберегти порядок
+      loadedLayers.push({ name: d.name, layer });
+      overlayMaps[d.name] = layer;
+
+      const coordinates = [];
+      const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
+      geometries.forEach(geom => {
+        const coords = geom.coordinates;
+        const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
+        if (geom.type === "Polygon") coords.forEach(pushCoords);
+        if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
+      });
+
+      districtGeometries.push({ name: d.name, coordinates });
+    } catch (err) {
+      alert(`⚠ Не вдалося завантажити ${d.id}.json`);
+    }
+  });
+
+  await Promise.all(promises);
+  showLoading(false);
+  tryAddLayersControl();
+})();
+
+
+
+
+
 
 
   let currentMarker = null, currentCircle = null, routeControl = null, currentLocation = null;
@@ -259,6 +283,116 @@ function tryAddLayersControl() {
     const distText = dist > 1000 ? (dist / 1000).toFixed(2) + " км" : Math.round(dist) + " м";
     currentMarker?.bindPopup(`Ваше місцерозташування<br>Маршрут до <b>${districtName}</b><br>Відстань: ${distText}`).openPopup();
   }
+  
+let layersControl = null;
+const loadedLayers = [];
+
+
+
+(async () => {
+  showLoading(true);
+
+  // Сортування district заздалегідь
+  districts.sort((a, b) => {
+    const numA = parseInt(a.id.replace("district", ""), 10);
+    const numB = parseInt(b.id.replace("district", ""), 10);
+    return numA - numB;
+  });
+
+  // Використовуємо for...of замість map, щоб обробляти запити послідовно
+  for (const d of districts) {
+    const layer = L.layerGroup();
+    try {
+      const res = await fetch(`${d.id}.json`);
+      if (!res.ok) {
+        console.warn(`Не вдалося завантажити ${d.id}.json: ${res.status}`);
+        continue; // Пропускаємо територію, якщо файл не завантажився
+      }
+      const data = await res.json();
+
+      const geoJsonLayer = L.geoJSON(data, {
+        onEachFeature: (feature, layer) => {
+          const center = layer.getBounds().getCenter();
+          districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
+
+          layer.on("click", async () => {
+            const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
+            layer.bindPopup(popupContent + `<br><button onclick=\"routeToDistrict('${d.name}')\">📌 Прокласти маршрут сюди</button>`).openPopup();
+          });
+        },
+        style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
+      }).addTo(layer);
+
+      // Додаємо шар у правильному порядку
+      loadedLayers.push({ name: d.name, layer });
+      overlayMaps[d.name] = layer;
+
+      const coordinates = [];
+      const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
+      geometries.forEach(geom => {
+        const coords = geom.coordinates;
+        const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
+        if (geom.type === "Polygon") coords.forEach(pushCoords);
+        if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
+      });
+
+      districtGeometries.push({ name: d.name, coordinates });
+    } catch (err) {
+      console.warn(`Помилка при завантаженні ${d.id}.json: ${err.message}`);
+    }
+  }
+
+  showLoading(false);
+  tryAddLayersControl();
+})();
+
+
+
+
+
+
+function tryAddLayersControl() {
+  if (!layersControl) {
+    // Створюємо об'єкт overlayMaps у правильному порядку
+    const sortedOverlayMaps = {};
+    loadedLayers.forEach(({ name, layer }) => {
+      sortedOverlayMaps[name] = layer;
+    });
+
+    layersControl = L.control.layers(
+      { "Стандартна карта": googleStreets, "Супутникова карта": satellite },
+      sortedOverlayMaps,
+      { collapsed: true }
+    ).addTo(map);
+
+    // Ініціалізація чекбокса
+    const toggleInput = document.getElementById('toggle-all-layers');
+    const toggleLabel = document.getElementById('toggle-all-label');
+    const savedState = localStorage.getItem('showAllLayers');
+    if (savedState !== null) {
+      toggleInput.checked = JSON.parse(savedState);
+      toggleLabel.innerText = toggleInput.checked ? 'Приховати всі' : 'Показати всі';
+      Object.values(sortedOverlayMaps).forEach(layer => {
+        if (toggleInput.checked) map.addLayer(layer);
+        else map.removeLayer(layer);
+      });
+    } else {
+      toggleInput.checked = true;
+      toggleLabel.innerText = 'Приховати всі';
+      Object.values(sortedOverlayMaps).forEach(layer => map.addLayer(layer));
+    }
+
+    toggleInput.addEventListener('change', () => {
+      const show = toggleInput.checked;
+      toggleLabel.innerText = show ? 'Приховати всі' : 'Показати всі';
+      Object.values(sortedOverlayMaps).forEach(layer => {
+        if (show) map.addLayer(layer);
+        else map.removeLayer(layer);
+      });
+      localStorage.setItem('showAllLayers', show);
+    });
+  }
+}
 </script>
 </body>
 </html>
