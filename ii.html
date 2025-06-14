@@ -188,11 +188,6 @@ districts.sort((a, b) => {
 
 (async () => {
   showLoading(true);
-  districts.sort((a, b) => {
-    const numA = parseInt(a.id.replace("district", ""), 10);
-    const numB = parseInt(b.id.replace("district", ""), 10);
-    return numA - numB;
-  });
 
   const promises = districts.map(async d => {
     const layer = L.layerGroup();
@@ -233,8 +228,9 @@ districts.sort((a, b) => {
 
   await Promise.all(promises);
   showLoading(false);
-  tryAddLayersControl(); // тепер викликається гарантовано після всіх fetch
+  tryAddLayersControl();
 })();
+
 
 
 
@@ -286,48 +282,43 @@ function tryAddLayersControl() {
       { collapsed: true }
     ).addTo(map);
 
-    map.once('layeradd', () => {
-      setTimeout(() => {  // Дати час DOM на оновлення
-        const layersContainer = document.querySelector('.leaflet-control-layers-overlays');
-        if (layersContainer && !document.querySelector('#toggle-all-layers')) {
-          const toggleDiv = document.createElement('div');
-          toggleDiv.style.marginBottom = '8px';
+    setTimeout(() => {
+      const layersContainer = document.querySelector('.leaflet-control-layers-overlays');
+      if (layersContainer && !document.querySelector('#toggle-all-layers')) {
+        const toggleDiv = document.createElement('div');
+        toggleDiv.style.marginBottom = '8px';
 
-          const toggleInput = document.createElement('input');
-          toggleInput.type = 'checkbox';
-          toggleInput.id = 'toggle-all-layers';
-          toggleInput.checked = true;
-          toggleInput.style.marginRight = '5px';
+        const toggleInput = document.createElement('input');
+        toggleInput.type = 'checkbox';
+        toggleInput.id = 'toggle-all-layers';
+        toggleInput.checked = true;
+        toggleInput.style.marginRight = '5px';
 
-          const toggleLabel = document.createElement('label');
-          toggleLabel.htmlFor = 'toggle-all-layers';
-          toggleLabel.innerText = 'Приховати всі';
+        const toggleLabel = document.createElement('label');
+        toggleLabel.htmlFor = 'toggle-all-layers';
+        toggleLabel.innerText = 'Приховати всі';
 
-          toggleDiv.appendChild(toggleInput);
-          toggleDiv.appendChild(toggleLabel);
-          layersContainer.insertBefore(toggleDiv, layersContainer.firstChild);
+        toggleDiv.appendChild(toggleInput);
+        toggleDiv.appendChild(toggleLabel);
+        layersContainer.insertBefore(toggleDiv, layersContainer.firstChild);
 
-          toggleInput.addEventListener('change', () => {
-            const show = toggleInput.checked;
-            toggleLabel.innerText = show ? 'Приховати всі' : 'Показати всі';
-            Object.values(overlayMaps).forEach(layer => {
-              if (show) {
-                map.addLayer(layer);
-              } else {
-                map.removeLayer(layer);
-              }
-            });
+        toggleInput.addEventListener('change', () => {
+          const show = toggleInput.checked;
+          toggleLabel.innerText = show ? 'Приховати всі' : 'Показати всі';
+          Object.values(overlayMaps).forEach(layer => {
+            if (show) {
+              map.addLayer(layer);
+            } else {
+              map.removeLayer(layer);
+            }
           });
-        }
-      }, 500);
-    });
+        });
+      }
+    }, 500);
   }
 }
-
-
-
-
 
 </script>
 </body>
 </html>
+
