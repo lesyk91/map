@@ -26,6 +26,19 @@ button.locate-btn { top: 10px; }
 button.layer-toggle { top: 50px; }
 button.login-btn, button.logout-btn { top: 90px; }
 
+#auth-modal button {
+  padding: 8px 16px;
+  margin: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#auth-modal input {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+
 #layer-controls label {
   margin-left: 5px;
 }
@@ -38,11 +51,27 @@ button.login-btn, button.logout-btn { top: 90px; }
   </style>
 </head>
 <body>
-<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце тууп</button>
+<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце туііуп</button>
 <button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
 <div id="auth-buttons">
-  <a href="enter.html"><button class="login-btn" style="display:none">🔐 Увійти</button></a>
+  <button class="login-btn" style="display:inline-block">🔐 Увійти</button>
   <button class="logout-btn" style="display:none">🚪 Вийти</button>
+</div>
+<div id="auth-modal" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000;">
+  <div style="background: white; width: 300px; margin: 100px auto; padding: 20px; border-radius: 8px;">
+    <h3 id="modal-title">Вхід у систему</h3>
+    <div id="login-form">
+      <input type="email" id="email-input" placeholder="Email" style="width: 100%; margin-bottom: 10px; padding: 8px;">
+      <input type="password" id="password-input" placeholder="Пароль" style="width: 100%; margin-bottom: 10px; padding: 8px;">
+      <button onclick="handleLogin()">Увійти</button>
+      <button onclick="closeModal()">Скасувати</button>
+    </div>
+    <div id="logout-form" style="display:none">
+      <p>Бажаєте вийти з системи?</p>
+      <button onclick="handleLogout()">Вийти</button>
+      <button onclick="closeModal()">Скасувати</button>
+    </div>
+  </div>
 </div>
 
 <div id="loader"></div>
@@ -87,12 +116,40 @@ button.login-btn, button.logout-btn { top: 90px; }
   const auth = getAuth(app);
   const db = getFirestore(app);
   let currentUser = null;
+  
+  
+  
+  
+  
 	
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getFirestore, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+  authDomain: "map-illintsi.firebaseapp.com",
+  projectId: "map-illintsi",
+  storageBucket: "map-illintsi.appspot.com",
+  messagingSenderId: "62267872375",
+  appId: "1:62267872375:web:10945d2d63b93bccc5e272"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+let currentUser = null;
+
 const loginBtn = document.querySelector('.login-btn');
 const logoutBtn = document.querySelector('.logout-btn');
+const authModal = document.getElementById('auth-modal');
+const modalTitle = document.getElementById('modal-title');
+const loginForm = document.getElementById('login-form');
+const logoutForm = document.getElementById('logout-form');
 
 onAuthStateChanged(auth, user => {
   currentUser = user;
+  console.log('Стан авторизації:', currentUser ? 'Авторизований' : 'Не авторизований');
   if (user) {
     loginBtn.style.display = 'none';
     logoutBtn.style.display = 'inline-block';
@@ -100,20 +157,98 @@ onAuthStateChanged(auth, user => {
     loginBtn.style.display = 'inline-block';
     logoutBtn.style.display = 'none';
   }
+  // Оновлюємо статуси територій після зміни стану авторизації
+  updateTerritoryStatuses();
 });
 
-logoutBtn?.addEventListener("click", async () => {
-  await signOut(auth);
-  layersControl = null;
-  location.reload();
+loginBtn.addEventListener('click', () => {
+  modalTitle.innerText = 'Вхід у систему';
+  loginForm.style.display = 'block';
+  logoutForm.style.display = 'none';
+  authModal.style.display = 'block';
 });
 
+logoutBtn.addEventListener('click', () => {
+  modalTitle.innerText = 'Вихід із системи';
+  loginForm.style.display = 'none';
+  logoutForm.style.display = 'block';
+  authModal.style.display = 'block';
+});
+
+window.handleLogin = async () => {
+  const email = document.getElementById('email-input').value;
+  const password = document.getElementById('password-input').value;
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    closeModal();
+    console.log('Успішний вхід');
+  } catch (error) {
+    console.error('Помилка входу:', error);
+    alert('Помилка входу: ' + error.message);
+  }
+};
+
+window.handleLogout = async () => {
+  try {
+    await signOut(auth);
+    closeModal();
+    layersControl = null;
+    console.log('Успішний вихід');
+    location.reload();
+  } catch (error) {
+    console.error('Помилка виходу:', error);
+    alert('Помилка виходу: ' + error.message);
+  }
+};
+
+window.closeModal = () => {
+  authModal.style.display = 'none';
+  document.getElementById('email-input').value = '';
+  document.getElementById('password-input').value = '';
+};
+
+window.getTerritoryStatusPopup = async (number, name) => {
+  if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
+  try {
+    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+    const snap = await getDocs(q);
+    let popup = `<b>${name}</b><br>`;
+    if (snap.empty) {
+      popup += `<b>Статус:</b> вільно`;
+    } else {
+      const data = snap.docs[0].data();
+      popup += `<b>Статус:</b> ${data.status}<br>`;
+      if (data.status === "на руках") {
+        popup += `<b>ПІБ:</b> ${data.pib}<br>`;
+        popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`;
+      }
+    }
+    return popup;
+  } catch (error) {
+    console.error(`Помилка при отриманні popup для території ${number}:`, error);
+    return `<b>${name}</b><br><i>Помилка при отриманні статусу</i>`;
+  }
+};
+
+window.getTerritoryStatus = async (number) => {
+  if (!currentUser) {
+    console.warn(`Користувач не авторизований для отримання статусу території ${number}`);
+    return null;
+  }
+  try {
+    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+    const snap = await getDocs(q);
+    const status = snap.empty ? "вільно" : snap.docs[0].data().status;
+    console.log(`Статус території ${number}: ${status}`);
+    return status;
+  } catch (error) {
+    console.error(`Помилка при отриманні статусу території ${number}:`, error);
+    return null;
+  }
+};
 
 
 
-  onAuthStateChanged(auth, user => {
-    currentUser = user;
-  });
 
   window.getTerritoryStatusPopup = async (number, name) => {
   if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
@@ -325,6 +460,21 @@ districtGeometries.push({ name: d.name, coordinates });
 
 
 
+async function updateTerritoryStatuses() {
+  if (!currentUser) {
+    console.log('Оновлення статусів: користувач не авторизований');
+    loadedLayers.forEach(layer => layer.status = null);
+    return;
+  }
+  console.log('Оновлення статусів територій...');
+  for (const layer of loadedLayers) {
+    const number = layer.name.match(/\d+/)[0];
+    layer.status = await window.getTerritoryStatus(number);
+    console.log(`Оновлено статус для ${layer.name}: ${layer.status}`);
+  }
+}
+
+
 
 function tryAddLayersControl() {
   if (!layersControl) {
@@ -388,7 +538,7 @@ toggleFreeInput.addEventListener('change', () => {
   console.log(`Фільтр: showFree=${showFree}, showTaken=${showTaken}`);
   for (const { layer, status } of loadedLayers) {
     const shouldShow = (showFree && status === "вільно") || (showTaken && status === "на руках");
-    console.log(`Територія ${layer._leaflet_id}: статус=${status}, показати=${shouldShow}`);
+    console.log(`Територія ${layer._leaflet_id}: статус=${status || 'невідомо'}, показати=${shouldShow}`);
     if (shouldShow) {
       map.addLayer(layer);
     } else {
@@ -408,7 +558,7 @@ toggleTakenInput.addEventListener('change', () => {
   console.log(`Фільтр: showFree=${showFree}, showTaken=${showTaken}`);
   for (const { layer, status } of loadedLayers) {
     const shouldShow = (showFree && status === "вільно") || (showTaken && status === "на руках");
-    console.log(`Територія ${layer._leaflet_id}: статус=${status}, показати=${shouldShow}`);
+    console.log(`Територія ${layer._leaflet_id}: статус=${status || 'невідомо'}, показати=${shouldShow}`);
     if (shouldShow) {
       map.addLayer(layer);
     } else {
