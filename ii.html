@@ -37,7 +37,7 @@ button.login-btn, button.logout-btn { top: 190px; }
   </style>
 </head>
 <body>
-<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце 3</button>
+<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце 43</button>
 <button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
 <div id="auth-buttons">
   <a href="enter.html"><button class="login-btn" style="display:none">🔐 Увійти</button></a>
@@ -67,7 +67,7 @@ button.login-btn, button.logout-btn { top: 190px; }
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
   import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
   import { getFirestore, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
@@ -107,28 +107,54 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebas
 
   window.getTerritoryStatusPopup = async (number, name) => {
     if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
-    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-    const snap = await getDocs(q);
-    let popup = `<b>${name}</b><br>`;
-    if (snap.empty) {
-      popup += `<b>Статус:</b> вільно`;
-    } else {
-      const data = snap.docs[0].data();
-      popup += `<b>Статус:</b> ${data.status}<br>`;
-      if (data.status === "на руках") {
-        popup += `<b>ПІБ:</b> ${data.pib}<br>`;
-        popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`;
+    try {
+      const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+      const snap = await getDocs(q);
+      let popup = `<b>${name}</b><br>`;
+      let territoryStatus;
+      if (snap.empty) {
+        territoryStatus = 'вільно';
+        popup += `<b>Статус:</b> вільно (немає записів)`;
+      } else {
+        const latestRecord = snap.docs[0].data();
+        const latestStatus = latestRecord.status ? latestRecord.status.toLowerCase().trim() : '';
+        territoryStatus = latestStatus === 'опрацьовано' ? 'вільно' : latestStatus === 'на руках' ? 'на руках' : 'невідомо';
+        popup += `<b>Статус:</b> ${territoryStatus}<br>`;
+        if (territoryStatus === 'на руках') {
+          popup += `<b>ПІБ:</b> ${latestRecord.pib || 'невідомо'}<br>`;
+          popup += `<b>Дата отримання:</b> ${latestRecord.dateGet ? new Date(latestRecord.dateGet).toLocaleDateString("uk-UA") : 'невідомо'}`;
+        }
       }
+      console.log(`Статус території ${number} (для popup): ${territoryStatus}`); // Діагностика
+      return popup;
+    } catch (err) {
+      console.warn(`Помилка при отриманні статусу для території ${number}: ${err.message}`);
+      return `<b>${name}</b><br><i>Помилка при отриманні статусу</i>`;
     }
-    return popup;
   };
 
   window.getTerritoryStatus = async (number) => {
-    if (!currentUser) return 'невідомо';
-    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-    const snap = await getDocs(q);
-    if (snap.empty) return 'вільно';
-    return snap.docs[0].data().status;
+    if (!currentUser) {
+      console.log(`Статус території ${number}: невідомо (користувач не автентифікований)`); // Діагностика
+      return 'невідомо';
+    }
+    try {
+      const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+      const snap = await getDocs(q);
+      let status;
+      if (snap.empty) {
+        status = 'вільно';
+      } else {
+        const latestRecord = snap.docs[0].data();
+        const latestStatus = latestRecord.status ? latestRecord.status.toLowerCase().trim() : '';
+        status = latestStatus === 'опрацьовано' ? 'вільно' : latestStatus === 'на руках' ? 'на руках' : 'невідомо';
+      }
+      console.log(`Статус території ${number}: ${status}`); // Діагностика
+      return status;
+    } catch (err) {
+      console.warn(`Помилка при отриманні статусу для території ${number}: ${err.message}`);
+      return 'невідомо';
+    }
   };
 </script>
 
@@ -285,6 +311,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebas
       }
     }
 
+    console.log('Усі статуси територій після завантаження:', territoryStatuses); // Діагностика
     showLoading(false);
     tryAddLayersControl();
   })();
@@ -307,13 +334,21 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebas
       const toggleFreeInput = document.getElementById('toggle-free-layers');
       const toggleTakenInput = document.getElementById('toggle-taken-layers');
 
-      function updateLayerVisibility() {
+      async function updateLayerVisibility() {
         const showAll = toggleAllInput.checked;
         const showFree = toggleFreeInput.checked;
         const showTaken = toggleTakenInput.checked;
 
         toggleFreeInput.disabled = showAll;
         toggleTakenInput.disabled = showAll;
+
+        // Примусове оновлення статусів при зміні чекбоксів
+        if (!showAll) {
+          for (const d of districts) {
+            territoryStatuses[d.name] = await window.getTerritoryStatus(d.id.replace("district", ""));
+          }
+          console.log('Оновлені статуси при зміні чекбоксів:', territoryStatuses); // Діагностика
+        }
 
         Object.entries(sortedOverlayMaps).forEach(([name, layer]) => {
           if (showAll) {
