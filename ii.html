@@ -7,43 +7,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
-	
+  <script src="try.js" defer></script>
   <style>
     html, body, #map {
       height: 100%; margin: 0; padding: 0;
     }
     button.layer-toggle, button.locate-btn, button.login-btn, button.logout-btn {
-  position: absolute;
-  left: 50px;
-  z-index: 1000;
-  padding: 8px 12px;
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  cursor: pointer;
-}
-button.locate-btn { top: 10px; }
-button.layer-toggle { top: 50px; }
-button.login-btn, button.logout-btn { top: 90px; }
-
-#auth-modal button {
-  padding: 8px 16px;
-  margin: 5px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  cursor: pointer;
-}
-#auth-modal input {
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-
-#layer-controls label {
-  margin-left: 5px;
-}
- 
-
+      position: absolute;
+      left: 50px;
+      z-index: 1000;
+      padding: 8px 12px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button.locate-btn { top: 10px; }
+    button.layer-toggle { top: 50px; }
+    button.login-btn, button.logout-btn { top: 90px; }
+    #layer-controls label {
+      margin-left: 5px;
+    }
     #loader {
       position: absolute; top: 10px; left: 215px; z-index: 1000;
       padding: 8px; background: white; border: 1px solid #ccc; border-radius: 10px;
@@ -51,32 +35,13 @@ button.login-btn, button.logout-btn { top: 90px; }
   </style>
 </head>
 <body>
-<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце туііуп</button>
+<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце</button>
 <button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
 <div id="auth-buttons">
-  <button class="login-btn" style="display:inline-block">🔐 Увійти</button>
+  <a href="enter.html"><button class="login-btn" style="display:none">🔐 Увійти</button></a>
   <button class="logout-btn" style="display:none">🚪 Вийти</button>
 </div>
-<div id="auth-modal" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000;">
-  <div style="background: white; width: 300px; margin: 100px auto; padding: 20px; border-radius: 8px;">
-    <h3 id="modal-title">Вхід у систему</h3>
-    <div id="login-form">
-      <input type="email" id="email-input" placeholder="Email" style="width: 100%; margin-bottom: 10px; padding: 8px;">
-      <input type="password" id="password-input" placeholder="Пароль" style="width: 100%; margin-bottom: 10px; padding: 8px;">
-      <button onclick="handleLogin()">Увійти</button>
-      <button onclick="closeModal()">Скасувати</button>
-    </div>
-    <div id="logout-form" style="display:none">
-      <p>Бажаєте вийти з системи?</p>
-      <button onclick="handleLogout()">Вийти</button>
-      <button onclick="closeModal()">Скасувати</button>
-    </div>
-  </div>
-</div>
-
 <div id="loader"></div>
-
-
 <div id="layer-controls" style="position: absolute; top: 90px; left: 50px; z-index: 1000; background: white; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
   <div>
     <input type="checkbox" id="toggle-all-layers" checked>
@@ -91,16 +56,13 @@ button.login-btn, button.logout-btn { top: 90px; }
     <label for="toggle-taken-layers">Показати на руках</label>
   </div>
 </div>
-
-
 <div id="map"></div>
-
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged, signOut  } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
   import { getFirestore, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -116,174 +78,67 @@ button.login-btn, button.logout-btn { top: 90px; }
   const auth = getAuth(app);
   const db = getFirestore(app);
   let currentUser = null;
-  
-  
-  
-  
-  
-	
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getFirestore, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
-  authDomain: "map-illintsi.firebaseapp.com",
-  projectId: "map-illintsi",
-  storageBucket: "map-illintsi.appspot.com",
-  messagingSenderId: "62267872375",
-  appId: "1:62267872375:web:10945d2d63b93bccc5e272"
-};
+  const loginBtn = document.querySelector('.login-btn');
+  const logoutBtn = document.querySelector('.logout-btn');
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-let currentUser = null;
-
-const loginBtn = document.querySelector('.login-btn');
-const logoutBtn = document.querySelector('.logout-btn');
-const authModal = document.getElementById('auth-modal');
-const modalTitle = document.getElementById('modal-title');
-const loginForm = document.getElementById('login-form');
-const logoutForm = document.getElementById('logout-form');
-
-onAuthStateChanged(auth, user => {
-  currentUser = user;
-  console.log('Стан авторизації:', currentUser ? 'Авторизований' : 'Не авторизований');
-  if (user) {
-    loginBtn.style.display = 'none';
-    logoutBtn.style.display = 'inline-block';
-  } else {
-    loginBtn.style.display = 'inline-block';
-    logoutBtn.style.display = 'none';
-  }
-  // Оновлюємо статуси територій після зміни стану авторизації
-  updateTerritoryStatuses();
-});
-
-loginBtn.addEventListener('click', () => {
-  modalTitle.innerText = 'Вхід у систему';
-  loginForm.style.display = 'block';
-  logoutForm.style.display = 'none';
-  authModal.style.display = 'block';
-});
-
-logoutBtn.addEventListener('click', () => {
-  modalTitle.innerText = 'Вихід із системи';
-  loginForm.style.display = 'none';
-  logoutForm.style.display = 'block';
-  authModal.style.display = 'block';
-});
-
-window.handleLogin = async () => {
-  const email = document.getElementById('email-input').value;
-  const password = document.getElementById('password-input').value;
-  try {
-    await signInWithEmailAndPassword(auth, email, password);
-    closeModal();
-    console.log('Успішний вхід');
-  } catch (error) {
-    console.error('Помилка входу:', error);
-    alert('Помилка входу: ' + error.message);
-  }
-};
-
-window.handleLogout = async () => {
-  try {
-    await signOut(auth);
-    closeModal();
-    layersControl = null;
-    console.log('Успішний вихід');
-    location.reload();
-  } catch (error) {
-    console.error('Помилка виходу:', error);
-    alert('Помилка виходу: ' + error.message);
-  }
-};
-
-window.closeModal = () => {
-  authModal.style.display = 'none';
-  document.getElementById('email-input').value = '';
-  document.getElementById('password-input').value = '';
-};
-
-window.getTerritoryStatusPopup = async (number, name) => {
-  if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
-  try {
-    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-    const snap = await getDocs(q);
-    let popup = `<b>${name}</b><br>`;
-    if (snap.empty) {
-      popup += `<b>Статус:</b> вільно`;
+  onAuthStateChanged(auth, user => {
+    currentUser = user;
+    console.log('Стан авторизації:', currentUser ? 'Авторизований' : 'Не авторизований');
+    if (user) {
+      loginBtn.style.display = 'none';
+      logoutBtn.style.display = 'inline-block';
     } else {
-      const data = snap.docs[0].data();
-      popup += `<b>Статус:</b> ${data.status}<br>`;
-      if (data.status === "на руках") {
-        popup += `<b>ПІБ:</b> ${data.pib}<br>`;
-        popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`;
-      }
+      loginBtn.style.display = 'inline-block';
+      logoutBtn.style.display = 'none';
     }
-    return popup;
-  } catch (error) {
-    console.error(`Помилка при отриманні popup для території ${number}:`, error);
-    return `<b>${name}</b><br><i>Помилка при отриманні статусу</i>`;
-  }
-};
+  });
 
-window.getTerritoryStatus = async (number) => {
-  if (!currentUser) {
-    console.warn(`Користувач не авторизований для отримання статусу території ${number}`);
-    return null;
-  }
-  try {
-    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-    const snap = await getDocs(q);
-    const status = snap.empty ? "вільно" : snap.docs[0].data().status;
-    console.log(`Статус території ${number}: ${status}`);
-    return status;
-  } catch (error) {
-    console.error(`Помилка при отриманні статусу території ${number}:`, error);
-    return null;
-  }
-};
-
-
-
+  logoutBtn?.addEventListener("click", async () => {
+    await signOut(auth);
+    layersControl = null;
+    location.reload();
+  });
 
   window.getTerritoryStatusPopup = async (number, name) => {
-  if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
-  const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-  const snap = await getDocs(q);
-  let popup = `<b>${name}</b><br>`;
-  if (snap.empty) {
-    popup += `<b>Статус:</b> вільно`;
-  } else {
-    const data = snap.docs[0].data();
-    popup += `<b>Статус:</b> ${data.status}<br>`;
-    if (data.status === "на руках") {
-      popup += `<b>ПІБ:</b> ${data.pib}<br>`;
-      popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`;
+    if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
+    try {
+      const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+      const snap = await getDocs(q);
+      let popup = `<b>${name}</b><br>`;
+      if (snap.empty) {
+        popup += `<b>Статус:</b> вільно`;
+      } else {
+        const data = snap.docs[0].data();
+        popup += `<b>Статус:</b> ${data.status}<br>`;
+        if (data.status === "на руках") {
+          popup += `<b>ПІБ:</b> ${data.pib}<br>`;
+          popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`;
+        }
+      }
+      return popup;
+    } catch (error) {
+      console.error(`Помилка при отриманні popup для території ${number}:`, error);
+      return `<b>${name}</b><br><i>Помилка при отриманні статусу</i>`;
     }
-  }
-  return popup;
-};
+  };
 
-window.getTerritoryStatus = async (number) => {
-  if (!currentUser) {
-    console.warn(`Користувач не авторизований для отримання статусу території ${number}`);
-    return null;
-  }
-  try {
-    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-    const snap = await getDocs(q);
-    const status = snap.empty ? "вільно" : snap.docs[0].data().status;
-    console.log(`Статус території ${number}: ${status}`);
-    return status;
-  } catch (error) {
-    console.error(`Помилка при отриманні статусу території ${number}:`, error);
-    return null;
-  }
-};
+  window.getTerritoryStatus = async (number) => {
+    if (!currentUser) {
+      console.warn(`Користувач не авторизований для отримання статусу території ${number}`);
+      return null;
+    }
+    try {
+      const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+      const snap = await getDocs(q);
+      const status = snap.empty ? "вільно" : snap.docs[0].data().status;
+      console.log(`Статус території ${number}: ${status}`);
+      return status;
+    } catch (error) {
+      console.error(`Помилка при отриманні статусу території ${number}:`, error);
+      return null;
+    }
+  };
 </script>
 
 <script>
@@ -300,41 +155,43 @@ window.getTerritoryStatus = async (number) => {
   });
 
   const districts = [
-    { id: 'district1', name: 'Територія 1', color: 'blue', fillColor: '#add8e6' }, // Lighter blue
-    { id: 'district2', name: 'Територія 2', color: 'green', fillColor: '#90ee90' }, // Lighter green
-    { id: 'district3', name: 'Територія 3', color: 'Yellow', fillColor: '#ffffe0' }, // Lighter yellow
-    { id: 'district4', name: 'Територія 4', color: 'Orange', fillColor: '#ffdab9' }, // Lighter orange
-    { id: 'district5', name: 'Територія 5', color: 'Pink', fillColor: '#ffb6c1' }, // Lighter pink
-    { id: 'district6', name: 'Територія 6', color: 'Brown', fillColor: '#d2b48c' }, // Lighter brown
-    { id: 'district7', name: 'Територія 7', color: 'Purple', fillColor: '#e6e6fa' }, // Lighter purple
-    { id: 'district8', name: 'Територія 8', color: 'Gray', fillColor: '#d3d3d3' }, // Lighter gray
-    { id: 'district9', name: 'Територія 9', color: 'Cyan', fillColor: '#e0ffff' }, // Lighter cyan
-    { id: 'district10', name: 'Територія 10', color: 'Magenta', fillColor: '#ff80ff' }, // Lighter magenta
-    { id: 'district11', name: 'Територія 11', color: 'blue', fillColor: '#add8e6' }, // Lighter blue
-    { id: 'district12', name: 'Територія 12', color: 'green', fillColor: '#90ee90' }, // Lighter green
-    { id: 'district13', name: 'Територія 13', color: 'Yellow', fillColor: '#ffffe0' }, // Lighter yellow
-    { id: 'district14', name: 'Територія 14', color: 'Orange', fillColor: '#ffdab9' }, // Lighter orange
-    { id: 'district15', name: 'Територія 15', color: 'Pink', fillColor: '#ffb6c1' }, // Lighter pink
-    { id: 'district16', name: 'Територія 16', color: 'Brown', fillColor: '#d2b48c' }, // Lighter brown
-    { id: 'district17', name: 'Територія 17', color: 'Purple', fillColor: '#e6e6fa' }, // Lighter purple
-    { id: 'district18', name: 'Територія 18', color: 'Gray', fillColor: '#d3d3d3' }, // Lighter gray
-    { id: 'district19', name: 'Територія 19', color: 'Cyan', fillColor: '#e0ffff' }, // Lighter cyan
-    { id: 'district20', name: 'Територія 20', color: 'Magenta', fillColor: '#ff80ff' }, // Lighter magenta
-    { id: 'district21', name: 'Територія 21', color: 'blue', fillColor: '#add8e6' }, // Lighter blue
-    { id: 'district22', name: 'Територія 22', color: 'green', fillColor: '#90ee90' }, // Lighter green
-    { id: 'district23', name: 'Територія 23', color: 'Yellow', fillColor: '#ffffe0' }, // Lighter yellow
-    { id: 'district24', name: 'Територія 24', color: 'Orange', fillColor: '#ffdab9' }, // Lighter orange
-    { id: 'district25', name: 'Територія 25', color: 'Pink', fillColor: '#ffb6c1' }, // Lighter pink
-    { id: 'district26', name: 'Територія 26', color: 'Brown', fillColor: '#d2b48c' }, // Lighter brown
-    { id: 'district28', name: 'Територія 28', color: 'Gray', fillColor: '#d3d3d3' }, // Lighter gray
-    { id: 'district29', name: 'Територія 29', color: 'Cyan', fillColor: '#e0ffff' }, // Lighter cyan
-    { id: 'district30', name: 'Територія 30', color: 'Magenta', fillColor: '#ff80ff' }, // Lighter magenta
+    { id: 'district1', name: 'Територія 1', color: 'blue', fillColor: '#add8e6' },
+    { id: 'district2', name: 'Територія 2', color: 'green', fillColor: '#90ee90' },
+    { id: 'district3', name: 'Територія 3', color: 'Yellow', fillColor: '#ffffe0' },
+    { id: 'district4', name: 'Територія 4', color: 'Orange', fillColor: '#ffdab9' },
+    { id: 'district5', name: 'Територія 5', color: 'Pink', fillColor: '#ffb6c1' },
+    { id: 'district6', name: 'Територія 6', color: 'Brown', fillColor: '#d2b48c' },
+    { id: 'district7', name: 'Територія 7', color: 'Purple', fillColor: '#e6e6fa' },
+    { id: 'district8', name: 'Територія 8', color: 'Gray', fillColor: '#d3d3d3' },
+    { id: 'district9', name: 'Територія 9', color: 'Cyan', fillColor: '#e0ffff' },
+    { id: 'district10', name: 'Територія 10', color: 'Magenta', fillColor: '#ff80ff' },
+    { id: 'district11', name: 'Територія 11', color: 'blue', fillColor: '#add8e6' },
+    { id: 'district12', name: 'Територія 12', color: 'green', fillColor: '#90ee90' },
+    { id: 'district13', name: 'Територія 13', color: 'Yellow', fillColor: '#ffffe0' },
+    { id: 'district14', name: 'Територія 14', color: 'Orange', fillColor: '#ffdab9' },
+    { id: 'district15', name: 'Територія 15', color: 'Pink', fillColor: '#ffb6c1' },
+    { id: 'district16', name: 'Територія 16', color: 'Brown', fillColor: '#d2b48c' },
+    { id: 'district17', name: 'Територія 17', color: 'Purple', fillColor: '#e6e6fa' },
+    { id: 'district18', name: 'Територія 18', color: 'Gray', fillColor: '#d3d3d3' },
+    { id: 'district19', name: 'Територія 19', color: 'Cyan', fillColor: '#e0ffff' },
+    { id: 'district20', name: 'Територія 20', color: 'Magenta', fillColor: '#ff80ff' },
+    { id: 'district21', name: 'Територія 21', color: 'blue', fillColor: '#add8e6' },
+    { id: 'district22', name: 'Територія 22', color: 'green', fillColor: '#90ee90' },
+    { id: 'district23', name: 'Територія 23', color: 'Yellow', fillColor: '#ffffe0' },
+    { id: 'district24', name: 'Територія 24', color: 'Orange', fillColor: '#ffdab9' },
+    { id: 'district25', name: 'Територія 25', color: 'Pink', fillColor: '#ffb6c1' },
+    { id: 'district26', name: 'Територія 26', color: 'Brown', fillColor: '#d2b48c' },
+    { id: 'district28', name: 'Територія 28', color: 'Gray', fillColor: '#d3d3d3' },
+    { id: 'district29', name: 'Територія 29', color: 'Cyan', fillColor: '#e0ffff' },
+    { id: 'district30', name: 'Територія 30', color: 'Magenta', fillColor: '#ff80ff' },
     { id: 'district56', name: 'Територія 56', color: 'red', fillColor: '#b6fcb6' }
   ];
 
   const districtCenters = [];
   const districtGeometries = [];
   const overlayMaps = {};
+  let layersControl = null;
+  const loadedLayers = [];
 
   function toggleLayers() {
     const control = document.querySelector('.leaflet-control-layers');
@@ -346,26 +203,60 @@ window.getTerritoryStatus = async (number) => {
   function showLoading(show) {
     document.getElementById('loader').innerText = show ? 'Завантаження...' : '';
   }
-  
-  
-  // Сортуємо за номером, витягуючи число з id
 
+  districts.sort((a, b) => {
+    const numA = parseInt(a.id.replace("district", ""), 10);
+    const numB = parseInt(b.id.replace("district", ""), 10);
+    return numA - numB;
+  });
 
-districts.sort((a, b) => {
-  const numA = parseInt(a.id.replace("district", ""), 10);
-  const numB = parseInt(b.id.replace("district", ""), 10);
-  return numA - numB;
-});
-  
+  (async () => {
+    showLoading(true);
+    for (const d of districts) {
+      const layer = L.layerGroup();
+      try {
+        const res = await fetch(`${d.id}.json`);
+        if (!res.ok) {
+          console.warn(`Не вдалося завантажити ${d.id}.json: ${res.status}`);
+          continue;
+        }
+        const data = await res.json();
+        const status = await window.getTerritoryStatus(d.id.replace("district", ""));
+        console.log(`Територія ${d.name}: статус = ${status}`);
 
+        const geoJsonLayer = L.geoJSON(data, {
+          onEachFeature: (feature, layer) => {
+            const center = layer.getBounds().getCenter();
+            districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
 
+            layer.on("click", async () => {
+              const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
+              layer.bindPopup(popupContent + `<br><button onclick=\"routeToDistrict('${d.name}')\">📌 Прокласти маршрут сюди</button>`).openPopup();
+            });
+          },
+          style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
+        }).addTo(layer);
 
+        loadedLayers.push({ name: d.name, layer, status });
+        overlayMaps[d.name] = layer;
+        console.log(`Додано шар: ${d.name}, id=${layer._leaflet_id}`);
 
-
-
-
-
-
+        const coordinates = [];
+        const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
+        geometries.forEach(geom => {
+          const coords = geom.coordinates;
+          const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
+          if (geom.type === "Polygon") coords.forEach(pushCoords);
+          if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
+        });
+        districtGeometries.push({ name: d.name, coordinates });
+      } catch (err) {
+        console.warn(`Помилка при завантаженні ${d.id}.json: ${err.message}`);
+      }
+    }
+    showLoading(false);
+    tryAddLayersControl();
+  })();
 
   let currentMarker = null, currentCircle = null, routeControl = null, currentLocation = null;
 
@@ -400,174 +291,99 @@ districts.sort((a, b) => {
     const distText = dist > 1000 ? (dist / 1000).toFixed(2) + " км" : Math.round(dist) + " м";
     currentMarker?.bindPopup(`Ваше місцерозташування<br>Маршрут до <b>${districtName}</b><br>Відстань: ${distText}`).openPopup();
   }
-  
-let layersControl = null;
-const loadedLayers = [];
 
+  function tryAddLayersControl() {
+    if (!layersControl) {
+      const sortedOverlayMaps = {};
+      loadedLayers.forEach(({ name, layer }) => {
+        sortedOverlayMaps[name] = layer;
+      });
+      console.log('Додано шари до меню:', Object.keys(sortedOverlayMaps));
 
+      layersControl = L.control.layers(
+        { "Стандартна карта": googleStreets, "Супутникова карта": satellite },
+        sortedOverlayMaps,
+        { collapsed: true }
+      ).addTo(map);
 
-(async () => {
-  showLoading(true);
-  for (const d of districts) {
-    const layer = L.layerGroup();
-    try {
-      const res = await fetch(`${d.id}.json`);
-      if (!res.ok) {
-        console.warn(`Не вдалося завантажити ${d.id}.json: ${res.status}`);
-        continue;
+      const toggleAllInput = document.getElementById('toggle-all-layers');
+      const toggleAllLabel = document.getElementById('toggle-all-label');
+      const toggleFreeInput = document.getElementById('toggle-free-layers');
+      const toggleTakenInput = document.getElementById('toggle-taken-layers');
+      const savedState = localStorage.getItem('showAllLayers');
+
+      if (savedState !== null) {
+        toggleAllInput.checked = JSON.parse(savedState);
+        toggleAllLabel.innerText = toggleAllInput.checked ? 'Приховати всі' : 'Показати всі';
+        toggleFreeInput.disabled = toggleAllInput.checked;
+        toggleTakenInput.disabled = toggleAllInput.checked;
+        Object.values(sortedOverlayMaps).forEach(layer => {
+          if (toggleAllInput.checked) map.addLayer(layer);
+          else map.removeLayer(layer);
+        });
+      } else {
+        toggleAllInput.checked = true;
+        toggleAllLabel.innerText = 'Приховати всі';
+        toggleFreeInput.disabled = true;
+        toggleTakenInput.disabled = true;
+        Object.values(sortedOverlayMaps).forEach(layer => map.addLayer(layer));
       }
-      const data = await res.json();
-      const status = await window.getTerritoryStatus(d.id.replace("district", ""));
-console.log(`Територія ${d.name}: статус = ${status}`);
-loadedLayers.push({ name: d.name, layer, status });
 
-      const geoJsonLayer = L.geoJSON(data, {
-        onEachFeature: (feature, layer) => {
-          const center = layer.getBounds().getCenter();
-          districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
-
-          layer.on("click", async () => {
-            const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-            layer.bindPopup(popupContent + `<br><button onclick=\"routeToDistrict('${d.name}')\">📌 Прокласти маршрут сюди</button>`).openPopup();
-          });
-        },
-        style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
-      }).addTo(layer);
-
-      loadedLayers.push({ name: d.name, layer, status });
-overlayMaps[d.name] = layer;
-console.log(`Додано шар: ${d.name}, id=${layer._leaflet_id}`);
-
-const coordinates = [];
-const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
-geometries.forEach(geom => {
-  const coords = geom.coordinates;
-  const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
-  if (geom.type === "Polygon") coords.forEach(pushCoords);
-  if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
-});
-districtGeometries.push({ name: d.name, coordinates });
-      // ... (решта коду для координат)
-    } catch (err) {
-      console.warn(`Помилка при завантаженні ${d.id}.json: ${err.message}`);
-    }
-  }
-  showLoading(false);
-  tryAddLayersControl();
-})();
-
-
-
-
-
-async function updateTerritoryStatuses() {
-  if (!currentUser) {
-    console.log('Оновлення статусів: користувач не авторизований');
-    loadedLayers.forEach(layer => layer.status = null);
-    return;
-  }
-  console.log('Оновлення статусів територій...');
-  for (const layer of loadedLayers) {
-    const number = layer.name.match(/\d+/)[0];
-    layer.status = await window.getTerritoryStatus(number);
-    console.log(`Оновлено статус для ${layer.name}: ${layer.status}`);
-  }
-}
-
-
-
-function tryAddLayersControl() {
-  if (!layersControl) {
-    const sortedOverlayMaps = {};
-    loadedLayers.forEach(({ name, layer }) => {
-      sortedOverlayMaps[name] = layer;
-    });
-
-    layersControl = L.control.layers(
-      { "Стандартна карта": googleStreets, "Супутникова карта": satellite },
-      sortedOverlayMaps,
-      { collapsed: true }
-    ).addTo(map);
-
-    const toggleAllInput = document.getElementById('toggle-all-layers');
-    const toggleAllLabel = document.getElementById('toggle-all-label');
-    const toggleFreeInput = document.getElementById('toggle-free-layers');
-    const toggleTakenInput = document.getElementById('toggle-taken-layers');
-    const savedState = localStorage.getItem('showAllLayers');
-
-    if (savedState !== null) {
-      toggleAllInput.checked = JSON.parse(savedState);
-      toggleAllLabel.innerText = toggleAllInput.checked ? 'Приховати всі' : 'Показати всі';
-      toggleFreeInput.disabled = toggleAllInput.checked;
-      toggleTakenInput.disabled = toggleAllInput.checked;
-      Object.values(sortedOverlayMaps).forEach(layer => {
-        if (toggleAllInput.checked) map.addLayer(layer);
-        else map.removeLayer(layer);
+      toggleAllInput.addEventListener('change', () => {
+        const showAll = toggleAllInput.checked;
+        toggleAllLabel.innerText = showAll ? 'Приховати всі' : 'Показати всі';
+        toggleFreeInput.disabled = showAll;
+        toggleTakenInput.disabled = showAll;
+        toggleFreeInput.checked = false;
+        toggleTakenInput.checked = false;
+        Object.values(sortedOverlayMaps).forEach(layer => {
+          if (showAll) map.addLayer(layer);
+          else map.removeLayer(layer);
+        });
+        localStorage.setItem('showAllLayers', showAll);
       });
-    } else {
-      toggleAllInput.checked = true;
-      toggleAllLabel.innerText = 'Приховати всі';
-      toggleFreeInput.disabled = true;
-      toggleTakenInput.disabled = true;
-      Object.values(sortedOverlayMaps).forEach(layer => map.addLayer(layer));
-    }
 
-    toggleAllInput.addEventListener('change', () => {
-      const showAll = toggleAllInput.checked;
-      toggleAllLabel.innerText = showAll ? 'Приховати всі' : 'Показати всі';
-      toggleFreeInput.disabled = showAll;
-      toggleTakenInput.disabled = showAll;
-      toggleFreeInput.checked = false;
-      toggleTakenInput.checked = false;
-      Object.values(sortedOverlayMaps).forEach(layer => {
-        if (showAll) map.addLayer(layer);
-        else map.removeLayer(layer);
+      toggleFreeInput.addEventListener('change', () => {
+        if (!currentUser) {
+          toggleFreeInput.checked = false;
+          alert('⚠ Увійдіть, щоб фільтрувати території за статусом');
+          return;
+        }
+        const showFree = toggleFreeInput.checked;
+        const showTaken = toggleTakenInput.checked;
+        console.log(`Фільтр: showFree=${showFree}, showTaken=${showTaken}`);
+        for (const { layer, status } of loadedLayers) {
+          const shouldShow = (showFree && status === "вільно") || (showTaken && status === "на руках");
+          console.log(`Територія ${layer._leaflet_id}: статус=${status}, показати=${shouldShow}`);
+          if (shouldShow) {
+            map.addLayer(layer);
+          } else {
+            map.removeLayer(layer);
+          }
+        }
       });
-      localStorage.setItem('showAllLayers', showAll);
-    });
 
-
-toggleFreeInput.addEventListener('change', () => {
-  if (!currentUser) {
-    toggleFreeInput.checked = false;
-    alert('⚠ Увійдіть, щоб фільтрувати території за статусом');
-    return;
-  }
-  const showFree = toggleFreeInput.checked;
-  const showTaken = toggleTakenInput.checked;
-  console.log(`Фільтр: showFree=${showFree}, showTaken=${showTaken}`);
-  for (const { layer, status } of loadedLayers) {
-    const shouldShow = (showFree && status === "вільно") || (showTaken && status === "на руках");
-    console.log(`Територія ${layer._leaflet_id}: статус=${status || 'невідомо'}, показати=${shouldShow}`);
-    if (shouldShow) {
-      map.addLayer(layer);
-    } else {
-      map.removeLayer(layer);
+      toggleTakenInput.addEventListener('change', () => {
+        if (!currentUser) {
+          toggleTakenInput.checked = false;
+          alert('⚠ Увійдіть, щоб фільтрувати території за статусом');
+          return;
+        }
+        const showFree = toggleFreeInput.checked;
+        const showTaken = toggleTakenInput.checked;
+        console.log(`Фільтр: showFree=${showFree}, showTaken=${showTaken}`);
+        for (const { layer, status } of loadedLayers) {
+          const shouldShow = (showFree && status === "вільно") || (showTaken && status === "на руках");
+          console.log(`Територія ${layer._leaflet_id}: статус=${status}, показати=${shouldShow}`);
+          if (shouldShow) {
+            map.addLayer(layer);
+          } else {
+            map.removeLayer(layer);
+          }
+        }
+      });
     }
   }
-});
-
-toggleTakenInput.addEventListener('change', () => {
-  if (!currentUser) {
-    toggleTakenInput.checked = false;
-    alert('⚠ Увійдіть, щоб фільтрувати території за статусом');
-    return;
-  }
-  const showFree = toggleFreeInput.checked;
-  const showTaken = toggleTakenInput.checked;
-  console.log(`Фільтр: showFree=${showFree}, showTaken=${showTaken}`);
-  for (const { layer, status } of loadedLayers) {
-    const shouldShow = (showFree && status === "вільно") || (showTaken && status === "на руках");
-    console.log(`Територія ${layer._leaflet_id}: статус=${status || 'невідомо'}, показати=${shouldShow}`);
-    if (shouldShow) {
-      map.addLayer(layer);
-    } else {
-      map.removeLayer(layer);
-    }
-  }
-});
-  }
-}
 </script>
 </body>
 </html>
