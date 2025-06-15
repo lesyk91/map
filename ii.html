@@ -38,7 +38,7 @@ button.login-btn, button.logout-btn { top: 90px; }
   </style>
 </head>
 <body>
-<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце тссп</button>
+<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце тууп</button>
 <button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
 <div id="auth-buttons">
   <a href="enter.html"><button class="login-btn" style="display:none">🔐 Увійти</button></a>
@@ -48,7 +48,7 @@ button.login-btn, button.logout-btn { top: 90px; }
 <div id="loader"></div>
 
 
-  <div id="layer-controls" style="position: absolute; top: 90px; left: 50px; z-index: 1000; background: white; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+<div id="layer-controls" style="position: absolute; top: 90px; left: 50px; z-index: 1000; background: white; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
   <div>
     <input type="checkbox" id="toggle-all-layers" checked>
     <label for="toggle-all-layers" id="toggle-all-label">Приховати всі</label>
@@ -62,7 +62,8 @@ button.login-btn, button.logout-btn { top: 90px; }
     <label for="toggle-taken-layers">Показати на руках</label>
   </div>
 </div>
-</div>
+
+
 <div id="map"></div>
 
 
@@ -133,10 +134,20 @@ logoutBtn?.addEventListener("click", async () => {
 };
 
 window.getTerritoryStatus = async (number) => {
-  if (!currentUser) return null;
-  const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-  const snap = await getDocs(q);
-  return snap.empty ? "вільно" : snap.docs[0].data().status;
+  if (!currentUser) {
+    console.warn(`Користувач не авторизований для отримання статусу території ${number}`);
+    return null;
+  }
+  try {
+    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+    const snap = await getDocs(q);
+    const status = snap.empty ? "вільно" : snap.docs[0].data().status;
+    console.log(`Статус території ${number}: ${status}`);
+    return status;
+  } catch (error) {
+    console.error(`Помилка при отриманні статусу території ${number}:`, error);
+    return null;
+  }
 };
 </script>
 
@@ -272,6 +283,8 @@ const loadedLayers = [];
       }
       const data = await res.json();
       const status = await window.getTerritoryStatus(d.id.replace("district", ""));
+console.log(`Територія ${d.name}: статус = ${status}`);
+loadedLayers.push({ name: d.name, layer, status });
 
       const geoJsonLayer = L.geoJSON(data, {
         onEachFeature: (feature, layer) => {
@@ -288,6 +301,7 @@ const loadedLayers = [];
 
       loadedLayers.push({ name: d.name, layer, status });
 overlayMaps[d.name] = layer;
+console.log(`Додано шар: ${d.name}, id=${layer._leaflet_id}`);
 
 const coordinates = [];
 const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
@@ -362,6 +376,7 @@ function tryAddLayersControl() {
       localStorage.setItem('showAllLayers', showAll);
     });
 
+
 toggleFreeInput.addEventListener('change', () => {
   if (!currentUser) {
     toggleFreeInput.checked = false;
@@ -370,8 +385,11 @@ toggleFreeInput.addEventListener('change', () => {
   }
   const showFree = toggleFreeInput.checked;
   const showTaken = toggleTakenInput.checked;
+  console.log(`Фільтр: showFree=${showFree}, showTaken=${showTaken}`);
   for (const { layer, status } of loadedLayers) {
-    if ((showFree && status === "вільно") || (showTaken && status === "на руках")) {
+    const shouldShow = (showFree && status === "вільно") || (showTaken && status === "на руках");
+    console.log(`Територія ${layer._leaflet_id}: статус=${status}, показати=${shouldShow}`);
+    if (shouldShow) {
       map.addLayer(layer);
     } else {
       map.removeLayer(layer);
@@ -387,8 +405,11 @@ toggleTakenInput.addEventListener('change', () => {
   }
   const showFree = toggleFreeInput.checked;
   const showTaken = toggleTakenInput.checked;
+  console.log(`Фільтр: showFree=${showFree}, showTaken=${showTaken}`);
   for (const { layer, status } of loadedLayers) {
-    if ((showFree && status === "вільно") || (showTaken && status === "на руках")) {
+    const shouldShow = (showFree && status === "вільно") || (showTaken && status === "на руках");
+    console.log(`Територія ${layer._leaflet_id}: статус=${status}, показати=${shouldShow}`);
+    if (shouldShow) {
       map.addLayer(layer);
     } else {
       map.removeLayer(layer);
