@@ -38,7 +38,7 @@ button.login-btn, button.logout-btn { top: 90px; }
   </style>
 </head>
 <body>
-<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце тпа</button>
+<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце тп</button>
 <button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
 <div id="auth-buttons">
   <a href="enter.html"><button class="login-btn" style="display:none">🔐 Увійти</button></a>
@@ -115,40 +115,29 @@ logoutBtn?.addEventListener("click", async () => {
   });
 
   window.getTerritoryStatusPopup = async (number, name) => {
-    if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
-    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-    const snap = await getDocs(q);
-    let popup = `<b>${name}</b><br>`;
-    if (snap.empty) {
-      popup += `<b>Статус:</b> вільно`;
-    } else {
-      const data = snap.docs[0].data();
-      popup += `<b>Статус:</b> ${data.status}<br>`;
-      if (data.status === "на руках") {
-        popup += `<b>ПІБ:</b> ${data.pib}<br>`;
-        popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`;
-      }
+  if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
+  const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+  const snap = await getDocs(q);
+  let popup = `<b>${name}</b><br>`;
+  if (snap.empty) {
+    popup += `<b>Статус:</b> вільно`;
+  } else {
+    const data = snap.docs[0].data();
+    popup += `<b>Статус:</b> ${data.status}<br>`;
+    if (data.status === "на руках") {
+      popup += `<b>ПІБ:</b> ${data.pib}<br>`;
+      popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`;
     }
-    return popup;
-  };
-  
-    window.getTerritoryStatusPopup = async (number, name) => {
-    if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
-    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-    const snap = await getDocs(q);
-    let popup = `<b>${name}</b><br>`;
-    if (snap.empty) {
-      popup += `<b>Статус:</b> вільно`;
-    } else {
-      const data = snap.docs[0].data();
-      popup += `<b>Статус:</b> ${data.status}<br>`;
-      if (data.status === "на руках") {
-        popup += `<b>ПІБ:</b> ${data.pib}<br>`;
-        popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`;
-      }
-    }
-    return popup;
-  };
+  }
+  return popup;
+};
+
+window.getTerritoryStatus = async (number) => {
+  if (!currentUser) return null;
+  const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+  const snap = await getDocs(q);
+  return snap.empty ? "вільно" : snap.docs[0].data().status;
+};
 </script>
 
 <script>
@@ -298,7 +287,17 @@ const loadedLayers = [];
       }).addTo(layer);
 
       loadedLayers.push({ name: d.name, layer, status });
-      overlayMaps[d.name] = layer;
+overlayMaps[d.name] = layer;
+
+const coordinates = [];
+const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
+geometries.forEach(geom => {
+  const coords = geom.coordinates;
+  const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
+  if (geom.type === "Polygon") coords.forEach(pushCoords);
+  if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
+});
+districtGeometries.push({ name: d.name, coordinates });
       // ... (решта коду для координат)
     } catch (err) {
       console.warn(`Помилка при завантаженні ${d.id}.json: ${err.message}`);
@@ -363,31 +362,39 @@ function tryAddLayersControl() {
       localStorage.setItem('showAllLayers', showAll);
     });
 
-    toggleFreeInput.addEventListener('change', async () => {
-      if (!currentUser) {
-        toggleFreeInput.checked = false;
-        alert('⚠ Увійдіть, щоб фільтрувати території за статусом');
-        return;
-      }
-      const showFree = toggleFreeInput.checked;
-      for (const { layer, status } of loadedLayers) {
-        if (showFree && status === "вільно") map.addLayer(layer);
-        else if (!toggleTakenInput.checked || status !== "на руках") map.removeLayer(layer);
-      }
-    });
+toggleFreeInput.addEventListener('change', () => {
+  if (!currentUser) {
+    toggleFreeInput.checked = false;
+    alert('⚠ Увійдіть, щоб фільтрувати території за статусом');
+    return;
+  }
+  const showFree = toggleFreeInput.checked;
+  const showTaken = toggleTakenInput.checked;
+  for (const { layer, status } of loadedLayers) {
+    if ((showFree && status === "вільно") || (showTaken && status === "на руках")) {
+      map.addLayer(layer);
+    } else {
+      map.removeLayer(layer);
+    }
+  }
+});
 
-    toggleTakenInput.addEventListener('change', async () => {
-      if (!currentUser) {
-        toggleTakenInput.checked = false;
-        alert('⚠ Увійдіть, щоб фільтрувати території за статусом');
-        return;
-      }
-      const showTaken = toggleTakenInput.checked;
-      for (const { layer, status } of loadedLayers) {
-        if (showTaken && status === "на руках") map.addLayer(layer);
-        else if (!toggleFreeInput.checked || status !== "вільно") map.removeLayer(layer);
-      }
-    });
+toggleTakenInput.addEventListener('change', () => {
+  if (!currentUser) {
+    toggleTakenInput.checked = false;
+    alert('⚠ Увійдіть, щоб фільтрувати території за статусом');
+    return;
+  }
+  const showFree = toggleFreeInput.checked;
+  const showTaken = toggleTakenInput.checked;
+  for (const { layer, status } of loadedLayers) {
+    if ((showFree && status === "вільно") || (showTaken && status === "на руках")) {
+      map.addLayer(layer);
+    } else {
+      map.removeLayer(layer);
+    }
+  }
+});
   }
 }
 </script>
