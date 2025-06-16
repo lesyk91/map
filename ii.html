@@ -34,7 +34,7 @@ button.login-btn, button.logout-btn { top: 170px; }
   </style>
 </head>
 <body>
-<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце 1</button>
+<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце 2</button>
 <button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
 <div id="auth-buttons">
   <a href="enter.html"><button class="login-btn" style="display:none">🔐 Увійти</button></a>
@@ -139,28 +139,7 @@ window.getTerritoryStatusPopup = async (number, name) => {
 
 
 
-function updateLayersBasedOnStatus() {
-  const showAll = document.getElementById("toggle-all-layers").checked;
-  const showFree = document.getElementById("toggle-free-layers").checked;
-  const showOnHands = document.getElementById("toggle-onhands-layers").checked;
 
-  for (const { name, layer } of loadedLayers) {
-    const districtNumber = name.match(/\d+/)?.[0];
-    const status = districtStatuses[districtNumber];
-
-    if (showAll) {
-      map.addLayer(layer);
-    } else {
-      map.removeLayer(layer);
-
-      if (showFree && status === "вільно") {
-        map.addLayer(layer);
-      } else if (showOnHands && status === "на руках") {
-        map.addLayer(layer);
-      }
-    }
-  }
-}
 
 document.getElementById("toggle-all-layers").addEventListener("change", () => {
   const checked = document.getElementById("toggle-all-layers").checked;
@@ -465,6 +444,30 @@ function tryAddLayersControl() {
       });
       localStorage.setItem('showAllLayers', show);
     });
+  }
+}
+
+
+function updateLayersBasedOnStatus() {
+  const showAll = document.getElementById("toggle-all-layers").checked;
+  const showFree = document.getElementById("toggle-free-layers").checked;
+  const showOnHands = document.getElementById("toggle-onhands-layers").checked;
+
+  for (const { name, layer } of loadedLayers) {
+    const districtNumber = name.match(/\d+/)?.[0];
+    const status = districtStatuses[districtNumber];
+
+    if (showAll) {
+      map.addLayer(layer);
+    } else {
+      map.removeLayer(layer);
+
+      if (showFree && status === "вільно") {
+        map.addLayer(layer);
+      } else if (showOnHands && status === "на руках") {
+        map.addLayer(layer);
+      }
+    }
   }
 }
 </script>
