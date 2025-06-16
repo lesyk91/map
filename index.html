@@ -3,7 +3,7 @@
 <head>
   <meta name="robots" content="noindex, nofollow">
   <meta charset="utf-8" />
-  <title>Карта Територій "Іллінці" з Google Maps</title>
+  <title>Карта Територій "Іллінці"</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
@@ -103,17 +103,26 @@ logoutBtn?.addEventListener("click", async () => {
     const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
     const snap = await getDocs(q);
     let popup = `<b>${name}</b><br>`;
-    if (snap.empty) {
-      popup += `<b>Статус:</b> вільно`;
-    } else {
-      const data = snap.docs[0].data();
-      popup += `<b>Статус:</b> ${data.status}<br>`;
-      if (data.status === "на руках") {
-        popup += `<b>ПІБ:</b> ${data.pib}<br>`;
-        popup += `<b>Дата отримання:</b> ${new Date(data.dateGet).toLocaleDateString("uk-UA")}`;
-      }
-    }
+ if (snap.empty) {
+  popup += `<b>Статус:</b> вільно`;
+} else {
+  const latest = snap.docs[0].data();
+  let status = "вільно";
+  if (latest.status === "на руках") {
+    status = "на руках";
+  }
+
+  popup += `<b>Статус:</b> ${status}<br>`;
+
+  if (status === "на руках") {
+    popup += `<b>ПІБ:</b> ${latest.pib || "невідомо"}<br>`;
+    popup += `<b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
+  }
+}
+
     return popup;
+	
+	
   };
 </script>
 
