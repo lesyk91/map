@@ -3,7 +3,7 @@
 <head>
   <meta name="robots" content="noindex, nofollow">
   <meta charset="utf-8" />
-  <title>Карта Територій "Іллінці" з Google Maps</title>
+  <title>Карта Територій "Іллінці"</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
@@ -34,7 +34,7 @@ button.login-btn, button.logout-btn { top: 170px; }
   </style>
 </head>
 <body>
-<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце 2</button>
+<button onclick="findLocation()" class="locate-btn">📍 Показати моє місце 1</button>
 <button onclick="toggleLayers()" class="layer-toggle">🗺 Шари</button>
 <div id="auth-buttons">
   <a href="enter.html"><button class="login-btn" style="display:none">🔐 Увійти</button></a>
@@ -44,18 +44,13 @@ button.login-btn, button.logout-btn { top: 170px; }
 <div id="loader"></div>
 
 <div style="position: absolute; top: 90px; left: 50px; z-index: 1000; background: white; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-  <div>
-    <input type="checkbox" id="toggle-all-layers" checked>
-    <label for="toggle-all-label" id="toggle-all-label">Показати всі</label>
-  </div>
-  <div>
-    <input type="checkbox" id="toggle-free-layers">
-    <label for="toggle-free-label" id="toggle-free-label">Тільки вільні</label>
-  </div>
-  <div>
-    <input type="checkbox" id="toggle-onhands-layers">
-    <label for="toggle-onhands-label" id="toggle-onhands-label">Тільки "на руках"</label>
-  </div>
+  <input type="checkbox" id="toggle-all-layers" checked>
+  <label for="toggle-all-layers" id="toggle-all-label">Приховати всі</label><br>
+  
+  <input type="checkbox" id="filter-free">
+  <label for="filter-free">Показати лише "вільно"</label><br>
+  <input type="checkbox" id="filter-onhand">
+  <label for="filter-onhand">Показати лише "на руках"</label>
 </div>
 
 <div id="map"></div>
@@ -81,6 +76,8 @@ button.login-btn, button.logout-btn { top: 170px; }
   const auth = getAuth(app);
   const db = getFirestore(app);
   let currentUser = null;
+
+
 	
 const loginBtn = document.querySelector('.login-btn');
 const logoutBtn = document.querySelector('.logout-btn');
@@ -108,62 +105,38 @@ logoutBtn?.addEventListener("click", async () => {
   onAuthStateChanged(auth, user => {
     currentUser = user;
   });
-  
 
-window.getTerritoryStatusPopup = async (number, name) => {
-  if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
-  const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-  const snap = await getDocs(q);
+  window.getTerritoryStatusPopup = async (number, name) => {
+    if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
+    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+    const snap = await getDocs(q);
+    let popup = `<b>${name}</b><br>`;
+	const territoryStatusMap = {}; // тут зберігатимемо статуси
 
+if (snap.empty) {
+  territoryStatusMap[number] = "вільно";
+  popup += `<b>Статус:</b> вільно`;
+} else {
+  const latest = snap.docs[0].data();
   let status = "вільно";
-  let popup = `<b>${name}</b><br>`;
-
-  if (!snap.empty) {
-    const latest = snap.docs[0].data();
-    if (latest.status === "на руках") status = "на руках";
-
-    if (status === "на руках") {
-      popup += `<b>Статус:</b> ${status}<br>`;
-      popup += `<b>ПІБ:</b> ${latest.pib || "невідомо"}<br>`;
-      popup += `<b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
-    } else {
-      popup += `<b>Статус:</b> ${status}`;
-    }
-  } else {
-    popup += `<b>Статус:</b> вільно`;
+  if (latest.status === "на руках") {
+    status = "на руках";
   }
-
-  districtStatuses[number] = status; // 🔸 зберігаємо статус
-  return popup;
-};
+  territoryStatusMap[number] = status;
 
 
+  popup += `<b>Статус:</b> ${status}<br>`;
 
+  if (status === "на руках") {
+    popup += `<b>ПІБ:</b> ${latest.pib || "невідомо"}<br>`;
+    popup += `<b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
+  }
+}
 
-
-document.getElementById("toggle-all-layers").addEventListener("change", () => {
-  const checked = document.getElementById("toggle-all-layers").checked;
-  document.getElementById("toggle-all-label").innerText = checked ? "Приховати всі" : "Показати всі";
-
-  // Скидуємо інші фільтри
-  document.getElementById("toggle-free-layers").checked = false;
-  document.getElementById("toggle-onhands-layers").checked = false;
-
-  updateLayersBasedOnStatus();
-});
-
-document.getElementById("toggle-free-layers").addEventListener("change", () => {
-  document.getElementById("toggle-all-layers").checked = false;
-  document.getElementById("toggle-all-label").innerText = "Показати всі";
-  updateLayersBasedOnStatus();
-});
-
-document.getElementById("toggle-onhands-layers").addEventListener("change", () => {
-  document.getElementById("toggle-all-layers").checked = false;
-  document.getElementById("toggle-all-label").innerText = "Показати всі";
-  updateLayersBasedOnStatus();
-});
-
+    return popup;
+	
+	
+  };
 </script>
 
 <script>
@@ -215,8 +188,6 @@ document.getElementById("toggle-onhands-layers").addEventListener("change", () =
   const districtCenters = [];
   const districtGeometries = [];
   const overlayMaps = {};
-  const districtStatuses = {}; // Зберігатиме статуси територій
-
 
   function toggleLayers() {
     const control = document.querySelector('.leaflet-control-layers');
@@ -293,8 +264,6 @@ districts.sort((a, b) => {
   await Promise.all(promises);
   showLoading(false);
   tryAddLayersControl();
-  updateLayersBasedOnStatus();
-
 })();
 
 
@@ -435,39 +404,56 @@ function tryAddLayersControl() {
       Object.values(sortedOverlayMaps).forEach(layer => map.addLayer(layer));
     }
 
-    toggleInput.addEventListener('change', () => {
-      const show = toggleInput.checked;
-      toggleLabel.innerText = show ? 'Приховати всі' : 'Показати всі';
-      Object.values(sortedOverlayMaps).forEach(layer => {
-        if (show) map.addLayer(layer);
-        else map.removeLayer(layer);
-      });
-      localStorage.setItem('showAllLayers', show);
-    });
+   toggleInput.addEventListener('change', () => {
+  const show = toggleInput.checked;
+  toggleLabel.innerText = show ? 'Приховати всі' : 'Показати всі';
+
+  if (show) {
+    document.getElementById('filter-free').checked = false;
+    document.getElementById('filter-onhand').checked = false;
   }
-}
 
+  Object.values(sortedOverlayMaps).forEach(layer => {
+    if (show) map.addLayer(layer);
+    else map.removeLayer(layer);
+  });
+  localStorage.setItem('showAllLayers', show);
+});
 
-function updateLayersBasedOnStatus() {
-  const showAll = document.getElementById("toggle-all-layers").checked;
-  const showFree = document.getElementById("toggle-free-layers").checked;
-  const showOnHands = document.getElementById("toggle-onhands-layers").checked;
+	
+	
+	
+	document.getElementById('filter-free').addEventListener('change', () => {
+  if (!toggleInput.checked) applyStatusFilter();
+});
+document.getElementById('filter-onhand').addEventListener('change', () => {
+  if (!toggleInput.checked) applyStatusFilter();
+});
 
-  for (const { name, layer } of loadedLayers) {
-    const districtNumber = name.match(/\d+/)?.[0];
-    const status = districtStatuses[districtNumber];
+function applyStatusFilter() {
+  const showFree = document.getElementById('filter-free').checked;
+  const showOnHand = document.getElementById('filter-onhand').checked;
 
-    if (showAll) {
+  loadedLayers.forEach(({ name, layer }) => {
+    const number = name.replace("Територія ", "");
+    const status = territoryStatusMap[number];
+
+    if (!status) {
+      map.removeLayer(layer);
+      return;
+    }
+
+    if (
+      (showFree && status === "вільно") ||
+      (showOnHand && status === "на руках")
+    ) {
       map.addLayer(layer);
     } else {
       map.removeLayer(layer);
-
-      if (showFree && status === "вільно") {
-        map.addLayer(layer);
-      } else if (showOnHands && status === "на руках") {
-        map.addLayer(layer);
-      }
     }
+  });
+}
+
   }
 }
 </script>
