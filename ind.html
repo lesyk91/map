@@ -615,6 +615,10 @@ CSS для `.controls` уже присутній і коректний. Жодн
     }).addTo(map);
   }
 
+  // Експорт функцій до глобальної області видимості
+  window.findLocation = findLocation;
+  window.routeToDistrict = routeToDistrict;
+
   function updateTerritoriesDisplay() {
     const toggleAllCheckbox = document.getElementById('toggleAll');
     const showTakenCheckbox = document.getElementById('showTaken');
