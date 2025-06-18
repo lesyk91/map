@@ -25,6 +25,28 @@
 button.locate-btn { top: 10px; }
 button.layer-toggle { top: 50px; }
 button.login-btn, button.logout-btn { top: 170px; }
+
+
+div.controls {
+  position: absolute;
+  top: 90px;
+  left: 50px;
+  z-index: 1000;
+  background: white;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: Arial, sans-serif;
+}
+
+.controls label {
+  margin-left: 5px;
+  cursor: pointer;
+}
+
+.controls input[type="checkbox"] {
+  margin: 5px 0;
+}
  
 
     #loader {
@@ -44,15 +66,15 @@ button.login-btn, button.logout-btn { top: 170px; }
 <div id="loader"></div>
 
 <div style="position: absolute; top: 90px; left: 50px; z-index: 1000; background: white; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-  <input type="checkbox" id="toggle-all-layers" checked>
-  <label for="toggle-all-layers" id="toggle-all-label">Приховати всі</label><br>
-  
-  <input type="checkbox" id="filter-free">
-  <label for="filter-free">Показати лише "вільно"</label><br>
-  <input type="checkbox" id="filter-onhand">
-  <label for="filter-onhand">Показати лише "на руках"</label>
+  <input type="checkbox" id="showAll" checked>
+  <label for="showAll">Показати всі</label><br>
+  <input type="checkbox" id="showFree">
+  <label for="showFree">Показати вільні території</label><br>
+  <input type="checkbox" id="showTaken">
+  <label for="showTaken">Показати території "на руках"</label><br>
+  <input type="checkbox" id="hideAll">
+  <label for="hideAll">Приховати всі</label>
 </div>
-
 <div id="map"></div>
 
 
@@ -76,10 +98,6 @@ button.login-btn, button.logout-btn { top: 170px; }
   const auth = getAuth(app);
   const db = getFirestore(app);
   let currentUser = null;
-  const territoryStatusMap = {}; // глобальна змінна для фільтрації
-
-
-
 	
 const loginBtn = document.querySelector('.login-btn');
 const logoutBtn = document.querySelector('.logout-btn');
@@ -113,10 +131,7 @@ logoutBtn?.addEventListener("click", async () => {
     const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
     const snap = await getDocs(q);
     let popup = `<b>${name}</b><br>`;
-	
-
-if (snap.empty) {
-  territoryStatusMap[number] = "вільно";
+ if (snap.empty) {
   popup += `<b>Статус:</b> вільно`;
 } else {
   const latest = snap.docs[0].data();
@@ -124,8 +139,6 @@ if (snap.empty) {
   if (latest.status === "на руках") {
     status = "на руках";
   }
-  territoryStatusMap[number] = status;
-
 
   popup += `<b>Статус:</b> ${status}<br>`;
 
@@ -142,6 +155,7 @@ if (snap.empty) {
 </script>
 
 <script>
+const territoryStatuses = {};
   const map = L.map('map').setView([49.1029, 29.2074], 13);
 
   const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
@@ -218,17 +232,14 @@ districts.sort((a, b) => {
 (async () => {
   showLoading(true);
 
-  // Сортування district заздалегідь
-  districts.sort((a, b) => {
-    const numA = parseInt(a.id.replace("district", ""), 10);
-    const numB = parseInt(b.id.replace("district", ""), 10);
-    return numA - numB;
-  });
-
-  const promises = districts.map(async d => {
+  for (const d of districts) {
     const layer = L.layerGroup();
     try {
       const res = await fetch(`${d.id}.json`);
+      if (!res.ok) {
+        console.warn(`Не вдалося завантажити ${d.id}.json: ${res.status}`);
+        continue;
+      }
       const data = await res.json();
 
       const geoJsonLayer = L.geoJSON(data, {
@@ -244,7 +255,11 @@ districts.sort((a, b) => {
         style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
       }).addTo(layer);
 
-      // Зберігаємо шар у масиві, щоб зберегти порядок
+      // Зберігаємо статус території
+      const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
+      const statusMatch = popupContent.match(/Статус:<\/b> (\w+)/);
+      territoryStatuses[d.id] = statusMatch ? statusMatch[1] : "вільно";
+
       loadedLayers.push({ name: d.name, layer });
       overlayMaps[d.name] = layer;
 
@@ -259,11 +274,10 @@ districts.sort((a, b) => {
 
       districtGeometries.push({ name: d.name, coordinates });
     } catch (err) {
-      alert(`⚠ Не вдалося завантажити ${d.id}.json`);
+      console.warn(`Помилка при завантаженні ${d.id}.json: ${err.message}`);
     }
-  });
+  }
 
-  await Promise.all(promises);
   showLoading(false);
   tryAddLayersControl();
 })();
@@ -331,7 +345,6 @@ const loadedLayers = [];
       if (!res.ok) {
         console.warn(`Не вдалося завантажити ${d.id}.json: ${res.status}`);
         continue; // Пропускаємо територію, якщо файл не завантажився
-		
       }
       const data = await res.json();
 
@@ -344,10 +357,6 @@ const loadedLayers = [];
             const popupContent = await window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
             layer.bindPopup(popupContent + `<br><button onclick=\"routeToDistrict('${d.name}')\">📌 Прокласти маршрут сюди</button>`).openPopup();
           });
-		  
-		  // Попередньо визначаємо статус для фільтрації (не чекаючи кліку)
-window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-
         },
         style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
       }).addTo(layer);
@@ -382,7 +391,6 @@ window.getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
 
 function tryAddLayersControl() {
   if (!layersControl) {
-    // Створюємо об'єкт overlayMaps у правильному порядку
     const sortedOverlayMaps = {};
     loadedLayers.forEach(({ name, layer }) => {
       sortedOverlayMaps[name] = layer;
@@ -394,73 +402,88 @@ function tryAddLayersControl() {
       { collapsed: true }
     ).addTo(map);
 
-    // Ініціалізація чекбокса
-    const toggleInput = document.getElementById('toggle-all-layers');
-    const toggleLabel = document.getElementById('toggle-all-label');
-    const savedState = localStorage.getItem('showAllLayers');
-    if (savedState !== null) {
-      toggleInput.checked = JSON.parse(savedState);
-      toggleLabel.innerText = toggleInput.checked ? 'Приховати всі' : 'Показати всі';
-      Object.values(sortedOverlayMaps).forEach(layer => {
-        if (toggleInput.checked) map.addLayer(layer);
-        else map.removeLayer(layer);
+    const showAllCheckbox = document.getElementById('showAll');
+    const showFreeCheckbox = document.getElementById('showFree');
+    const showTakenCheckbox = document.getElementById('showTaken');
+    const hideAllCheckbox = document.getElementById('hideAll');
+
+    function updateTerritoriesDisplay() {
+      const showAll = showAllCheckbox.checked;
+      const showFree = showFreeCheckbox.checked;
+      const showTaken = showTakenCheckbox.checked;
+      const hideAll = hideAllCheckbox.checked;
+
+      loadedLayers.forEach(({ name, layer }) => {
+        const districtId = districts.find(d => d.name === name).id;
+        const status = territoryStatuses[districtId] || "вільно";
+
+        if (hideAll) {
+          map.removeLayer(layer);
+        } else if (showAll) {
+          map.addLayer(layer);
+        } else {
+          const shouldShow = 
+            (showFree && status === "вільно") ||
+            (showTaken && status === "на руках");
+          if (shouldShow) {
+            map.addLayer(layer);
+          } else {
+            map.removeLayer(layer);
+          }
+        }
       });
-    } else {
-      toggleInput.checked = true;
-      toggleLabel.innerText = 'Приховати всі';
-      Object.values(sortedOverlayMaps).forEach(layer => map.addLayer(layer));
     }
 
-   toggleInput.addEventListener('change', () => {
-  const show = toggleInput.checked;
-  toggleLabel.innerText = show ? 'Приховати всі' : 'Показати всі';
+    showAllCheckbox.addEventListener('change', () => {
+      if (showAllCheckbox.checked) {
+        showFreeCheckbox.checked = false;
+        showTakenCheckbox.checked = false;
+        hideAllCheckbox.checked = false;
+      }
+      updateTerritoriesDisplay();
+      localStorage.setItem('showAll', showAllCheckbox.checked);
+    });
 
-  if (show) {
-    document.getElementById('filter-free').checked = false;
-    document.getElementById('filter-onhand').checked = false;
-  }
+    showFreeCheckbox.addEventListener('change', () => {
+      if (showFreeCheckbox.checked) {
+        showAllCheckbox.checked = false;
+        hideAllCheckbox.checked = false;
+      }
+      updateTerritoriesDisplay();
+      localStorage.setItem('showFree', showFreeCheckbox.checked);
+    });
 
-  Object.values(sortedOverlayMaps).forEach(layer => {
-    if (show) map.addLayer(layer);
-    else map.removeLayer(layer);
-  });
-  localStorage.setItem('showAllLayers', show);
-});
+    showTakenCheckbox.addEventListener('change', () => {
+      if (showTakenCheckbox.checked) {
+        showAllCheckbox.checked = false;
+        hideAllCheckbox.checked = false;
+      }
+      updateTerritoriesDisplay();
+      localStorage.setItem('showTaken', showTakenCheckbox.checked);
+    });
 
-	
-	
-	
-	document.getElementById('filter-free').addEventListener('change', () => {
-  if (!toggleInput.checked) applyStatusFilter();
-});
-document.getElementById('filter-onhand').addEventListener('change', () => {
-  if (!toggleInput.checked) applyStatusFilter();
-});
+    hideAllCheckbox.addEventListener('change', () => {
+      if (hideAllCheckbox.checked) {
+        showAllCheckbox.checked = false;
+        showFreeCheckbox.checked = false;
+        showTakenCheckbox.checked = false;
+      }
+      updateTerritoriesDisplay();
+      localStorage.setItem('hideAll', hideAllCheckbox.checked);
+    });
 
-function applyStatusFilter() {
-  const showFree = document.getElementById('filter-free').checked;
-  const showOnHand = document.getElementById('filter-onhand').checked;
+    // Відновлення стану чекбоксів із localStorage
+    const savedShowAll = localStorage.getItem('showAll');
+    const savedShowFree = localStorage.getItem('showFree');
+    const savedShowTaken = localStorage.getItem('showTaken');
+    const savedHideAll = localStorage.getItem('hideAll');
 
-  loadedLayers.forEach(({ name, layer }) => {
-    const number = name.replace("Територія ", "");
-    const status = territoryStatusMap[number];
+    if (savedShowAll !== null) showAllCheckbox.checked = JSON.parse(savedShowAll);
+    if (savedShowFree !== null) showFreeCheckbox.checked = JSON.parse(savedShowFree);
+    if (savedShowTaken !== null) showTakenCheckbox.checked = JSON.parse(savedShowTaken);
+    if (savedHideAll !== null) hideAllCheckbox.checked = JSON.parse(savedHideAll);
 
-    if (!status) {
-      map.removeLayer(layer);
-      return;
-    }
-
-    if (
-      (showFree && status === "вільно") ||
-      (showOnHand && status === "на руках")
-    ) {
-      map.addLayer(layer);
-    } else {
-      map.removeLayer(layer);
-    }
-  });
-}
-
+    updateTerritoriesDisplay();
   }
 }
 </script>
