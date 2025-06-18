@@ -157,27 +157,36 @@ button.login-btn, button.logout-btn { top: 170px; }
   });
 
   const districts = [
-    { id: 'district1', name: 'Територія 1', color: 'blue', fillColor: '#add8e6' },
-    { id: 'district2', name: 'Територія 2', color: 'green', fillColor: '#90ee90' },
-    { id: 'district3', name: 'Територія 3', color: 'Yellow', fillColor: '#ffffe0' },
-    { id: 'district4', name: 'Територія 4', color: 'Orange', fillColor: '#ffdab9' },
-    { id: 'district5', name: 'Територія 5', color: 'Pink', fillColor: '#ffb6c1' },
-    { id: 'district6', name: 'Територія 6', color: 'Brown', fillColor: '#d2b48c' },
-    { id: 'district7', name: 'Територія 7', color: 'Purple', fillColor: '#e6e6fa' },
-    { id: 'district8', name: 'Територія 8', color: 'Gray', fillColor: '#d3d3d3' },
-    { id: 'district9', name: 'Територія 9', color: 'Cyan', fillColor: '#e0ffff' },
-    { id: 'district10', name: 'Територія 10', color: 'Magenta', fillColor: '#ff80ff' },
-    { id: 'district11', name: 'Територія 11', color: 'blue', fillColor: '#add8e6' },
-    { id: 'district12', name: 'Територія 12', color: 'green', fillColor: '#90ee90' },
-    { id: 'district13', name: 'Територія 13', color: 'Yellow', fillColor: '#ffffe0' },
-    { id: 'district14', name: 'Територія 14', color: 'Orange', fillColor: '#ffdab9' },
-    { id: 'district15', name: 'Територія 15', color: 'Pink', fillColor: '#ffb6c1' },
-    { id: 'district16', name: 'Територія 16', color: 'Brown', fillColor: '#d2b48c' },
-    { id: 'district17', name: 'Територія 17', color: 'Purple', fillColor: '#e6e6fa' },
-    { id: 'district18', name: 'Територія 18', color: 'Gray', fillColor: '#d3d3d3' },
-    { id: 'district19', name: 'Територія 19', color: 'Cyan', fillColor: '#e0ffff' },
-    { id: 'district20', name: 'Територія 20', color: 'Magenta', fillColor: '#ff80ff' },
-    { id: '\Bundle
+     { id: 'district1', name: 'Територія 1', color: 'blue', fillColor: '#add8e6' }, // Lighter blue
+    { id: 'district2', name: 'Територія 2', color: 'green', fillColor: '#90ee90' }, // Lighter green
+    { id: 'district3', name: 'Територія 3', color: 'Yellow', fillColor: '#ffffe0' }, // Lighter yellow
+    { id: 'district4', name: 'Територія 4', color: 'Orange', fillColor: '#ffdab9' }, // Lighter orange
+    { id: 'district5', name: 'Територія 5', color: 'Pink', fillColor: '#ffb6c1' }, // Lighter pink
+    { id: 'district6', name: 'Територія 6', color: 'Brown', fillColor: '#d2b48c' }, // Lighter brown
+    { id: 'district7', name: 'Територія 7', color: 'Purple', fillColor: '#e6e6fa' }, // Lighter purple
+    { id: 'district8', name: 'Територія 8', color: 'Gray', fillColor: '#d3d3d3' }, // Lighter gray
+    { id: 'district9', name: 'Територія 9', color: 'Cyan', fillColor: '#e0ffff' }, // Lighter cyan
+    { id: 'district10', name: 'Територія 10', color: 'Magenta', fillColor: '#ff80ff' }, // Lighter magenta
+    { id: 'district11', name: 'Територія 11', color: 'blue', fillColor: '#add8e6' }, // Lighter blue
+    { id: 'district12', name: 'Територія 12', color: 'green', fillColor: '#90ee90' }, // Lighter green
+    { id: 'district13', name: 'Територія 13', color: 'Yellow', fillColor: '#ffffe0' }, // Lighter yellow
+    { id: 'district14', name: 'Територія 14', color: 'Orange', fillColor: '#ffdab9' }, // Lighter orange
+    { id: 'district15', name: 'Територія 15', color: 'Pink', fillColor: '#ffb6c1' }, // Lighter pink
+    { id: 'district16', name: 'Територія 16', color: 'Brown', fillColor: '#d2b48c' }, // Lighter brown
+    { id: 'district17', name: 'Територія 17', color: 'Purple', fillColor: '#e6e6fa' }, // Lighter purple
+    { id: 'district18', name: 'Територія 18', color: 'Gray', fillColor: '#d3d3d3' }, // Lighter gray
+    { id: 'district19', name: 'Територія 19', color: 'Cyan', fillColor: '#e0ffff' }, // Lighter cyan
+    { id: 'district20', name: 'Територія 20', color: 'Magenta', fillColor: '#ff80ff' }, // Lighter magenta
+    { id: 'district21', name: 'Територія 21', color: 'blue', fillColor: '#add8e6' }, // Lighter blue
+    { id: 'district22', name: 'Територія 22', color: 'green', fillColor: '#90ee90' }, // Lighter green
+    { id: 'district23', name: 'Територія 23', color: 'Yellow', fillColor: '#ffffe0' }, // Lighter yellow
+    { id: 'district24', name: 'Територія 24', color: 'Orange', fillColor: '#ffdab9' }, // Lighter orange
+    { id: 'district25', name: 'Територія 25', color: 'Pink', fillColor: '#ffb6c1' }, // Lighter pink
+    { id: 'district26', name: 'Територія 26', color: 'Brown', fillColor: '#d2b48c' }, // Lighter brown
+    { id: 'district28', name: 'Територія 28', color: 'Gray', fillColor: '#d3d3d3' }, // Lighter gray
+    { id: 'district29', name: 'Територія 29', color: 'Cyan', fillColor: '#e0ffff' }, // Lighter cyan
+    { id: 'district30', name: 'Територія 30', color: 'Magenta', fillColor: '#ff80ff' }, // Lighter magenta
+    { id: 'district56', name: 'Територія 56', color: 'red', fillColor: '#b6fcb6' }]
 
 System: Я бачу, що ваш код обривається в кінці `<script type="module">`. Щоб правильно реалізувати функціональність із трьома чекбоксами ("Показати всі / Приховати всі", "На руках", "Вільно") та виправити проблему з некоректним відображенням статусів після зміни даних у Firestore, я завершу та оновлю ваш код. Основні зміни включають:
 
