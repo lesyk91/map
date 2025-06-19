@@ -2,7 +2,28 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8" />
+  <!-- Added viewport meta tag for responsive design -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Деталі території</title>
+  <!-- Added Tailwind CSS CDN for modern styling -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    /* Custom styles for enhanced UX */
+    .card {
+      transition: all 0.3s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .btn {
+      transition: all 0.3s ease;
+    }
+    /* Smooth scroll behavior */
+    html {
+      scroll-behavior: smooth;
+    }
+  </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
@@ -51,18 +72,21 @@
           statusText = "на руках";
         }
 
-        statusElement.innerHTML = `<b>Статус території:</b> ${statusText}`;
+        // Updated status styling with Tailwind
+        statusElement.innerHTML = `<b>Статус території:</b> <span class="${statusText === 'вільно' ? 'text-green-600' : 'text-red-600'}">${statusText}</span>`;
         const allowNew = statusText !== "на руках";
 
         if (allowNew) {
           const form = document.createElement("form");
+          // Updated form with Tailwind classes for styling
+          form.className = "bg-white p-6 rounded-lg shadow-md mb-6";
           form.innerHTML = `
-            <h3>Новий запис</h3>
-            <input required name="pib" placeholder="ПІБ" /><br/>
-            <input required name="dateGet" type="date" /><br/>
-            <input name="dateProcess" type="date" /><br/>
-            <textarea name="note" placeholder="Нотатки"></textarea><br/>
-            <button>Зберегти</button>
+            <h3 class="text-lg font-semibold mb-4">Новий запис</h3>
+            <input required name="pib" placeholder="ПІБ" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+            <input required name="dateGet" type="date" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+            <input name="dateProcess" type="date" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+            <textarea name="note" placeholder="Нотатки" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea><br/>
+            <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Зберегти</button>
           `;
           form.onsubmit = async (e) => {
             e.preventDefault();
@@ -85,37 +109,39 @@
           };
           container.appendChild(form);
         } else {
-          container.innerHTML += `<p style="color:red">Територія ще на руках. Спочатку закрийте попередній запис.</p>`;
+          // Styled warning message
+          container.innerHTML += `<p class="text-red-600 font-semibold mb-4">Територія ще на руках. Спочатку закрийте попередній запис.</p>`;
         }
 
         snap.forEach(docSnap => {
           const d = docSnap.data();
           const entry = document.createElement("div");
-
+          // Added card styling for history entries
+          entry.className = "card bg-white p-6 rounded-lg shadow-md mb-4";
           entry.innerHTML = `
-            <hr/>
-            <b>ПІБ:</b> ${d.pib}<br/>
-            <b>Дата отримання:</b> ${formatDate(d.dateGet)}<br/>
-            <b>Дата опрацювання:</b> ${formatDate(d.dateProcess)}<br/>
-            <b>Нотатки:</b> ${d.note || "-"}<br/>
-            <b>Хто додав:</b> <span id="user-${d.user}">Завантаження...</span><br/>
-            <b>Статус:</b> ${d.status}<br/>
-            <b>Час опрацювання (днів):</b> ${
+            <div class="mb-2"><b>ПІБ:</b> ${d.pib}</div>
+            <div class="mb-2"><b>Дата отримання:</b> ${formatDate(d.dateGet)}</div>
+            <div class="mb-2"><b>Дата опрацювання:</b> ${formatDate(d.dateProcess)}</div>
+            <div class="mb-2"><b>Нотатки:</b> ${d.note || "-"}</div>
+            <div class="mb-2"><b>Хто додав:</b> <span id="user-${d.user}">Завантаження...</span></div>
+            <div class="mb-2"><b>Статус:</b> ${d.status}</div>
+            <div class="mb-2"><b>Час опрацювання (днів):</b> ${
               d.dateGet
                 ? (d.dateProcess
                     ? diffDays(d.dateGet, d.dateProcess)
                     : diffDays(d.dateGet)
                   )
                 : "-"
-            }<br/>
-            <b>Час від останнього опрацювання (днів):</b> ${d.timeSinceLast ?? "-"}<br/>
-            <button onclick="edit('${number}','${docSnap.id}')">Редагувати</button>
-            <button onclick="del('${number}','${docSnap.id}')">Видалити</button>
+            }</div>
+            <div class="mb-4"><b>Час від останнього опрацювання (днів):</b> ${d.timeSinceLast ?? "-"}</div>
+            <div class="flex space-x-2">
+              <button class="btn bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg" onclick="edit('${number}','${docSnap.id}')">Редагувати</button>
+              <button class="btn bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg" onclick="del('${number}','${docSnap.id}')">Видалити</button>
+            </div>
           `;
 
           container.appendChild(entry);
 
-          // Підставити ПІБ за UID
           const userSpan = entry.querySelector(`#user-${d.user}`);
           const userRef = doc(db, "users", d.user);
           getDoc(userRef).then(snap => {
@@ -134,13 +160,15 @@
       const snap = await getDoc(ref);
       const d = snap.data();
       const f = document.createElement("form");
+      // Styled edit form
+      f.className = "bg-white p-6 rounded-lg shadow-md";
       f.innerHTML = `
-        <h3>Редагування</h3>
-        <input name="pib" value="${d.pib}" /><br/>
-        <input name="dateGet" type="date" value="${d.dateGet}" /><br/>
-        <input name="dateProcess" type="date" value="${d.dateProcess || ""}" /><br/>
-        <textarea name="note">${d.note || ""}</textarea><br/>
-        <button>Оновити</button>
+        <h3 class="text-lg font-semibold mb-4">Редагування</h3>
+        <input name="pib" value="${d.pib}" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+        <input name="dateGet" type="date" value="${d.dateGet}" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+        <input name="dateProcess" type="date" value="${d.dateProcess || ""}" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+        <textarea name="note" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">${d.note || ""}</textarea><br/>
+        <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Оновити</button>
       `;
       f.onsubmit = async (e) => {
         e.preventDefault();
@@ -172,10 +200,35 @@
     };
   </script>
 </head>
-<body>
-  <h1 id="title"></h1>
-  <p id="territory-status"><b>Статус території:</b></p>
-  <a href="territories.html">← Назад</a>
-  <div id="territory"></div>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+  <!-- Added header with navigation -->
+  <header class="bg-white shadow-md p-4 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <div class="flex items-center space-x-4">
+        <a href="territories.html" class="text-blue-600 hover:text-blue-800 font-semibold flex items-center">
+          <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+          </svg>
+          Назад
+        </a>
+        <h1 id="title" class="text-2xl font-bold text-gray-800"></h1>
+      </div>
+      <p id="territory-status" class="text-lg font-semibold"></p>
+    </div>
+  </header>
+
+  <!-- Main content with responsive layout -->
+  <main class="flex-grow p-4">
+    <div class="max-w-7xl mx-auto">
+      <div id="territory" class="space-y-4"></div>
+    </div>
+  </main>
+
+  <!-- Added footer for better structure -->
+  <footer class="bg-white shadow-inner p-4 mt-auto">
+    <div class="max-w-7xl mx-auto text-center text-gray-600">
+      © 2025 Території. Всі права захищено.
+    </div>
+  </footer>
 </body>
 </html>
