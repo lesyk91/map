@@ -73,7 +73,7 @@
         }
 
         // Updated status styling with Tailwind
-        statusElement.innerHTML = `<b>Статус території:</b> <span class="${statusText === 'вільно' ? 'text-green-600' : 'text-red-600'}">${statusText}</span>`;
+        statusElement.innerHTML = `<b>Статус території:</b> <p><span class="${statusText === 'вільно' ? 'text-green-600' : 'text-red-600'}">${statusText}</span></p>`;
         const allowNew = statusText !== "на руках";
 
         if (allowNew) {
