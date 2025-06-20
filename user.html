@@ -2,7 +2,33 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8" />
+  <!-- Added viewport meta tag for responsive design -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Користувачі</title>
+  <!-- Added Tailwind CSS CDN for modern styling -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    /* Custom styles for enhanced UX */
+    .card {
+      transition: all 0.3s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .btn {
+      transition: all 0.3s ease;
+      touch-action: manipulation; /* Improves touch responsiveness */
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    /* Smooth scroll behavior */
+    html {
+      scroll-behavior: smooth;
+    }
+  </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import {
@@ -33,18 +59,22 @@
       const email = e.target.email.value;
       const password = e.target.password.value;
 
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      const uid = cred.user.uid;
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        const uid = cred.user.uid;
 
-      await setDoc(doc(db, "users", uid), {
-        uid,
-        email,
-        name
-      });
+        await setDoc(doc(db, "users", uid), {
+          uid,
+          email,
+          name
+        });
 
-      alert("Користувача додано");
-      e.target.reset();
-      loadUsers();
+        alert("Користувача додано");
+        e.target.reset();
+        loadUsers();
+      } catch (err) {
+        alert("Помилка: " + err.message);
+      }
     };
 
     // Зміна паролю
@@ -58,6 +88,7 @@
         const cred = await signInWithEmailAndPassword(auth, email, oldPassword);
         await updatePassword(cred.user, newPassword);
         alert("Пароль змінено");
+        e.target.reset();
       } catch (err) {
         alert("Помилка: " + err.message);
       }
@@ -66,17 +97,18 @@
     // Завантаження списку користувачів
     async function loadUsers() {
       const list = document.getElementById("user-list");
-      list.innerHTML = "<h3>Список користувачів:</h3>";
+      list.innerHTML = "<h3 class='text-lg font-semibold mb-4'>Список користувачів:</h3>";
 
       const snap = await getDocs(collection(db, "users"));
       snap.forEach(docSnap => {
         const d = docSnap.data();
         const div = document.createElement("div");
+        // Added card styling for user entries
+        div.className = "card bg-white p-6 rounded-lg shadow-md mb-4";
         div.innerHTML = `
-          <b>ПІБ:</b> <input value="${d.name}" id="name-${d.uid}" /><br/>
-          <b>Email:</b> ${d.email}<br/>
-          <button onclick="updateName('${d.uid}')">Оновити ПІБ</button>
-          <hr/>
+          <div class="mb-2"><b>ПІБ:</b> <input value="${d.name}" id="name-${d.uid}" class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
+          <div class="mb-2"><b>Email:</b> ${d.email}</div>
+          <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mt-2" onclick="updateName('${d.uid}')">Оновити ПІБ</button>
         `;
         list.appendChild(div);
       });
@@ -95,28 +127,59 @@
     // Запуск завантаження після входу
     onAuthStateChanged(auth, (user) => {
       if (user) loadUsers();
+      else location.href = "index.html"; // Redirect to login if not authenticated
     });
   </script>
 </head>
-<body>
-  <h1>Управління користувачами</h1>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+  <!-- Added header for navigation -->
+  <header class="bg-white shadow-md p-4 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <h1 class="text-2xl font-bold text-gray-800">Управління користувачами</h1>
+      <a href="index.html" class="text-blue-600 hover:text-blue-800 font-semibold flex items-center">
+        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+        Назад
+      </a>
+    </div>
+  </header>
 
-  <h3>Додати нового користувача</h3>
-  <form id="register-form">
-    <input name="name" placeholder="ПІБ" required /><br/>
-    <input name="email" type="email" placeholder="Email" required /><br/>
-    <input name="password" type="password" placeholder="Пароль" required /><br/>
-    <button>Додати</button>
-  </form>
+  <!-- Main content with responsive layout -->
+  <main class="flex-grow p-4">
+    <div class="max-w-7xl mx-auto space-y-6">
+      <!-- Styled form for adding new user -->
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-lg font-semibold mb-4">Додати нового користувача</h3>
+        <form id="register-form" class="space-y-4">
+          <input name="name" placeholder="ПІБ" required class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input name="email" type="email" placeholder="Email" required class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input name="password" type="password" placeholder="Пароль" required class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg w-full sm:w-auto">Додати</button>
+        </form>
+      </div>
 
-  <h3>Змінити пароль</h3>
-  <form id="update-password">
-    <input name="email" type="email" placeholder="Email" required /><br/>
-    <input name="oldPassword" type="password" placeholder="Старий пароль" required /><br/>
-    <input name="newPassword" type="password" placeholder="Новий пароль" required /><br/>
-    <button>Змінити</button>
-  </form>
+      <!-- Styled form for changing password -->
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-lg font-semibold mb-4">Змінити пароль</h3>
+        <form id="update-password" class="space-y-4">
+          <input name="email" type="email" placeholder="Email" required class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input name="oldPassword" type="password" placeholder="Старий пароль" required class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input name="newPassword" type="password" placeholder="Новий пароль" required class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg w-full sm:w-auto">Змінити</button>
+        </form>
+      </div>
 
-  <div id="user-list"></div>
+      <!-- Styled user list -->
+      <div id="user-list" class="space-y-4"></div>
+    </div>
+  </main>
+
+  <!-- Added footer for consistency -->
+  <footer class="bg-white shadow-inner p-4 mt-auto">
+    <div class="max-w-7xl mx-auto text-center text-gray-600">
+      © 2025 Території. Всі права захищено.
+    </div>
+  </footer>
 </body>
 </html>
