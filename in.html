@@ -4,101 +4,233 @@
   <meta name="robots" content="noindex, nofollow">
   <meta charset="utf-8" />
   <title>Карта Територій "Іллінці"</title>
-  <!-- Ensured viewport meta tag is present for responsive design -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
-  <!-- Added Tailwind CSS CDN for modern styling -->
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
     html, body, #map {
-      height: 100%; margin: 0; padding: 0;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
     }
-    /* Custom styles for buttons and controls */
-    .btn {
-      transition: all 0.3s ease;
-      touch-action: manipulation; /* Improves touch responsiveness */
+    /* Header styling */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      padding: 12px 16px;
+      z-index: 1001;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
-    .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    header h1 {
+      font-size: 1.5rem;
+      color: #333;
+      margin: 0;
     }
-    /* Sidebar styling for mobile */
+    /* Menu toggle button for mobile */
+    .menu-toggle {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+    }
+    .menu-toggle svg {
+      width: 24px;
+      height: 24px;
+      stroke: #333;
+    }
+    /* Sidebar styling for controls */
     .sidebar {
-      transition: transform 0.3s ease;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 250px;
+      height: 100%;
+      background: #ffffff;
+      box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+      padding: 16px;
+      z-index: 1000;
       transform: translateX(-100%);
+      transition: transform 0.3s ease;
     }
     .sidebar.open {
       transform: translateX(0);
     }
-    /* Smooth scroll behavior */
-    html {
-      scroll-behavior: smooth;
+    /* Close button for sidebar */
+    .close-sidebar {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      align-self: flex-end;
     }
-    /* Ensure Leaflet controls don't overlap with custom controls */
+    .close-sidebar svg {
+      width: 24px;
+      height: 24px;
+      stroke: #333;
+    }
+    /* Button styling */
+    .btn {
+      display: flex;
+      align-items: center;
+      padding: 10px 16px;
+      margin-bottom: 8px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.3s ease, transform 0.3s ease;
+      touch-action: manipulation;
+    }
+    .btn:hover {
+      background: #0056b3;
+      transform: translateY(-2px);
+    }
+    .btn.login-btn { background: #28a745; }
+    .btn.login-btn:hover { background: #218838; }
+    .btn.logout-btn { background: #dc3545; }
+    .btn.logout-btn:hover { background: #c82333; }
+    .btn.territories-btn { background: #6f42c1; }
+    .btn.territories-btn:hover { background: #5a32a3; }
+    .btn span { margin-right: 8px; }
+    /* Controls styling */
+    .controls {
+      background: #ffffff;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    .controls label {
+      margin-left: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      color: #333;
+    }
+    .controls input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      vertical-align: middle;
+    }
+    .controls div {
+      margin-bottom: 8px;
+    }
+    /* Loader styling */
+    #loader {
+      padding: 8px;
+      background: #ffffff;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      color: #333;
+    }
+    /* Map adjustment for header */
+    #map {
+      margin-top: 60px;
+    }
+    /* Adjust Leaflet controls to avoid header overlap */
     .leaflet-control-container {
-      margin-top: 60px; /* Adjust based on header height */
+      margin-top: 60px;
+    }
+    /* Popup button styling */
+    .leaflet-popup-content button {
+      background: #007bff;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.3s ease;
+    }
+    .leaflet-popup-content button:hover {
+      background: #0056b3;
+    }
+    /* Responsive adjustments */
+    @media (min-width: 768px) {
+      .sidebar {
+        transform: translateX(0);
+        width: 200px;
+      }
+      .menu-toggle {
+        display: none;
+      }
+      .close-sidebar {
+        display: none;
+      }
+      #map {
+        margin-left: 200px;
+      }
     }
   </style>
 </head>
-<body class="bg-gray-100">
-  <!-- Added header for better structure and mobile menu toggle -->
-  <header class="bg-white shadow-md p-4 fixed top-0 left-0 right-0 z-[1001] flex justify-between items-center">
-    <h1 class="text-lg font-bold text-gray-800">Карта Територій "Іллінці"</h1>
-    <button id="menu-toggle" class="btn text-gray-600 hover:text-gray-800 focus:outline-none">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<body>
+  <!-- Added header for navigation -->
+  <header>
+    <h1>Карта Територій "Іллінці"</h1>
+    <button class="menu-toggle">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
       </svg>
     </button>
   </header>
 
-  <!-- Sidebar for controls on mobile -->
-  <div id="sidebar" class="sidebar fixed top-0 left-0 h-full w-64 bg-white shadow-lg p-4 z-[1000] flex flex-col space-y-4">
-    <button id="close-sidebar" class="btn self-end text-gray-600 hover:text-gray-800">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <!-- Sidebar for controls -->
+  <div id="sidebar" class="sidebar">
+    <button class="close-sidebar">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
       </svg>
     </button>
-    <button onclick="findLocation()" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center">
-      <span class="mr-2">📍</span> Показати моє місце
+    <button onclick="findLocation()" class="btn locate-btn">
+      <span>📍</span> Показати моє місце
     </button>
-    <button onclick="toggleLayers()" class="btn bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center">
-      <span class="mr-2">🗺</span> Шари
+    <button onclick="toggleLayers()" class="btn layer-toggle">
+      <span>🗺</span> Шари
     </button>
-    <div id="auth-buttons" class="flex flex-col space-y-2">
+    <div id="auth-buttons">
       <a href="enter.html">
-        <button class="login-btn btn bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center" style="display:none">
-          <span class="mr-2">🔐</span> Увійти
+        <button class="btn login-btn" style="display:none">
+          <span>🔐</span> Увійти
         </button>
       </a>
-      <button class="logout-btn btn bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center" style="display:none">
-        <span class="mr-2">🚪</span> Вийти
+      <button class="btn logout-btn" style="display:none">
+        <span>🚪</span> Вийти
       </button>
       <a href="territories.html">
-        <button class="territories-btn btn bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center" style="display:none">
-          <span class="mr-2">🏞</span> Території
+        <button class="btn territories-btn" style="display:none">
+          <span>🏞</span> Території
         </button>
       </a>
     </div>
-    <!-- Updated controls with Tailwind styling -->
-    <div class="controls bg-white p-4 rounded-lg shadow-md">
-      <div class="flex items-center mb-2">
-        <input type="checkbox" id="toggleAll" checked class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-        <label for="toggleAll" id="toggleAllLabel" class="ml-2 text-sm font-medium text-gray-700">Показати всіх</label>
+    <div class="controls">
+      <div>
+        <input type="checkbox" id="toggleAll" checked>
+        <label for="toggleAll" id="toggleAllLabel">Показати всі</label>
       </div>
-      <div id="taken-control" class="flex items-center mb-2" style="display: none">
-        <input type="checkbox" id="showTaken" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-        <label for="showTaken" class="ml-2 text-sm font-medium text-gray-700">На руках</label>
+      <div id="taken-control" style="display: none">
+        <input type="checkbox" id="showTaken">
+        <label for="showTaken">На руках</label>
       </div>
-      <div id="free-control" class="flex items-center" style="display: none">
-        <input type="checkbox" id="showFree" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-        <label for="showFree" class="ml-2 text-sm font-medium text-gray-700">Вільно</label>
+      <div id="free-control" style="display: none">
+        <input type="checkbox" id="showFree">
+        <label for="showFree">Вільно</label>
       </div>
     </div>
-    <div id="loader" class="text-sm text-gray-600"></div>
+    <div id="loader"></div>
   </div>
 
-  <div id="map" class="h-full mt-16"></div>
+  <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
@@ -126,9 +258,9 @@
     const territoriesBtn = document.querySelector('.territories-btn');
     const takenControl = document.getElementById('taken-control');
     const freeControl = document.getElementById('free-control');
-    const menuToggle = document.getElementById('menu-toggle');
+    const menuToggle = document.querySelector('.menu-toggle');
     const sidebar = document.getElementById('sidebar');
-    const closeSidebar = document.getElementById('close-sidebar');
+    const closeSidebar = document.querySelector('.close-sidebar');
 
     // Sidebar toggle functionality
     menuToggle.addEventListener('click', () => {
@@ -304,7 +436,7 @@
 
               layer.on("click", async () => {
                 const popupContent = await getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-                layer.bindPopup(popupContent + `<br><button onclick="routeToDistrict('${d.name}')" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-2 rounded mt-2">📌 Прокласти маршрут сюди</button>`).openPopup();
+                layer.bindPopup(popupContent + `<br><button onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
               });
             },
             style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
@@ -413,7 +545,7 @@
       }).addTo(map);
     }
 
-    // Експорт функцій до глобальної області видимості
+    // Export functions to global scope
     window.findLocation = findLocation;
     window.routeToDistrict = routeToDistrict;
 
@@ -465,7 +597,7 @@
         const showTakenCheckbox = document.getElementById('showTaken');
         const showFreeCheckbox = document.getElementById('showFree');
 
-        // Ініціалізація стану чекбоксів
+        // Initialize checkbox states
         toggleAllCheckbox.checked = true;
         if (showTakenCheckbox) showTakenCheckbox.checked = false;
         if (showFreeCheckbox) showFreeCheckbox.checked = false;
