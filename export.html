@@ -4,7 +4,7 @@
   <meta name="robots" content="noindex, nofollow">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Експорт історії території</title>
+  <title>Експорт історії всіх територій</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
@@ -24,7 +24,7 @@
 </head>
 <body>
   <div class="max-w-7xl mx-auto text-center">
-    <h1 id="title" class="text-2xl font-bold text-gray-800 mb-4"></h1>
+    <h1 id="title" class="text-2xl font-bold text-gray-800 mb-4">Експорт історії всіх територій</h1>
     <button onclick="exportToExcel()" class="btn bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg">Експорт в Excel</button>
   </div>
 
@@ -46,20 +46,7 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    const formatDate = (str) => str ? new Date(str).toLocaleDateString("uk-UA") : "-";
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const params = new URLSearchParams(location.search);
-      const number = params.get("number");
-      const title = document.getElementById("title");
-
-      if (!number) {
-        title.innerText = "Помилка: вкажіть номер території в URL (наприклад, ?number=1)";
-        return;
-      }
-
-      title.innerText = `Експорт історії для території ${number}`;
-    });
+    const formatDate = (str) => str ? new Date(str).toLocaleDateString("uk-UA", { day: '2-digit', month: '2-digit', year: '2-digit' }) : "";
 
     window.exportToExcel = async function() {
       try {
@@ -75,44 +62,76 @@
 
         console.log('Початок експорту...');
 
-        const params = new URLSearchParams(location.search);
-        const number = params.get("number");
-
-        if (!number) {
-          throw new Error('Номер території не вказано в URL (наприклад, ?number=1)');
-        }
-
-        const historyQuery = query(
-          collection(db, `territories/${number}/history`),
-          orderBy('timestamp', 'desc'),
-          limit(4)
-        );
-        const historySnapshot = await getDocs(historyQuery);
-        console.log(`Знайдено записів у history для території ${number}: ${historySnapshot.size}`);
-
-        if (historySnapshot.empty) {
-          console.warn(`Колекція history для території ${number} порожня`);
-          alert(`Колекція history для території ${number} порожня. Немає даних для експорту.`);
-          return;
-        }
+        const territoriesSnapshot = await getDocs(collection(db, 'territories'));
+        console.log(`Знайдено територій: ${territoriesSnapshot.size}`);
 
         const data = [];
-        historySnapshot.forEach(doc => {
-          const record = doc.data();
-          console.log(`Запис:`, record);
-          data.push({
-            'Дата отримання': record.dateGet ? formatDate(record.dateGet) : '',
-            'Дата опрацювання': record.dateProcess ? formatDate(record.dateProcess) : '',
-            'Вісник': record.pib || ''
-          });
-        });
+        const maxTerritoryNumber = 102; // Максимальний номер території з шаблону
+
+        // Проходження по всіх можливих номерах територій (1 до 102)
+        for (let territoryNumber = 1; territoryNumber <= maxTerritoryNumber; territoryNumber++) {
+          const row = { '№ території': territoryNumber.toString() };
+          
+          // Ініціалізація порожніх полів для 4 записів
+          for (let i = 1; i <= 4; i++) {
+            row[`Вісник ${i}`] = "";
+            row[`Дата отримання ${i}`] = "";
+            row[`Дата опрацювання ${i}`] = "";
+          }
+
+          // Перевірка, чи існує документ для території
+          const territoryDoc = territoriesSnapshot.docs.find(doc => doc.id === territoryNumber.toString());
+          if (territoryDoc) {
+            const historyQuery = query(
+              collection(db, `territinds/${territoryNumber}/history`),
+              orderBy('timestamp', 'desc'),
+              limit(4)
+            );
+            const historySnapshot = await getDocs(historyQuery);
+            console.log(`Знайдено записів у history для території ${territoryNumber}: ${historySnapshot.size}`);
+
+            let recordIndex = 1;
+            historySnapshot.forEach(doc => {
+              const record = doc.data();
+              console.log(`Запис для території ${territoryNumber}:`, record);
+              row[`Вісник ${recordIndex}`] = record.pib || "";
+              row[`Дата отримання ${recordIndex}`] = record.dateGet ? formatDate(record.dateGet) : "";
+              row[`Дата опрацювання ${recordIndex}`] = record.dateProcess ? formatDate(record.dateProcess) : "";
+              recordIndex++;
+            });
+          } else {
+            console.log(`Територія ${territoryNumber} не має документа в territories`);
+          }
+
+          data.push(row);
+        }
 
         console.log('Дані для Excel:', data);
 
-        const worksheet = XLSX.utils.json_to_sheet(data);
+        if (data.length === 0) {
+          console.warn('Немає даних для експорту');
+          alert('Немає даних для експорту.');
+          return;
+        }
+
+        // Створення Excel-файлу
+        const worksheet = XLSX.utils.json_to_sheet(data, {
+          header: [
+            '№ території',
+            'Вісник 1', 'Дата отримання 1', 'Дата опрацювання 1',
+            'Вісник 2', 'Дата отримання 2', 'Дата опрацювання 2',
+            'Вісник 3', 'Дата отримання 3', 'Дата опрацювання 3',
+            'Вісник 4', 'Дата отримання 4', 'Дата опрацювання 4'
+          ]
+        });
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'History');
-        XLSX.writeFile(workbook, `history_territory_${number}.xlsx`);
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Записи');
+        
+        // Додавання заголовка
+        XLSX.utils.sheet_add_aoa(worksheet, [['ЗАПИСИ ПРО ОПРАЦЮВАННЯ ТЕРИТОРІЙ']], { origin: 'A1' });
+        
+        // Завантаження файлу
+        XLSX.writeFile(workbook, 'ЗаписТериторій.xlsx');
         console.log('Файл успішно створено та завантажено');
       } catch (error) {
         console.error('Помилка експорту:', error);
