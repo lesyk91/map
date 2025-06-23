@@ -54,6 +54,11 @@
         // Функція експорту
         window.exportToExcel = async function() {
             try {
+                // Перевірка наявності XLSX
+                if (typeof XLSX === 'undefined') {
+                    throw new Error('Бібліотека XLSX не завантажена');
+                }
+
                 // Отримання всіх документів із колекції territories
                 const territoriesSnapshot = await getDocs(collection(db, 'territories'));
                 const data = [];
@@ -87,10 +92,10 @@
                 XLSX.utils.book_append_sheet(workbook, worksheet, 'History');
                 
                 // Завантаження файлу
-                XLSX.write_file(workbook, 'territory_history.xlsx');
+                XLSX.writeFile(workbook, 'territory_history.xlsx');
             } catch (error) {
                 console.error('Помилка експорту:', error);
-                alert('Сталася помилка під час експорту. Перевірте консоль для деталей.');
+                alert('Сталася помилка під час експорту: ' + error.message);
             }
         };
     </script>
