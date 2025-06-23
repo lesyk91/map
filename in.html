@@ -96,8 +96,7 @@
               note: f.get("note"),
               user: auth.currentUser.uid,
               timestamp: serverTimestamp(),
-              status,
-              processingTime: diffDays(get, proc)
+              status
             });
             location.reload();
           };
@@ -173,8 +172,7 @@
           dateProcess: proc,
           note: fd.get("note"),
           status,
-          user: auth.currentUser.uid,
-          processingTime: diffDays(get, proc)
+          user: auth.currentUser.uid
         });
         location.reload();
       };
