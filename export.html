@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Експорт даних з Firestore</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <button onclick="exportToExcel()">Експортувати в Excel</button>
+
+    <script>
+        // Ініціалізація Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+            authDomain: "map-illintsi.firebaseapp.com",
+            projectId: "map-illintsi",
+            storageBucket: "map-illintsi.appspot.com",
+            messagingSenderId: "62267872375",
+            appId: "1:62267872375:web:10945d2d63b93bccc5e272"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        async function exportToExcel() {
+            try {
+                // Отримання всіх документів із колекції territories
+                const territoriesSnapshot = await db.collection('territories').get();
+                const data = [];
+
+                // Проходження по кожній території
+                for (const territoryDoc of territoriesSnapshot.docs) {
+                    const territoryId = territoryDoc.id;
+
+                    // Отримання останніх 4 записів із колекції history
+                    const historySnapshot = await db.collection(`territories/${territoryId}/history`)
+                        .orderBy('dateGet', 'desc')
+                        .limit(4)
+                        .get();
+
+                    // Додавання даних до масиву
+                    historySnapshot.forEach(doc => {
+                        const record = doc.data();
+                        data.push({
+                            'Дата отримання': record.dateGet?.toDate().toLocaleDateString('uk-UA') || '',
+                            'Дата опрацювання': record.dateProcess?.toDate().toLocaleDateString('uk-UA') || '',
+                            'Вісник': record.pib || ''
+                        });
+                    });
+                }
+
+                // Створення Excel-файлу
+                const worksheet = XLSX.utils.json_to_sheet(data);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'History');
+                
+                // Завантаження файлу
+                XLSX.write_file(workbook, 'territory_history.xlsx');
+            } catch (error) {
+                console.error('Помилка експорту:', error);
+                alert('Сталася помилка під час експорту. Перевірте консоль для деталей.');
+            }
+        }
+    </script>
+</body>
+</html>
