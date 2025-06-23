@@ -1,243 +1,34 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta name="robots" content="noindex, nofollow">
-  <meta charset="utf-8" />
-  <title>Карта Територій "Іллінці"</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+   <meta name="robots" content="noindex, nofollow">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Деталі території</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
-    html, body, #map {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      font-family: Arial, sans-serif;
+    .card {
+      transition: all 0.3s ease;
     }
-    /* Header styling */
-    header {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      background: #ffffff;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      padding: 12px 16px;
-      z-index: 1001;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    header h1 {
-      font-size: 1.5rem;
-      color: #333;
-      margin: 0;
-    }
-    /* Menu toggle button for mobile */
-    .menu-toggle {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 8px;
-      display: flex;
-      align-items: center;
-    }
-    .menu-toggle svg {
-      width: 24px;
-      height: 24px;
-      stroke: #333;
-    }
-    /* Sidebar styling for controls */
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 250px;
-      height: 100%;
-      background: #ffffff;
-      box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-      padding: 16px;
-      z-index: 1000;
-      transform: translateX(-100%);
-      transition: transform 0.3s ease;
-    }
-    .sidebar.open {
-      transform: translateX(0);
-    }
-    /* Close button for sidebar */
-    .close-sidebar {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 8px;
-      align-self: flex-end;
-    }
-    .close-sidebar svg {
-      width: 24px;
-      height: 24px;
-      stroke: #333;
-    }
-    /* Button styling */
-    .btn {
-      display: flex;
-      align-items: center;
-      padding: 10px 16px;
-      margin-bottom: 8px;
-      background: #007bff;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 1rem;
-      transition: background 0.3s ease, transform 0.3s ease;
-      touch-action: manipulation;
-    }
-    .btn:hover {
-      background: #0056b3;
+    .card:hover {
       transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-    .btn.login-btn { background: #28a745; }
-    .btn.login-btn:hover { background: #218838; }
-    .btn.logout-btn { background: #dc3545; }
-    .btn.logout-btn:hover { background: #c82333; }
-    .btn.territories-btn { background: #6f42c1; }
-    .btn.territories-btn:hover { background: #5a32a3; }
-    .btn span { margin-right: 8px; }
-    /* Controls styling */
-    .controls {
-      background: #ffffff;
-      padding: 12px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      margin-bottom: 8px;
+    .btn {
+      transition: all 0.3s ease;
     }
-    .controls label {
-      margin-left: 8px;
-      font-size: 1rem;
-      cursor: pointer;
-      color: #333;
-    }
-    .controls input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      vertical-align: middle;
-    }
-    .controls div {
-      margin-bottom: 8px;
-    }
-    /* Loader styling */
-    #loader {
-      padding: 8px;
-      background: #ffffff;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      font-size: 0.9rem;
-      color: #333;
-    }
-    /* Map adjustment for header */
-    #map {
-      margin-top: 60px;
-    }
-    /* Adjust Leaflet controls to avoid header overlap */
-    .leaflet-control-container {
-      margin-top: 60px;
-    }
-    /* Popup button styling */
-    .leaflet-popup-content button {
-      background: #007bff;
-      color: #fff;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      transition: background 0.3s ease;
-    }
-    .leaflet-popup-content button:hover {
-      background: #0056b3;
-    }
-    /* Responsive adjustments */
-    @media (min-width: 768px) {
-      .sidebar {
-        transform: translateX(0);
-        width: 200px;
-      }
-      .menu-toggle {
-        display: none;
-      }
-      .close-sidebar {
-        display: none;
-      }
-      #map {
-        margin-left: 200px;
-      }
+    html {
+      scroll-behavior: smooth;
     }
   </style>
-</head>
-<body>
-  <!-- Added header for navigation -->
-  <header>
-    <h1>Карта Територій "Іллінці"</h1>
-    <button class="menu-toggle">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-      </svg>
-    </button>
-  </header>
-
-  <!-- Sidebar for controls -->
-  <div id="sidebar" class="sidebar">
-    <button class="close-sidebar">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-      </svg>
-    </button>
-    <button onclick="findLocation()" class="btn locate-btn">
-      <span>📍</span> Показати моє місце
-    </button>
-    <button onclick="toggleLayers()" class="btn layer-toggle">
-      <span>🗺</span> Шари
-    </button>
-    <div id="auth-buttons">
-      <a href="enter.html">
-        <button class="btn login-btn" style="display:none">
-          <span>🔐</span> Увійти
-        </button>
-      </a>
-      <button class="btn logout-btn" style="display:none">
-        <span>🚪</span> Вийти
-      </button>
-      <a href="territories.html">
-        <button class="btn territories-btn" style="display:none">
-          <span>🏞</span> Території
-        </button>
-      </a>
-    </div>
-    <div class="controls">
-      <div>
-        <input type="checkbox" id="toggleAll" checked>
-        <label for="toggleAll" id="toggleAllLabel">Показати всі</label>
-      </div>
-      <div id="taken-control" style="display: none">
-        <input type="checkbox" id="showTaken">
-        <label for="showTaken">На руках</label>
-      </div>
-      <div id="free-control" style="display: none">
-        <input type="checkbox" id="showFree">
-        <label for="showFree">Вільно</label>
-      </div>
-    </div>
-    <div id="loader"></div>
-  </div>
-
-  <div id="map"></div>
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, collection, query, orderBy, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import {
+      getFirestore,
+      collection, addDoc, query, orderBy, getDocs,
+      doc, getDoc, updateDoc, deleteDoc, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -251,395 +42,180 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    let currentUser = null;
 
-    const loginBtn = document.querySelector('.login-btn');
-    const logoutBtn = document.querySelector('.logout-btn');
-    const territoriesBtn = document.querySelector('.territories-btn');
-    const takenControl = document.getElementById('taken-control');
-    const freeControl = document.getElementById('free-control');
-    const menuToggle = document.querySelector('.menu-toggle');
-    const sidebar = document.getElementById('sidebar');
-    const closeSidebar = document.querySelector('.close-sidebar');
+    const formatDate = (str) => str ? new Date(str).toLocaleDateString("uk-UA") : "-";
+    const diffDays = (start, end = new Date()) =>
+      start ? Math.ceil((new Date(end) - new Date(start)) / 86400000) : null;
 
-    // Sidebar toggle functionality
-    menuToggle.addEventListener('click', () => {
-      sidebar.classList.toggle('open');
-    });
-    closeSidebar.addEventListener('click', () => {
-      sidebar.classList.remove('open');
-    });
+    document.addEventListener("DOMContentLoaded", async () => {
+      const params = new URLSearchParams(location.search);
+      const number = params.get("number");
+      const title = document.getElementById("title");
+      const container = document.getElementById("territory");
+      const statusElement = document.getElementById("territory-status");
 
-    onAuthStateChanged(auth, user => {
-      currentUser = user;
-      if (user) {
-        loginBtn.style.display = 'none';
-        logoutBtn.style.display = 'block';
-        territoriesBtn.style.display = 'block';
-        takenControl.style.display = 'block';
-        freeControl.style.display = 'block';
-        updateTerritoryStatuses();
-      } else {
-        loginBtn.style.display = 'block';
-        logoutBtn.style.display = 'none';
-        territoriesBtn.style.display = 'none';
-        takenControl.style.display = 'none';
-        freeControl.style.display = 'none';
-        Object.keys(territoryStatuses).forEach(id => territoryStatuses[id] = "вільно");
-        updateTerritoriesDisplay();
-      }
-    });
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) return (location.href = "index.html");
 
-    logoutBtn?.addEventListener("click", async () => {
-      await signOut(auth);
-      layersControl = null;
-      location.reload();
-    });
+        title.innerText = `Територія ${number}`;
+        const colRef = collection(db, `territories/${number}/history`);
+        const q = query(colRef, orderBy("timestamp", "desc"));
+        const snap = await getDocs(q);
 
-    async function getTerritoryStatusPopup(number, name) {
-      if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
-      const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-      const snap = await getDocs(q);
-      let popup = `<b>${name}</b><br>`;
-      if (snap.empty) {
-        popup += `<b>Статус:</b> вільно`;
-      } else {
-        const latest = snap.docs[0].data();
-        let status = "вільно";
-        if (latest.status === "на руках") {
-          status = "на руках";
-        } else if (latest.status === "опрацьовано") {
-          status = "вільно";
+        let latest = snap.docs[0]?.data();
+        let statusText = "вільно";
+
+        if (latest && latest.status === "на руках") {
+          statusText = "на руках";
         }
-        popup += `<b>Статус:</b> ${status}<br>`;
-        if (status === "на руках") {
-          popup += `<b>ПІБ:</b> ${latest.pib || "невідомо"}<br>`;
-          popup += `<b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
-        }
-      }
-      return popup;
-    }
 
-    const map = L.map('map').setView([49.1029, 29.2074], 13);
+        statusElement.innerHTML = `<b>Статус території:</b> <p><span class="${statusText === 'вільно' ? 'text-green-600' : 'text-red-600'}">${statusText}</span></p>`;
+        const allowNew = statusText !== "на руках";
 
-    const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-      maxZoom: 20,
-      subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-      attribution: '© Google Maps'
-    }).addTo(map);
-
-    const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: '© Esri', maxZoom: 20
-    });
-
-    const districts = [
-      { id: 'district1', name: 'Територія 1', color: 'blue', fillColor: '#add8e6' },
-      { id: 'district2', name: 'Територія 2', color: 'green', fillColor: '#90ee90' },
-      { id: 'district3', name: 'Територія 3', color: 'Yellow', fillColor: '#ffffe0' },
-      { id: 'district4', name: 'Територія 4', color: 'Orange', fillColor: '#ffdab9' },
-      { id: 'district5', name: 'Територія 5', color: 'Pink', fillColor: '#ffb6c1' },
-      { id: 'district6', name: 'Територія 6', color: 'Brown', fillColor: '#d2b48c' },
-      { id: 'district7', name: 'Територія 7', color: 'Purple', fillColor: '#e6e6fa' },
-      { id: 'district8', name: 'Територія 8', color: 'Gray', fillColor: '#d3d3d3' },
-      { id: 'district9', name: 'Територія 9', color: 'Cyan', fillColor: '#e0ffff' },
-      { id: 'district10', name: 'Територія 10', color: 'Magenta', fillColor: '#ff80ff' },
-      { id: 'district11', name: 'Територія 11', color: 'blue', fillColor: '#add8e6' },
-      { id: 'district12', name: 'Територія 12', color: 'green', fillColor: '#90ee90' },
-      { id: 'district13', name: 'Територія 13', color: 'Yellow', fillColor: '#ffffe0' },
-      { id: 'district14', name: 'Територія 14', color: 'Orange', fillColor: '#ffdab9' },
-      { id: 'district15', name: 'Територія 15', color: 'Pink', fillColor: '#ffb6c1' },
-      { id: 'district16', name: 'Територія 16', color: 'Brown', fillColor: '#d2b48c' },
-      { id: 'district17', name: 'Територія 17', color: 'Purple', fillColor: '#e6e6fa' },
-      { id: 'district18', name: 'Територія 18', color: 'Gray', fillColor: '#d3d3d3' },
-      { id: 'district19', name: 'Територія 19', color: 'Cyan', fillColor: '#e0ffff' },
-      { id: 'district20', name: 'Територія 20', color: 'Magenta', fillColor: '#ff80ff' },
-      { id: 'district21', name: 'Територія 21', color: 'blue', fillColor: '#add8e6' },
-      { id: 'district22', name: 'Територія 22', color: 'green', fillColor: '#90ee90' },
-      { id: 'district23', name: 'Територія 23', color: 'Yellow', fillColor: '#ffffe0' },
-      { id: 'district24', name: 'Територія 24', color: 'Orange', fillColor: '#ffdab9' },
-      { id: 'district25', name: 'Територія 25', color: 'Pink', fillColor: '#ffb6c1' },
-      { id: 'district26', name: 'Територія 26', color: 'Brown', fillColor: '#d2b48c' },
-      { id: 'district28', name: 'Територія 28', color: 'Gray', fillColor: '#d3d3d3' },
-      { id: 'district29', name: 'Територія 29', color: 'Cyan', fillColor: '#e0ffff' },
-      { id: 'district30', name: 'Територія 30', color: 'Magenta', fillColor: '#ff80ff' },
-      { id: 'district56', name: 'Територія 56', color: 'red', fillColor: '#b6fcb6' }
-    ];
-
-    const districtCenters = [];
-    const districtGeometries = [];
-    const overlayMaps = {};
-    const territoryStatuses = {};
-    let layersControl = null;
-    const loadedLayers = [];
-
-    function toggleLayers() {
-      const control = document.querySelector('.leaflet-control-layers');
-      if (control) control.classList.toggle('leaflet-control-layers-expanded');
-      const btn = document.querySelector('.layer-toggle');
-      btn.innerText = control.classList.contains('leaflet-control-layers-expanded') ? '🗺 Приховати шари' : '🗺 Шари';
-    }
-
-    function showLoading(show) {
-      document.getElementById('loader').innerText = show ? 'Завантаження...' : '';
-    }
-
-    districts.sort((a, b) => {
-      const numA = parseInt(a.id.replace("district", ""), 10);
-      const numB = parseInt(b.id.replace("district", ""), 10);
-      return numA - numB;
-    });
-
-    async function updateTerritoryStatuses() {
-      if (!currentUser) {
-        districts.forEach(d => {
-          territoryStatuses[d.id] = "вільно";
-        });
-        updateTerritoriesDisplay();
-        return;
-      }
-
-      districts.forEach(d => {
-        const q = query(collection(db, `territories/${d.id.replace("district", "")}/history`), orderBy("timestamp", "desc"));
-        onSnapshot(q, (snap) => {
-          if (snap.empty) {
-            territoryStatuses[d.id] = "вільно";
-          } else {
-            const latest = snap.docs[0].data();
-            territoryStatuses[d.id] = latest.status === "на руках" ? "на руках" : "вільно";
-          }
-          updateTerritoriesDisplay();
-        }, (err) => {
-          console.warn(`Помилка при отриманні статусу для ${d.id}: ${err.message}`);
-          territoryStatuses[d.id] = "вільно";
-          updateTerritoriesDisplay();
-        });
-      });
-    }
-
-    (async () => {
-      showLoading(true);
-
-      for (const d of districts) {
-        const layer = L.layerGroup();
-        try {
-          const res = await fetch(`${d.id}.json`);
-          if (!res.ok) {
-            console.warn(`Не вдалося завантажити ${d.id}.json: ${res.status}`);
-            continue;
-          }
-          const data = await res.json();
-
-          const geoJsonLayer = L.geoJSON(data, {
-            onEachFeature: (feature, layer) => {
-              const center = layer.getBounds().getCenter();
-              districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
-
-              layer.on("click", async () => {
-                const popupContent = await getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-                layer.bindPopup(popupContent + `<br><button onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
-              });
-            },
-            style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
-          }).addTo(layer);
-
-          territoryStatuses[d.id] = "вільно";
-          loadedLayers.push({ name: d.name, layer });
-          overlayMaps[d.name] = layer;
-
-          const coordinates = [];
-          const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
-          geometries.forEach(geom => {
-            const coords = geom.coordinates;
-            const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
-            if (geom.type === "Polygon") coords.forEach(pushCoords);
-            if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
-          });
-
-          districtGeometries.push({ name: d.name, coordinates });
-        } catch (err) {
-          console.warn(`Помилка при завантаженні ${d.id}.json: ${err.message}`);
-        }
-      }
-
-      showLoading(false);
-      updateTerritoryStatuses();
-      tryAddLayersControl();
-    })();
-
-    let currentMarker = null, currentCircle = null, routeControl = null, currentLocation = null;
-
-    function findLocation() {
-      console.log("findLocation called");
-      if (!navigator.geolocation) {
-        alert('⚠ Ваш браузер не підтримує геолокацію.');
-        return;
-      }
-      showLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        position => {
-          const latlng = L.latLng(position.coords.latitude, position.coords.longitude);
-          console.log("Location found:", latlng);
-          currentLocation = latlng;
-          showLoading(false);
-          if (currentMarker) map.removeLayer(currentMarker);
-          if (currentCircle) map.removeLayer(currentCircle);
-          currentCircle = L.circle(latlng, {
-            radius: position.coords.accuracy,
-            color: 'blue',
-            fillColor: '#30f',
-            fillOpacity: 0.2
-          }).addTo(map);
-          currentMarker = L.marker(latlng)
-            .addTo(map)
-            .bindPopup(`Ваше місцерозташування (точність ${Math.round(position.coords.accuracy)} м)`)
-            .openPopup();
-          map.setView(latlng, 16);
-        },
-        error => {
-          showLoading(false);
-          console.error("Geolocation error:", error.message);
-          alert(`⚠ Не вдалося визначити місцерозташування: ${error.message}`);
-        },
-        { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
-      );
-    }
-
-    function routeToDistrict(districtName) {
-      console.log("routeToDistrict called for:", districtName);
-      if (!currentLocation) {
-        alert("⛔ Спочатку натисніть 📍 «Показати моє місце»");
-        return;
-      }
-      const district = districtGeometries.find(d => d.name === districtName);
-      if (!district || !district.coordinates.length) {
-        console.warn(`No coordinates for ${districtName}`);
-        alert(`⚠ Немає координат для ${districtName}`);
-        return;
-      }
-      console.log("District coordinates:", district.coordinates);
-      let nearestPoint = district.coordinates.reduce((nearest, coord) => {
-        const distance = currentLocation.distanceTo(coord);
-        return distance < currentLocation.distanceTo(nearest) ? coord : nearest;
-      }, district.coordinates[0]);
-      console.log("Nearest point:", nearestPoint);
-      if (routeControl) {
-        map.removeControl(routeControl);
-      }
-      routeControl = L.Routing.control({
-        waypoints: [currentLocation, nearestPoint],
-        routeWhileDragging: false,
-        addWaypoints: false,
-        show: true,
-        createMarker: () => null,
-        router: L.Routing.osrmv1({
-          serviceUrl: 'https://router.project-osrm.org/route/v1'
-        })
-      }).on('routesfound', function(e) {
-        console.log("Route found:", e.routes);
-        const dist = e.routes[0].summary.totalDistance;
-        const distText = dist > 1000 ? (dist / 1000).toFixed(2) + " км" : Math.round(dist) + " м";
-        currentMarker?.bindPopup(`Ваше місцерозташування<br>Маршрут до <b>${districtName}</b><br>Відстань: ${distText}`).openPopup();
-      }).on('routingerror', function(e) {
-        console.error("Routing error:", e.error);
-        alert(`⚠ Не вдалося прокласти маршрут: ${e.error.message}`);
-      }).addTo(map);
-    }
-
-    // Export functions to global scope
-    window.findLocation = findLocation;
-    window.routeToDistrict = routeToDistrict;
-
-    function updateTerritoriesDisplay() {
-      const toggleAllCheckbox = document.getElementById('toggleAll');
-      const showTakenCheckbox = document.getElementById('showTaken');
-      const showFreeCheckbox = document.getElementById('showFree');
-
-      const toggleAll = toggleAllCheckbox.checked;
-      const showTaken = showTakenCheckbox && showTakenCheckbox.parentElement.style.display !== 'none' ? showTakenCheckbox.checked : false;
-      const showFree = showFreeCheckbox && showFreeCheckbox.parentElement.style.display !== 'none' ? showFreeCheckbox.checked : false;
-
-      loadedLayers.forEach(({ name, layer }) => {
-        const districtId = districts.find(d => d.name === name).id;
-        const status = territoryStatuses[districtId] || "вільно";
-
-        if (toggleAll) {
-          map.addLayer(layer);
-        } else if (showTaken || showFree) {
-          const shouldShow = 
-            (showFree && status === "вільно") ||
-            (showTaken && status === "на руках");
-          if (shouldShow) {
-            map.addLayer(layer);
-          } else {
-            map.removeLayer(layer);
-          }
+        if (allowNew) {
+          const form = document.createElement("form");
+          form.className = "bg-white p-6 rounded-lg shadow-md mb-6";
+          form.innerHTML = `
+            <h3 class="text-lg font-semibold mb-4">Новий запис</h3>
+            <input required name="pib" placeholder="ПІБ" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+            <input required name="dateGet" type="date" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+            <input name="dateProcess" type="date" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+            <textarea name="note" placeholder="Нотатки" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea><br/>
+            <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Зберегти</button>
+          `;
+          form.onsubmit = async (e) => {
+            e.preventDefault();
+            const f = new FormData(form);
+            const get = f.get("dateGet");
+            const proc = f.get("dateProcess");
+            const status = proc ? "опрацьовано" : "на руках";
+            await addDoc(colRef, {
+              pib: f.get("pib"),
+              dateGet: get,
+              dateProcess: proc,
+              note: f.get("note"),
+              user: auth.currentUser.uid,
+              timestamp: serverTimestamp(),
+              status,
+              processingTime: diffDays(get, proc)
+            });
+            location.reload();
+          };
+          container.appendChild(form);
         } else {
-          map.removeLayer(layer);
+          container.innerHTML += `<p class="text-red-600 font-semibold mb-4">Територія ще на руках. Спочатку закрийте попередній запис.</p>`;
         }
+
+        snap.forEach(docSnap => {
+          const d = docSnap.data();
+          const entry = document.createElement("div");
+          entry.className = "card bg-white p-6 rounded-lg shadow-md mb-4";
+          entry.innerHTML = `
+            <div class="mb-2"><b>ПІБ:</b> ${d.pib}</div>
+            <div class="mb-2"><b>Дата отримання:</b> ${formatDate(d.dateGet)}</div>
+            <div class="mb-2"><b>Дата опрацювання:</b> ${formatDate(d.dateProcess)}</div>
+            <div class="mb-2"><b>Нотатки:</b> ${d.note || "-"}</div>
+            <div class="mb-2"><b>Хто додав:</b> <span id="user-${d.user}">Завантаження...</span></div>
+            <div class="mb-2"><b>Статус:</b> ${d.status}</div>
+            <div class="mb-2"><b>Час опрацювання (днів):</b> ${
+              d.dateGet
+                ? (d.dateProcess
+                    ? diffDays(d.dateGet, d.dateProcess)
+                    : diffDays(d.dateGet)
+                  )
+                : "-"
+            }</div>
+            <div class="mb-4"><b>Час від останнього опрацювання (днів):</b> ${d.dateProcess ? diffDays(d.dateProcess) : "-"}</div>
+            <div class="flex space-x-2">
+              <button class="btn bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg" onclick="edit('${number}','${docSnap.id}')">Редагувати</button>
+              <button class="btn bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg" onclick="del('${number}','${docSnap.id}')">Видалити</button>
+            </div>
+          `;
+
+          container.appendChild(entry);
+
+          const userSpan = entry.querySelector(`#user-${d.user}`);
+          const userRef = doc(db, "users", d.user);
+          getDoc(userRef).then(snap => {
+            if (snap.exists()) {
+              userSpan.innerText = snap.data().name;
+            } else {
+              userSpan.innerText = "Невідомо";
+            }
+          }).catch(() => userSpan.innerText = "Помилка");
+        });
       });
-    }
+    });
 
-    function tryAddLayersControl() {
-      if (!layersControl) {
-        const sortedOverlayMaps = {};
-        loadedLayers.forEach(({ name, layer }) => {
-          sortedOverlayMaps[name] = layer;
+    window.edit = async (num, id) => {
+      const ref = doc(db, `territories/${num}/history/${id}`);
+      const snap = await getDoc(ref);
+      const d = snap.data();
+      const f = document.createElement("form");
+      f.className = "bg-white p-6 rounded-lg shadow-md";
+      f.innerHTML = `
+        <h3 class="text-lg font-semibold mb-4">Редагування</h3>
+        <input name="pib" value="${d.pib}" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+        <input name="dateGet" type="date" value="${d.dateGet}" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+        <input name="dateProcess" type="date" value="${d.dateProcess || ""}" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+        <textarea name="note" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">${d.note || ""}</textarea><br/>
+        <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Оновити</button>
+      `;
+      f.onsubmit = async (e) => {
+        e.preventDefault();
+        const fd = new FormData(f);
+        const get = fd.get("dateGet");
+        const proc = fd.get("dateProcess");
+        const status = proc ? "опрацьовано" : "на руках";
+        await updateDoc(ref, {
+          pib: fd.get("pib"),
+          dateGet: get,
+          dateProcess: proc,
+          note: fd.get("note"),
+          status,
+          user: auth.currentUser.uid,
+          processingTime: diffDays(get, proc)
         });
+        location.reload();
+      };
+      document.getElementById("territory").innerHTML = "";
+      document.getElementById("territory").appendChild(f);
+    };
 
-        layersControl = L.control.layers(
-          { "Стандартна карта": googleStreets, "Супутникова карта": satellite },
-          sortedOverlayMaps,
-          { collapsed: true }
-        ).addTo(map);
-
-        const toggleAllCheckbox = document.getElementById('toggleAll');
-        const toggleAllLabel = document.getElementById('toggleAllLabel');
-        const showTakenCheckbox = document.getElementById('showTaken');
-        const showFreeCheckbox = document.getElementById('showFree');
-
-        // Initialize checkbox states
-        toggleAllCheckbox.checked = true;
-        if (showTakenCheckbox) showTakenCheckbox.checked = false;
-        if (showFreeCheckbox) showFreeCheckbox.checked = false;
-        toggleAllLabel.innerText = 'Показати всіх';
-
-        toggleAllCheckbox.addEventListener('change', () => {
-          console.log('toggleAll changed:', toggleAllCheckbox.checked);
-          if (toggleAllCheckbox.checked) {
-            if (showTakenCheckbox) showTakenCheckbox.checked = false;
-            if (showFreeCheckbox) showFreeCheckbox.checked = false;
-            toggleAllLabel.innerText = 'Показати всіх';
-          } else {
-            toggleAllLabel.innerText = 'Приховати всіх';
-          }
-          updateTerritoriesDisplay();
-        });
-
-        if (showTakenCheckbox) {
-          showTakenCheckbox.addEventListener('change', () => {
-            console.log('showTaken changed:', showTakenCheckbox.checked);
-            if (showTakenCheckbox.checked) {
-              toggleAllCheckbox.checked = false;
-              toggleAllLabel.innerText = 'Приховати всіх';
-            }
-            updateTerritoriesDisplay();
-          });
-        }
-
-        if (showFreeCheckbox) {
-          showFreeCheckbox.addEventListener('change', () => {
-            console.log('showFree changed:', showFreeCheckbox.checked);
-            if (showFreeCheckbox.checked) {
-              toggleAllCheckbox.checked = false;
-              toggleAllLabel.innerText = 'Приховати всіх';
-            }
-            updateTerritoriesDisplay();
-          });
-        }
-
-        updateTerritoriesDisplay();
+    window.del = async (num, id) => {
+      if (confirm("Видалити запис?")) {
+        await deleteDoc(doc(db, `territories/${num}/history/${id}`));
+        location.reload();
       }
-    }
+    };
   </script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+  <header class="bg-white shadow-md p-4 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <div class="flex items-center space-x-4">
+        <a href="territories.html" class="text-blue-600 hover:text-blue-800 font-semibold flex items-center">
+          <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+          </svg>
+          Назад
+        </a>
+        <h1 id="title" class="text-2xl font-bold text-gray-800"></h1>
+      </div>
+      <p id="territory-status" class="text-lg font-semibold"></p>
+    </div>
+  </header>
+
+  <main class="flex-grow p-4">
+    <div class="max-w-7xl mx-auto">
+      <div id="territory" class="space-y-4"></div>
+    </div>
+  </main>
+
+  <footer class="bg-white shadow-inner p-4 mt-auto">
+    <div class="max-w-7xl mx-auto text-center text-gray-600">
+      © 2025 Території. Всі права захищено.
+    </div>
+  </footer>
 </body>
 </html>
