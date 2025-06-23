@@ -24,7 +24,7 @@
 </head>
 <body>
   <div class="max-w-7xl mx-auto text-center">
-    <h1 id="title " class="text-2xl font-bold text-gray-800 mb-4"></h1>
+    <h1 id="title" class="text-2xl font-bold text-gray-800 mb-4"></h1>
     <button onclick="exportToExcel()" class="btn bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg">Експорт в Excel</button>
   </div>
 
@@ -54,7 +54,7 @@
       const title = document.getElementById("title");
 
       if (!number) {
-        title.innerText = "Помилка: номер території не вказано";
+        title.innerText = "Помилка: вкажіть номер території в URL (наприклад, ?number=1)";
         return;
       }
 
@@ -79,7 +79,7 @@
         const number = params.get("number");
 
         if (!number) {
-          throw new Error('Номер території не вказано в URL');
+          throw new Error('Номер території не вказано в URL (наприклад, ?number=1)');
         }
 
         const historyQuery = query(
