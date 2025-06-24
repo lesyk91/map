@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Звіти про території</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+    }
+    .btn {
+      transition: all 0.3s ease;
+    }
+    .report-container {
+      margin-top: 1rem;
+      width: 100%;
+      max-width: 800px;
+    }
+    .report-table {
+      border-collapse: collapse;
+      width: 100%;
+      background-color: white;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .report-table th, .report-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    .report-table th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+    .input-days {
+      width: 80px;
+      padding: 4px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="max-w-7xl mx-auto text-center">
+    <h1 class="text-2xl font-bold text-gray-800 mb-4">Звіти про території</h1>
+    <div class="mb-4">
+      <button onclick="generateReport1()" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mr-2">Вісники з територіями на руках</button>
+      <div class="mt-2">
+        <label for="days2" class="text-gray-600">Днів: </label>
+        <input type="number" id="days2" class="input-days" min="1" value="30">
+        <button onclick="generateReport2()" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg ml-2">Вісники з територіями на руках більше N днів</button>
+      </div>
+      <button onclick="generateReport3()" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mt-2">Пусті території</button>
+      <div class="mt-2">
+        <label for="days4" class="text-gray-600">Днів: </label>
+        <input type="number" id="days4" class="input-days" min="1" value="30">
+        <button onclick="generateReport4()" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg ml-2">Опрацьовані території більше N днів</button>
+      </div>
+    </div>
+    <div id="report-container" class="report-container"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+      authDomain: "map-illintsi.firebaseapp.com",
+      projectId: "map-illintsi",
+      storageBucket: "map-illintsi.appspot.com",
+      messagingSenderId: "62267872375",
+      appId: "1:62267872375:web:10945d2d63b93bccc5e272"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        alert('Будь ласка, увійдіть у систему для перегляду звітів.');
+        location.href = "index.html";
+      }
+    });
+
+    const currentDate = new Date('2025-06-24');
+
+    const daysBetween = (dateStr) => {
+      if (!dateStr) return Infinity;
+      const date = new Date(dateStr);
+      if (isNaN(date)) return Infinity;
+      const diffTime = currentDate - date;
+      return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    };
+
+    window.generateReport1 = async () => {
+      try {
+        const reportContainer = document.getElementById('report-container');
+        reportContainer.innerHTML = '<h2 class="text-lg font-semibold text-gray-700 mb-2">Вісники з територіями на руках</h2>';
+        const territoriesRef = collection(db, 'territories');
+        const territoriesSnapshot = await getDocs(territoriesRef);
+        const heralds = {};
+
+        for (const territoryDoc of territoriesSnapshot.docs) {
+          const territoryId = territoryDoc.id;
+          const historyRef = collection(db, `territories/${territoryId}/history`);
+          const historyQuery = query(historyRef, where('status', '==', 'на руках'));
+          const historySnapshot = await getDocs(historyQuery);
+
+          historySnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.pib) {
+              if (!heralds[data.pib]) heralds[data.pib] = [];
+              heralds[data.pib].push(territoryId);
+            }
+          });
+        }
+
+        if (Object.keys(heralds).length === 0) {
+          reportContainer.innerHTML += '<p class="text-gray-600">Немає вісників із територіями на руках.</p>';
+          return;
+        }
+
+        let table = '<table class="report-table"><thead><tr><th>Вісник</th><th>Території</th></tr></thead><tbody>';
+        for (const [pib, territories] of Object.entries(heralds)) {
+          table += `<tr><td>${pib}</td><td>${territories.join(', ')}</td></tr>`;
+        }
+        table += '</tbody></table>';
+        reportContainer.innerHTML += table;
+      } catch (error) {
+        console.error('Помилка звіту 1:', error);
+        alert('Помилка генерації звіту: ' + error.message);
+      }
+    };
+
+    window.generateReport2 = async () => {
+      try {
+        const days = parseInt(document.getElementById('days2').value) || 30;
+        const reportContainer = document.getElementById('report-container');
+        reportContainer.innerHTML = `<h2 class="text-lg font-semibold text-gray-700 mb-2">Вісники з територіями на руках більше ${days} днів</h2>`;
+        const territoriesRef = collection(db, 'territories');
+        const territoriesSnapshot = await getDocs(territoriesRef);
+        const heralds = {};
+
+        for (const territoryDoc of territoriesSnapshot.docs) {
+          const territoryId = territoryDoc.id;
+          const historyRef = collection(db, `territories/${territoryId}/history`);
+          const historyQuery = query(historyRef, where('status', '==', 'на руках'));
+          const historySnapshot = await getDocs(historyQuery);
+
+          historySnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.pib && data.dateGet && daysBetween(data.dateGet) > days) {
+              if (!heralds[data.pib]) heralds[data.pib] = [];
+              heralds[data.pib].push(territoryId);
+            }
+          });
+        }
+
+        if (Object.keys(heralds).length === 0) {
+          reportContainer.innerHTML += `<p class="text-gray-600">Немає вісників із територіями на руках більше ${days} днів.</p>`;
+          return;
+        }
+
+        let table = '<table class="report-table"><thead><tr><th>Вісник</th><th>Території</th></tr></thead><tbody>';
+        for (const [pib, territories] of Object.entries(heralds)) {
+          table += `<tr><td>${pib}</td><td>${territories.join(', ')}</td></tr>`;
+        }
+        table += '</tbody></table>';
+        reportContainer.innerHTML += table;
+      } catch (error) {
+        console.error('Помилка звіту 2:', error);
+        alert('Помилка генерації звіту: ' + error.message);
+      }
+    };
+
+    window.generateReport3 = async () => {
+      try {
+        const reportContainer = document.getElementById('report-container');
+        reportContainer.innerHTML = '<h2 class="text-lg font-semibold text-gray-700 mb-2">Пусті (неопрацьовані) території</h2>';
+        const territoriesRef = collection(db, 'territories');
+        const territoriesSnapshot = await getDocs(territoriesRef);
+        const emptyTerritories = [];
+
+        for (const territoryDoc of territoriesSnapshot.docs) {
+          const territoryId = territoryDoc.id;
+          const historyRef = collection(db, `territories/${territoryId}/history`);
+          const historySnapshot = await getDocs(historyRef);
+          if (historySnapshot.empty) {
+            emptyTerritories.push(territoryId);
+          }
+        }
+
+        if (emptyTerritories.length === 0) {
+          reportContainer.innerHTML += '<p class="text-gray-600">Немає пустих територій.</p>';
+          return;
+        }
+
+        let table = '<table class="report-table"><thead><tr><th>Територія</th></tr></thead><tbody>';
+        emptyTerritories.forEach(territory => {
+          table += `<tr><td>${territory}</td></tr>`;
+        });
+        table += '</tbody></table>';
+        reportContainer.innerHTML += table;
+      } catch (error) {
+        console.error('Помилка звіту 3:', error);
+        alert('Помилка генерації звіту: ' + error.message);
+      }
+    };
+
+    window.generateReport4 = async () => {
+      try {
+        const days = parseInt(document.getElementById('days4').value) || 30;
+        const reportContainer = document.getElementById('report-container');
+        reportContainer.innerHTML = `<h2 class="text-lg font-semibold text-gray-700 mb-2">Території, опрацьовані більше ${days} днів тому</h2>`;
+        const territoriesRef = collection(db, 'territories');
+        const territoriesSnapshot = await getDocs(territoriesRef);
+        const processedTerritories = [];
+
+        for (const territoryDoc of territoriesSnapshot.docs) {
+          const territoryId = territoryDoc.id;
+          const historyRef = collection(db, `territories/${territoryId}/history`);
+          const historyQuery = query(historyRef, where('status', '==', 'опрацьовано'));
+          const historySnapshot = await getDocs(historyQuery);
+
+          historySnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.dateProcess && daysBetween(data.dateProcess) > days) {
+              processedTerritories.push({ territoryId, pib: data.pib || 'Невідомий вісник' });
+            }
+          });
+        }
+
+        if (processedTerritories.length === 0) {
+          reportContainer.innerHTML += `<p class="text-gray-600">Немає територій, опрацьованих більше ${days} днів тому.</p>`;
+          return;
+        }
+
+        let table = '<table class="report-table"><thead><tr><th>Територія</th><th>Вісник</th></tr></thead><tbody>';
+        processedTerritories.forEach(({ territoryId, pib }) => {
+          table += `<tr><td>${territoryId}</td><td>${pib}</td></tr>`;
+        });
+        table += '</tbody></table>';
+        reportContainer.innerHTML += table;
+      } catch (error) {
+        console.error('Помилка звіту 4:', error);
+        alert('Помилка генерації звіту: ' + error.message);
+      }
+    };
+  </script>
+</body>
+</html>
