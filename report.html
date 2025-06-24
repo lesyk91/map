@@ -53,6 +53,20 @@
         const reportContainer = document.getElementById("report");
         reportContainer.innerHTML = '<p class="text-gray-600">Завантаження...</p>';
 
+        // Check specific record for debugging
+        console.log("Перевірка конкретного запису: /territories/66/history/LF71D0KkEXaI8tNcwg0W");
+        const specificDocRef = doc(db, "territories/66/history/LF71D0KkEXaI8tNcwg0W");
+        try {
+          const specificDocSnap = await getDoc(specificDocRef);
+          if (specificDocSnap.exists()) {
+            console.log("Дані запису:", specificDocSnap.data());
+          } else {
+            console.log("Запис не існує за вказаною адресою");
+          }
+        } catch (error) {
+          console.error("Помилка при отриманні запису:", error);
+        }
+
         const territoriesRef = collection(db, "territories");
         const territoriesSnap = await getDocs(territoriesRef);
         console.log(`Знайдено територій: ${territoriesSnap.size}`);
@@ -70,7 +84,8 @@
           const latest = historySnap.docs[0]?.data();
           if (latest) {
             console.log(`Останній запис для території ${number}:`, latest);
-            if (latest.dateGet && !latest.dateProcess) {
+            // Check if dateGet exists and dateProcess is unset (null, undefined, or empty string)
+            if (latest.dateGet && (latest.dateProcess === null || latest.dateProcess === undefined || latest.dateProcess === "")) {
               const userRef = doc(db, "users", latest.user);
               const userSnap = await getDoc(userRef);
               const userName = userSnap.exists() ? userSnap.data().name : "Невідомо";
@@ -90,7 +105,7 @@
 
         reportContainer.innerHTML = "";
         if (results.length === 0) {
-          console.log("Немає територій, де dateGet є, а dateProcess відсутній");
+          console.log("Немає територій, де dateGet є, а dateProcess відсутній або порожній");
           reportContainer.innerHTML = '<p class="text-gray-600">Немає територій на руках.</p>';
           return;
         }
