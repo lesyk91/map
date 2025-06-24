@@ -428,7 +428,7 @@
 
               layer.on("click", async () => {
                 const popupContent = await getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-                layer.bindPopup(popupContent + `<br><button onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
+                layer.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
               });
             },
             style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
