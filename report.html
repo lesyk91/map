@@ -70,7 +70,7 @@
           const latest = historySnap.docs[0]?.data();
           if (latest) {
             console.log(`Останній запис для території ${number}:`, latest);
-            if (latest.status === "на руках") {
+            if (latest.dateGet && !latest.dateProcess) {
               const userRef = doc(db, "users", latest.user);
               const userSnap = await getDoc(userRef);
               const userName = userSnap.exists() ? userSnap.data().name : "Невідомо";
@@ -81,7 +81,7 @@
                 dateGet: latest.dateGet || "-"
               });
             } else {
-              console.log(`Територія ${number} не на руках, статус: ${latest.status}`);
+              console.log(`Територія ${number} не на руках: dateGet=${latest.dateGet}, dateProcess=${latest.dateProcess}`);
             }
           } else {
             console.log(`Територія ${number} не має записів у history`);
@@ -90,7 +90,7 @@
 
         reportContainer.innerHTML = "";
         if (results.length === 0) {
-          console.log("Немає територій зі статусом 'на руках'");
+          console.log("Немає територій, де dateGet є, а dateProcess відсутній");
           reportContainer.innerHTML = '<p class="text-gray-600">Немає територій на руках.</p>';
           return;
         }
