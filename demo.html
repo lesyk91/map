@@ -14,66 +14,152 @@
       margin: 0;
       padding: 0;
     }
-    .leaflet-control-layers {
-      max-height: 70vh;
-      overflow-y: auto;
+
+    button.layer-toggle, button.locate-btn, button.login-btn, button.logout-btn, button.territories-btn {
+      z-index: 1000;
+      padding: 8px 12px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
     }
-    #progress-bar {
+
+    .controls {
+      z-index: 1000;
+      background: white;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .controls label {
+      margin-left: 5px;
+      cursor: pointer;
+    }
+
+    .controls input[type="checkbox"] {
+      margin: 5px 0;
+    }
+
+    #loader {
+      z-index: 1000;
+      padding: 8px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+
+    /* Progress Overlay */
+    #progress-overlay {
       position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 2000;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
       display: none;
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #progress-container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    #progress-bar {
+      width: 100%;
+      height: 20px;
+      background: #e0e0e0;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    #progress-fill {
+      height: 100%;
+      background: #4caf50;
+      width: 0;
+      transition: width 0.3s ease;
+    }
+
+    /* Mobile-specific adjustments */
+    @media (max-width: 640px) {
+      button.layer-toggle, button.locate-btn, button.login-btn, button.logout-btn, button.territories-btn {
+        padding: 6px 10px;
+        font-size: 14px;
+      }
+
+      .controls {
+        padding: 6px;
+      }
+
+      #loader {
+        padding: 6px;
+      }
     }
   </style>
 </head>
 <body class="relative">
-  <div id="auth-buttons" class="fixed top-4 left-4 z-[1000] space-y-2 md:space-y-0 md:flex md:space-x-2">
-    <button onclick="findLocation()" class="locate-btn bg-white text-gray-800 px-4 py-2 rounded-lg shadow-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+  <div id="progress-overlay" class="flex">
+    <div id="progress-container">
+      <h2 class="text-lg font-semibold mb-2">Завантаження територій...</h2>
+      <div id="progress-bar">
+        <div id="progress-fill"></div>
+      </div>
+      <p id="progress-text" class="mt-2 text-sm">0%</p>
+    </div>
+  </div>
+
+  <div class="fixed top-4 left-4 sm:left-12 z-[1000] flex flex-col space-y-2">
+    <button onclick="findLocation()" class="locate-btn bg-white border border-gray-300 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100 flex items-center">
       📍 Показати моє місце
     </button>
-    <a href="enter.html"><button class="login-btn hidden bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
-      🔐 Увійти
-    </button></a>
-    <button class="logout-btn hidden bg-red-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500">
+    <button onclick="toggleLayers()" class="layer-toggle bg-white border border-gray-300 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100 flex items-center">
+      🗺 Шари
+    </button>
+  </div>
+
+  <div id="auth-buttons" class="fixed top-20 left-4 sm:left-12 z-[1000] flex flex-col space-y-2">
+    <a href="enter.html">
+      <button class="login-btn bg-white border border-gray-300 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100 flex items-center" style="display:none">
+        🔐 Увійти
+      </button>
+    </a>
+    <button class="logout-btn bg-white border border-gray-300 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100 flex items-center" style="display:none">
       🚪 Вийти
     </button>
-    <a href="territories.html"><button class="territories-btn hidden bg-green-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500">
-      🏞 Території
-    </button></a>
+    <a href="territories.html">
+      <button class="territories-btn bg-white border border-gray-300 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100 flex items-center" style="display:none">
+        🏞 Території
+      </button>
+    </a>
   </div>
 
-  <div id="progress-bar" class="bg-white p-6 rounded-lg shadow-lg text-center w-64">
-    <p class="text-lg font-semibold text-gray-800">Завантаження...</p>
-    <p id="progress-text" class="text-xl font-bold text-blue-600">0%</p>
-    <div class="w-full bg-gray-200 rounded-full h-4 mt-2">
-      <div id="progress-fill" class="bg-blue-500 h-4 rounded-full" style="width: 0%"></div>
+  <div id="loader" class="fixed top-4 left-48 sm:left-64 z-[1000] hidden"></div>
+
+  <div class="controls fixed top-32 sm:top-28 left-4 sm:left-12 z-[1000] bg-white border border-gray-300 rounded shadow-sm p-2 sm:p-3 w-40 sm:w-48">
+    <div class="flex items-center">
+      <input type="checkbox" id="toggleAll" checked class="mr-2">
+      <label for="toggleAll" id="toggleAllLabel" class="text-sm sm:text-base cursor-pointer">Показати всі</label>
+    </div>
+    <div id="taken-control" class="mt-2 hidden">
+      <div class="flex items-center">
+        <input type="checkbox" id="showTaken" class="mr-2">
+        <label for="showTaken" class="text-sm sm:text-base cursor-pointer">На руках</label>
+      </div>
+    </div>
+    <div id="free-control" class="mt-2 hidden">
+      <div class="flex items-center">
+        <input type="checkbox" id="showFree" class="mr-2">
+        <label for="showFree" class="text-sm sm:text-base cursor-pointer">Вільно</label>
+      </div>
     </div>
   </div>
 
-  <div class="controls fixed top-20 left-4 z-[1000] bg-white p-4 rounded-lg shadow-md w-48 md:w-56">
-    <label class="flex items-center space-x-2 cursor-pointer">
-      <input type="checkbox" id="toggleAll" checked class="h-4 w-4 text-blue-500 focus:ring-blue-500">
-      <span id="toggleAllLabel" class="text-gray-800">Показати всіх</span>
-    </label>
-    <div id="taken-control" class="hidden mt-2">
-      <label class="flex items-center space-x-2 cursor-pointer">
-        <input type="checkbox" id="showTaken" class="h-4 w-4 text-blue-500 focus:ring-blue-500">
-        <span class="text-gray-800">На руках</span>
-      </label>
-    </div>
-    <div id="free-control" class="hidden mt-2">
-      <label class="flex items-center space-x-2 cursor-pointer">
-        <input type="checkbox" id="showFree" class="h-4 w-4 text-blue-500 focus:ring-blue-500">
-        <span class="text-gray-800">Вільно</span>
-      </label>
-    </div>
-  </div>
-
-  <div id="loader" class="fixed top-4 left-56 z-[1000] bg-white px-4 py-2 rounded-lg shadow-md text-gray-800 hidden md:block"></div>
-
-  <div id="map" class="w-full h-full"></div>
+  <div id="map" class="h-full w-full"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
@@ -101,25 +187,22 @@
     const territoriesBtn = document.querySelector('.territories-btn');
     const takenControl = document.getElementById('taken-control');
     const freeControl = document.getElementById('free-control');
-    const progressBar = document.getElementById('progress-bar');
-    const progressText = document.getElementById('progress-text');
-    const progressFill = document.getElementById('progress-fill');
 
     onAuthStateChanged(auth, user => {
       currentUser = user;
       if (user) {
-        loginBtn.classList.add('hidden');
-        logoutBtn.classList.remove('hidden');
-        territoriesBtn.classList.remove('hidden');
-        takenControl.classList.remove('hidden');
-        freeControl.classList.remove('hidden');
+        loginBtn.style.display = 'none';
+        logoutBtn.style.display = 'inline-block';
+        territoriesBtn.style.display = 'inline-block';
+        takenControl.style.display = 'block';
+        freeControl.style.display = 'block';
         updateTerritoryStatuses();
       } else {
-        loginBtn.classList.remove('hidden');
-        logoutBtn.classList.add('hidden');
-        territoriesBtn.classList.add('hidden');
-        takenControl.classList.add('hidden');
-        freeControl.classList.add('hidden');
+        loginBtn.style.display = 'inline-block';
+        logoutBtn.style.display = 'none';
+        territoriesBtn.style.display = 'none';
+        takenControl.style.display = 'none';
+        freeControl.style.display = 'none';
         Object.keys(territoryStatuses).forEach(id => territoryStatuses[id] = "вільно");
         updateTerritoriesDisplay();
       }
@@ -287,17 +370,19 @@
 
     function showLoading(show) {
       document.getElementById('loader').innerText = show ? 'Завантаження...' : '';
-      document.getElementById('loader').classList.toggle('hidden', !show);
+      document.getElementById('loader').style.display = show ? 'block' : 'none';
     }
 
     function updateProgress(percentage) {
-      progressBar.style.display = 'block';
-      progressText.innerText = `${Math.round(percentage)}%`;
-      progressFill.style.width = `${percentage}%`;
-      if (percentage >= 100) {
-        setTimeout(() => {
-          progressBar.style.display = 'none';
-        }, 500);
+      const progressOverlay = document.getElementById('progress-overlay');
+      const progressFill = document.getElementById('progress-fill');
+      const progressText = document.getElementById('progress-text');
+      if (percentage < 100) {
+        progressOverlay.style.display = 'flex';
+        progressFill.style.width = `${percentage}%`;
+        progressText.innerText = `${Math.round(percentage)}%`;
+      } else {
+        progressOverlay.style.display = 'none';
       }
     }
 
@@ -337,9 +422,8 @@
     (async () => {
       showLoading(true);
       updateProgress(0);
-
-      const totalDistricts = districts.length;
       let loadedCount = 0;
+      const totalDistricts = districts.length;
 
       for (const d of districts) {
         const layer = L.layerGroup();
@@ -360,7 +444,7 @@
 
               layer.on("click", async () => {
                 const popupContent = await getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-                layer.bindPopup(popupContent + `<br><button onclick="routeToDistrict('${d.name}')" class="mt-2 bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600">📌 Прокласти маршрут сюди</button>`).openPopup();
+                layer.bindPopup(popupContent + `<br><button onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
               });
             },
             style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
@@ -528,7 +612,7 @@
         if (showFreeCheckbox) showFreeCheckbox.checked = false;
         toggleAllLabel.innerText = 'Показати всіх';
 
-        toggleAllCheckbox.addEventListener('change', () => {
+        toggleAllCheckbox.addEventListener('change", () => {
           console.log('toggleAll changed:', toggleAllCheckbox.checked);
           if (toggleAllCheckbox.checked) {
             if (showTakenCheckbox) showTakenCheckbox.checked = false;
