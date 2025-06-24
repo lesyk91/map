@@ -1,40 +1,76 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
+  <meta name="robots" content="noindex, nofollow">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Звіти по Територіях</title>
+  <title>Звіти про території</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+    }
+    .btn {
+      transition: all 0.3s ease;
+    }
+    .report-container {
+      margin-top: 1rem;
+      width: 100%;
+      max-width: 800px;
+    }
+    .report-table {
+      border-collapse: collapse;
+      width: 100%;
+      background-color: white;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .report-table th, .report-table td {
+      border: 1px arrow: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    .report-table th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+    .input-days {
+      width: 80px;
+      padding: 4px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+  </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-  <div class="max-w-6xl mx-auto p-4">
-    <h1 class="text-2xl font-bold mb-4">Звіти по Територіях</h1>
-
-    <div class="space-y-4 mb-6">
-      <button id="report-1" class="bg-blue-500 text-white px-4 py-2 rounded">Території "на руках"</button>
-      <div>
-        <label for="daysOnHands" class="block font-medium">Території "на руках" більше ніж (днів):</label>
-        <input id="daysOnHands" type="number" class="border rounded p-2 w-32">
-        <button id="report-2" class="bg-blue-500 text-white px-4 py-2 rounded ml-2">Звіт</button>
+<body>
+  <div class="max-w-7xl mx-auto text-center">
+    <h1 class="text-2xl font-bold text-gray-800 mb-4">Звіти про території</h1>
+    <div class="mb-4">
+      <button onclick="generateReport1()" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mr-2">Вісники з територіями на руках</button>
+      <div class="mt-2">
+        <label for="days2" class="text-gray-600">Днів: </label>
+        <input type="number" id="days2" class="input-days" min="1" value="30">
+        <button onclick="generateReport2()" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg ml-2">Вісники з територіями на руках більше N днів</button>
       </div>
-      <button id="report-3" class="bg-blue-500 text-white px-4 py-2 rounded">Неопрацьовані території</button>
-      <div>
-        <label for="daysProcessed" class="block font-medium">Опрацьовані більше ніж (днів) тому:</label>
-        <input id="daysProcessed" type="number" class="border rounded p-2 w-32">
-        <button id="report-4" class="bg-blue-500 text-white px-4 py-2 rounded ml-2">Звіт</button>
+      <button onclick="generateReport3()" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mt-2">Пусті території</button>
+      <div class="mt-2">
+        <label for="days4" class="text-gray-600">Днів: </label>
+        <input type="number" id="days4" class="input-days" min="1" value="30">
+        <button onclick="generateReport4()" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg ml-2">Опрацьовані території більше N днів</button>
       </div>
     </div>
-
-    <div id="results" class="bg-white shadow p-4 rounded overflow-auto"></div>
+    <div id="report-container" class="report-container"></div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, collection, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -49,84 +85,207 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    const results = document.getElementById('results');
-
-    const formatDate = (str) => str ? new Date(str) : null;
-    const daysBetween = (d1, d2) => Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
-
-    onAuthStateChanged(auth, async user => {
+    onAuthStateChanged(auth, (user) => {
       if (!user) {
-        alert('Будь ласка, увійдіть у систему.');
-        window.location.href = 'index.html';
-        return;
+        alert('Будь ласка, увійдіть у систему для перегляду звітів.');
+        location.href = "index.html";
+      } else {
+        console.log('Користувач авторизований:', user.uid);
       }
-
-      async function fetchTerritories() {
-        const maxTerritoryNumber = 102;
-        const all = [];
-        for (let t = 1; t <= maxTerritoryNumber; t++) {
-          const q = query(collection(db, `territories/${t}/history`), orderBy('timestamp', 'desc'), limit(4));
-          const snap = await getDocs(q);
-          const records = [];
-          snap.forEach(doc => records.push(doc.data()));
-          all.push({ number: t, history: records });
-        }
-        return all;
-      }
-
-      function render(title, data) {
-        results.innerHTML = `<h2 class="text-xl font-semibold mb-4">${title}</h2>` +
-          (data.length > 0 ?
-          `<table class="table-auto w-full text-sm"><thead><tr><th class="border px-2">#</th><th class="border px-2">Вісник</th><th class="border px-2">Територія</th><th class="border px-2">Дата отримання</th><th class="border px-2">Дата опрацювання</th></tr></thead><tbody>` +
-          data.map((r, i) => `<tr><td class="border px-2">${i+1}</td><td class="border px-2">${r.pib}</td><td class="border px-2">${r.territory}</td><td class="border px-2">${r.dateGet || ''}</td><td class="border px-2">${r.dateProcess || ''}</td></tr>`).join('') +
-          '</tbody></table>' : '<p>Даних не знайдено.</p>');
-      }
-
-      const allTerritories = await fetchTerritories();
-
-      document.getElementById('report-1').onclick = () => {
-        const filtered = [];
-        allTerritories.forEach(t => {
-          const h = t.history[0];
-          if (h?.dateGet && !h?.dateProcess) {
-            filtered.push({ territory: t.number, pib: h.pib || '', dateGet: h.dateGet, dateProcess: '' });
-          }
-        });
-        render('Території "на руках"', filtered);
-      };
-
-      document.getElementById('report-2').onclick = () => {
-        const days = parseInt(document.getElementById('daysOnHands').value);
-        const filtered = [];
-        allTerritories.forEach(t => {
-          const h = t.history[0];
-          const dGet = formatDate(h?.dateGet);
-          if (dGet && !h?.dateProcess && daysBetween(dGet, new Date()) > days) {
-            filtered.push({ territory: t.number, pib: h.pib || '', dateGet: h.dateGet, dateProcess: '' });
-          }
-        });
-        render(`Території "на руках" більше ${days} днів`, filtered);
-      };
-
-      document.getElementById('report-3').onclick = () => {
-        const filtered = allTerritories.filter(t => t.history.length === 0)
-          .map(t => ({ territory: t.number, pib: '', dateGet: '', dateProcess: '' }));
-        render('Неопрацьовані території', filtered);
-      };
-
-      document.getElementById('report-4').onclick = () => {
-        const days = parseInt(document.getElementById('daysProcessed').value);
-        const filtered = [];
-        allTerritories.forEach(t => {
-          const h = t.history[0];
-          const dProc = formatDate(h?.dateProcess);
-          if (dProc && daysBetween(dProc, new Date()) > days) {
-            filtered.push({ territory: t.number, pib: h.pib || '', dateGet: h.dateGet, dateProcess: h.dateProcess });
-          }
-        });
-        render(`Території опрацьовані більше ${days} днів тому`, filtered);
-      };
     });
+
+    const currentDate = new Date('2025-06-24');
+
+    const daysBetween = (dateStr) => {
+      if (!dateStr) {
+        console.log('Дата порожня:', dateStr);
+        return Infinity;
+      }
+      const date = new Date(dateStr);
+      if (isNaN(date)) {
+        console.warn('Невалідна дата:', dateStr);
+        return Infinity;
+      }
+      const diffTime = currentDate - date;
+      const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      console.log(`Різниця в днях для ${dateStr}: ${days}`);
+      return days;
+    };
+
+    window.generateReport1 = async () => {
+      try {
+        const reportContainer = document.getElementById('report-container');
+        reportContainer.innerHTML = '<h2 class="text-lg font-semibold text-gray-700 mb-2">Вісники з територіями на руках</h2>';
+        const territoriesRef = collection(db, 'territories');
+        const territoriesSnapshot = await getDocs(territoriesRef);
+        console.log('Знайдено територій:', territoriesSnapshot.size);
+        const heralds = {};
+
+        for (const territoryDoc of territoriesSnapshot.docs) {
+          const territoryId = territoryDoc.id;
+          console.log('Обробка території:', territoryId);
+          const historyRef = collection(db, `territories/${territoryId}/history`);
+          const historySnapshot = await getDocs(historyRef);
+          console.log(`Записи в історії для ${territoryId}: ${historySnapshot.size}`);
+
+          historySnapshot.forEach(doc => {
+            const data = doc.data();
+            console.log(`Запис для ${territoryId}:`, data);
+            if (data.status === 'на руках' && data.pib) {
+              if (!heralds[data.pib]) heralds[data.pib] = [];
+              heralds[data.pib].push(territoryId);
+            }
+          });
+        }
+
+        if (Object.keys(heralds).length === 0) {
+          reportContainer.innerHTML += '<p class="text-gray-600">Немає вісників із територіями на руках.</p>';
+          console.log('Немає вісників із територіями на руках');
+          return;
+        }
+
+        let table = '<table class="report-table"><thead><tr><th>Вісник</th><th>Території</th></tr></thead><tbody>';
+        for (const [pib, territories] of Object.entries(heralds)) {
+          table += `<tr><td>${pib}</td><td>${territories.join(', ')}</td></tr>`;
+        }
+        table += '</tbody></table>';
+        reportContainer.innerHTML += table;
+        console.log('Звіт 1 сформовано:', heralds);
+      } catch (error) {
+        console.error('Помилка звіту 1:', error);
+        alert('Помилка генерації звіту: ' + error.message);
+      }
+    };
+
+    window.generateReport2 = async () => {
+      try {
+        const days = parseInt(document.getElementById('days2').value) || 30;
+        const reportContainer = document.getElementById('report-container');
+        reportContainer.innerHTML = `<h2 class="text-lg font-semibold text-gray-700 mb-2">Вісники з територіями на руках більше ${days} днів</h2>`;
+        const territoriesRef = collection(db, 'territories');
+        const territoriesSnapshot = await getDocs(territoriesRef);
+        console.log('Знайдено територій:', territoriesSnapshot.size);
+        const heralds = {};
+
+        for (const territoryDoc of territoriesSnapshot.docs) {
+          const territoryId = territoryDoc.id;
+          console.log('Обробка території:', territoryId);
+          const historyRef = collection(db, `territories/${territoryId}/history`);
+          const historySnapshot = await getDocs(historyRef);
+          console.log(`Записи в історії для ${territoryId}: ${historySnapshot.size}`);
+
+          historySnapshot.forEach(doc => {
+            const data = doc.data();
+            console.log(`Запис для ${territoryId}:`, data);
+            if (data.status === 'на руках' && data.pib && data.dateGet && daysBetween(data.dateGet) > days) {
+              if (!heralds[data.pib]) heralds[data.pib] = [];
+              heralds[data.pib].push(territoryId);
+            }
+          });
+        }
+
+        if (Object.keys(heralds).length === 0) {
+          reportContainer.innerHTML += `<p class="text-gray-600">Немає вісників із територіями на руках більше ${days} днів.</p>`;
+          console.log(`Немає вісників із територіями на руках більше ${days} днів`);
+          return;
+        }
+
+        let table = '<table class="report-table"><thead><tr><th>Вісник</th><th>Території</th></tr></thead><tbody>';
+        for (const [pib, territories] of Object.entries(heralds)) {
+          table += `<tr><td>${pib}</td><td>${territories.join(', ')}</td></tr>`;
+        }
+        table += '</tbody></table>';
+        reportContainer.innerHTML += table;
+        console.log('Звіт 2 сформовано:', heralds);
+      } catch (error) {
+        console.error('Помилка звіту 2:', error);
+        alert('Помилка генерації звіту: ' + error.message);
+      }
+    };
+
+    window.generateReport3 = async () => {
+      try {
+        const reportContainer = document.getElementById('report-container');
+        reportContainer.innerHTML = '<h2 class="text-lg font-semibold text-gray-700 mb-2">Пусті (неопрацьовані) території</h2>';
+        const territoriesRef = collection(db, 'territories');
+        const territoriesSnapshot = await getDocs(territoriesRef);
+        console.log('Знайдено територій:', territoriesSnapshot.size);
+        const emptyTerritories = [];
+
+        for (const territoryDoc of territoriesSnapshot.docs) {
+          const territoryId = territoryDoc.id;
+          console.log('Обробка території:', territoryId);
+          const historyRef = collection(db, `territories/${territoryId}/history`);
+          const historySnapshot = await getDocs(historyRef);
+          console.log(`Записи в історії для ${territoryId}: ${historySnapshot.size}`);
+          if (historySnapshot.empty) {
+            emptyTerritories.push(territoryId);
+          }
+        }
+
+        if (emptyTerritories.length === 0) {
+          reportContainer.innerHTML += '<p class="text-gray-600">Немає пустих територій.</p>';
+          console.log('Немає пустих територій');
+          return;
+        }
+
+        let table = '<table class="report-table"><thead><tr><th>Територія</th></tr></thead><tbody>';
+        emptyTerritories.forEach(territory => {
+          table += `<tr><td>${territory}</td></tr>`;
+        });
+        table += '</tbody></table>';
+        reportContainer.innerHTML += table;
+        console.log('Звіт 3 сформовано:', emptyTerritories);
+      } catch (error) {
+        console.error('Помилка звіту 3:', error);
+        alert('Помилка генерації звіту: ' + error.message);
+      }
+    };
+
+    window.generateReport4 = async () => {
+      try {
+        const days = parseInt(document.getElementById('days4').value) || 30;
+        const reportContainer = document.getElementById('report-container');
+        reportContainer.innerHTML = `<h2 class="text-lg font-semibold text-gray-700 mb-2">Території, опрацьовані більше ${days} днів тому</h2>`;
+        const territoriesRef = collection(db, 'territories');
+        const territoriesSnapshot = await getDocs(territoriesRef);
+        console.log('Знайдено територій:', territoriesSnapshot.size);
+        const processedTerritories = [];
+
+        for (const territoryDoc of territoriesSnapshot.docs) {
+          const territoryId = territoryDoc.id;
+          console.log('Обробка території:', territoryId);
+          const historyRef = collection(db, `territories/${territoryId}/history`);
+          const historySnapshot = await getDocs(historyRef);
+          console.log(`Записи в історії для ${territoryId}: ${historySnapshot.size}`);
+
+          historySnapshot.forEach(doc => {
+            const data = doc.data();
+            console.log(`Запис для ${territoryId}:`, data);
+            if (data.status === 'опрацьовано' && data.dateProcess && daysBetween(data.dateProcess) > days) {
+              processedTerritories.push({ territoryId, pib: data.pib || 'Невідомий вісник' });
+            }
+          });
+        }
+
+        if (processedTerritories.length === 0) {
+          reportContainer.innerHTML += `<p class="text-gray-600">Немає територій, опрацьованих більше ${days} днів тому.</p>`;
+          console.log(`Немає територій, опрацьованих більше ${days} днів`);
+          return;
+        }
+
+        let table = '<table class="report-table"><thead><tr><th>Територія</th><th>Вісник</th></tr></thead><tbody>';
+        processedTerritories.forEach(({ territoryId, pib }) => {
+          table += `<tr><td>${territoryId}</td><td>${pib}</td></tr>`;
+        });
+        table += '</tbody></table>';
+        reportContainer.innerHTML += table;
+        console.log('Звіт 4 сформовано:', processedTerritories);
+      } catch (error) {
+        console.error('Помилка звіту 4:', error);
+        alert('Помилка генерації звіту: ' + error.message);
+      }
+    };
   </script>
 </body>
 </html>
