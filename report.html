@@ -67,39 +67,45 @@
           console.error("Помилка при отриманні запису:", error);
         }
 
-        const territoriesRef = collection(db, "territories");
-        const territoriesSnap = await getDocs(territoriesRef);
-        console.log(`Знайдено територій: ${territoriesSnap.size}`);
-
         const results = [];
+        const maxTerritoryNumber = 102; // Match export.html range
 
-        for (const territoryDoc of territoriesSnap.docs) {
-          const number = territoryDoc.id;
+        for (let number = 1; number <= maxTerritoryNumber; number++) {
           console.log(`Обробка території: ${number}`);
           const historyRef = collection(db, `territories/${number}/history`);
           const q = query(historyRef, orderBy("timestamp", "desc"));
-          const historySnap = await getDocs(q);
-          console.log(`Знайдено записів у history для території ${number}: ${historySnap.size}`);
+          try {
+            const historySnap = await getDocs(q);
+            console.log(`Знайдено записів у history для території ${number}: ${historySnap.size}`);
 
-          const latest = historySnap.docs[0]?.data();
-          if (latest) {
-            console.log(`Останній запис для території ${number}:`, latest);
-            // Check if dateGet exists and dateProcess is unset (null, undefined, or empty string)
-            if (latest.dateGet && (latest.dateProcess === null || latest.dateProcess === undefined || latest.dateProcess === "")) {
-              const userRef = doc(db, "users", latest.user);
-              const userSnap = await getDoc(userRef);
-              const userName = userSnap.exists() ? userSnap.data().name : "Невідомо";
-              results.push({
-                pib: latest.pib || "Невідомо",
-                number,
-                user: userName,
-                dateGet: latest.dateGet || "-"
-              });
+            const latest = historySnap.docs[0]?.data();
+            if (latest) {
+              console.log(`Останній запис для території ${number}:`, latest);
+              if (latest.dateGet && (latest.dateProcess === null || latest.dateProcess === undefined || latest.dateProcess === "")) {
+                const userRef = doc(db, "users", latest.user);
+                let userName = "Невідомо";
+                try {
+                  const userSnap = await getDoc(userRef);
+                  if (userSnap.exists()) {
+                    userName = userSnap.data().name || "Невідомо";
+                  }
+                } catch (error) {
+                  console.error(`Помилка при отриманні даних користувача ${latest.user}:`, error);
+                }
+                results.push({
+                  pib: latest.pib || "Невідомо",
+                  number: number.toString(),
+                  user: userName,
+                  dateGet: latest.dateGet || "-"
+                });
+              } else {
+                console.log(`Територія ${number} не на руках: dateGet=${latest.dateGet}, dateProcess=${latest.dateProcess}`);
+              }
             } else {
-              console.log(`Територія ${number} не на руках: dateGet=${latest.dateGet}, dateProcess=${latest.dateProcess}`);
+              console.log(`Територія ${number} не має записів у history`);
             }
-          } else {
-            console.log(`Територія ${number} не має записів у history`);
+          } catch (error) {
+            console.error(`Помилка при отриманні history для території ${number}:`, error);
           }
         }
 
