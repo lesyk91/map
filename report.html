@@ -4,7 +4,7 @@
   <meta name="robots" content="noindex, nofollow">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Звіт по територіях на руках</title>
+  <title>Звіт: Території на руках</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
     .card {
@@ -39,45 +39,70 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    const formatDate = (str) => str ? new Date(str).toLocaleDateString("uk-UA") : "-";
+
     document.addEventListener("DOMContentLoaded", async () => {
       onAuthStateChanged(auth, async (user) => {
-        if (!user) return (location.href = "index.html");
+        if (!user) {
+          console.log("Користувач не авторизований, перенаправлення на index.html");
+          location.href = "index.html";
+          return;
+        }
 
+        console.log("Користувач авторизований:", user.uid);
         const reportContainer = document.getElementById("report");
-
         reportContainer.innerHTML = '<p class="text-gray-600">Завантаження...</p>';
 
         const territoriesRef = collection(db, "territories");
         const territoriesSnap = await getDocs(territoriesRef);
+        console.log(`Знайдено територій: ${territoriesSnap.size}`);
+
         const results = [];
 
         for (const territoryDoc of territoriesSnap.docs) {
           const number = territoryDoc.id;
+          console.log(`Обробка території: ${number}`);
           const historyRef = collection(db, `territories/${number}/history`);
           const q = query(historyRef, orderBy("timestamp", "desc"));
           const historySnap = await getDocs(q);
-          const latest = historySnap.docs[0]?.data();
+          console.log(`Знайдено записів у history для території ${number}: ${historySnap.size}`);
 
-          if (latest && latest.status === "на руках") {
-            const userRef = doc(db, "users", latest.user);
-            const userSnap = await getDoc(userRef);
-            const userName = userSnap.exists() ? userSnap.data().name : "Невідомо";
-            results.push({ pib: latest.pib, number, user: userName });
+          const latest = historySnap.docs[0]?.data();
+          if (latest) {
+            console.log(`Останній запис для території ${number}:`, latest);
+            if (latest.status === "на руках") {
+              const userRef = doc(db, "users", latest.user);
+              const userSnap = await getDoc(userRef);
+              const userName = userSnap.exists() ? userSnap.data().name : "Невідомо";
+              results.push({
+                pib: latest.pib || "Невідомо",
+                number,
+                user: userName,
+                dateGet: latest.dateGet || "-"
+              });
+            } else {
+              console.log(`Територія ${number} не на руках, статус: ${latest.status}`);
+            }
+          } else {
+            console.log(`Територія ${number} не має записів у history`);
           }
         }
 
         reportContainer.innerHTML = "";
         if (results.length === 0) {
+          console.log("Немає територій зі статусом 'на руках'");
           reportContainer.innerHTML = '<p class="text-gray-600">Немає територій на руках.</p>';
           return;
         }
 
+        console.log("Результати для відображення:", results);
         results.forEach(result => {
           const entry = document.createElement("div");
           entry.className = "card bg-white p-6 rounded-lg shadow-md mb-4";
           entry.innerHTML = `
             <div class="mb-2"><b>Вісник:</b> ${result.pib}</div>
             <div class="mb-2"><b>Територія:</b> ${result.number}</div>
+            <div class="mb-2"><b>Дата отримання:</b> ${formatDate(result.dateGet)}</div>
             <div class="mb-2"><b>Користувач:</b> ${result.user}</div>
             <a href="details.html?number=${result.number}" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mt-2 inline-block">Переглянути деталі</a>
           `;
