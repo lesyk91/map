@@ -40,6 +40,8 @@
     const db = getFirestore(app);
 
     const formatDate = (str) => str ? new Date(str).toLocaleDateString("uk-UA") : "-";
+    const diffDays = (start, end = new Date()) =>
+      start ? Math.ceil((new Date(end) - new Date(start)) / 86400000) : null;
 
     document.addEventListener("DOMContentLoaded", async () => {
       onAuthStateChanged(auth, async (user) => {
@@ -51,84 +53,116 @@
 
         console.log("Користувач авторизований:", user.uid);
         const reportContainer = document.getElementById("report");
-        reportContainer.innerHTML = '<p class="text-gray-600">Завантаження...</p>';
+        const summaryContainer = document.getElementById("summary");
+        const daysInput = document.getElementById("daysThreshold");
+        const sortPibBtn = document.getElementById("sortPib");
+        const sortNumberBtn = document.getElementById("sortNumber");
+        const sortDaysBtn = document.getElementById("sortDays");
 
-        // Check specific record for debugging
-        console.log("Перевірка конкретного запису: /territories/66/history/LF71D0KkEXaI8tNcwg0W");
-        const specificDocRef = doc(db, "territories/66/history/LF71D0KkEXaI8tNcwg0W");
-        try {
-          const specificDocSnap = await getDoc(specificDocRef);
-          if (specificDocSnap.exists()) {
-            console.log("Дані запису:", specificDocSnap.data());
-          } else {
-            console.log("Запис не існує за вказаною адресою");
-          }
-        } catch (error) {
-          console.error("Помилка при отриманні запису:", error);
-        }
+        let results = [];
 
-        const results = [];
-        const maxTerritoryNumber = 102; // Match export.html range
+        const generateReport = async () => {
+          reportContainer.innerHTML = '<p class="text-gray-600">Завантаження...</p>';
+          const daysThreshold = parseInt(daysInput.value) || 0;
 
-        for (let number = 1; number <= maxTerritoryNumber; number++) {
-          console.log(`Обробка території: ${number}`);
-          const historyRef = collection(db, `territories/${number}/history`);
-          const q = query(historyRef, orderBy("timestamp", "desc"));
+          // Check specific record for debugging
+          console.log("Перевірка конкретного запису: /territories/66/history/LF71D0KkEXaI8tNcwg0W");
+          const specificDocRef = doc(db, "territories/66/history/LF71D0KkEXaI8tNcwg0W");
           try {
-            const historySnap = await getDocs(q);
-            console.log(`Знайдено записів у history для території ${number}: ${historySnap.size}`);
-
-            const latest = historySnap.docs[0]?.data();
-            if (latest) {
-              console.log(`Останній запис для території ${number}:`, latest);
-              if (latest.dateGet && (latest.dateProcess === null || latest.dateProcess === undefined || latest.dateProcess === "")) {
-                const userRef = doc(db, "users", latest.user);
-                let userName = "Невідомо";
-                try {
-                  const userSnap = await getDoc(userRef);
-                  if (userSnap.exists()) {
-                    userName = userSnap.data().name || "Невідомо";
-                  }
-                } catch (error) {
-                  console.error(`Помилка при отриманні даних користувача ${latest.user}:`, error);
-                }
-                results.push({
-                  pib: latest.pib || "Невідомо",
-                  number: number.toString(),
-                  user: userName,
-                  dateGet: latest.dateGet || "-"
-                });
-              } else {
-                console.log(`Територія ${number} не на руках: dateGet=${latest.dateGet}, dateProcess=${latest.dateProcess}`);
-              }
+            const specificDocSnap = await getDoc(specificDocRef);
+            if (specificDocSnap.exists()) {
+              console.log("Дані запису:", specificDocSnap.data());
             } else {
-              console.log(`Територія ${number} не має записів у history`);
+              console.log("Запис не існує за вказаною адресою");
             }
           } catch (error) {
-            console.error(`Помилка при отриманні history для території ${number}:`, error);
+            console.error("Помилка при отриманні запису:", error);
           }
-        }
 
-        reportContainer.innerHTML = "";
-        if (results.length === 0) {
-          console.log("Немає територій, де dateGet є, а dateProcess відсутній або порожній");
-          reportContainer.innerHTML = '<p class="text-gray-600">Немає територій на руках.</p>';
-          return;
-        }
+          results = [];
+          const maxTerritoryNumber = 102;
 
-        console.log("Результати для відображення:", results);
-        results.forEach(result => {
-          const entry = document.createElement("div");
-          entry.className = "card bg-white p-6 rounded-lg shadow-md mb-4";
-          entry.innerHTML = `
-            <div class="mb-2"><b>Вісник:</b> ${result.pib}</div>
-            <div class="mb-2"><b>Територія:</b> ${result.number}</div>
-            <div class="mb-2"><b>Дата отримання:</b> ${formatDate(result.dateGet)}</div>
-            <div class="mb-2"><b>Користувач:</b> ${result.user}</div>
-            <a href="details.html?number=${result.number}" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mt-2 inline-block">Переглянути деталі</a>
-          `;
-          reportContainer.appendChild(entry);
-        });
+          for (let number = 1; number <= maxTerritoryNumber; number++) {
+            console.log(`Обробка території: ${number}`);
+            const historyRef = collection(db, `territories/${number}/history`);
+            const q = query(historyRef, orderBy("timestamp", "desc"));
+            try {
+              const historySnap = await getDocs(q);
+              console.log(`Знайдено записів у history для території ${number}: ${historySnap.size}`);
+
+              const latest = historySnap.docs[0]?.data();
+              if (latest) {
+                console.log(`Останній запис для території ${number}:`, latest);
+                if (latest.dateGet && (latest.dateProcess === null || latest.dateProcess === undefined || latest.dateProcess === "")) {
+                  const daysHeld = diffDays(latest.dateGet);
+                  if (daysHeld >= daysThreshold) {
+                    results.push({
+                      pib: latest.pib || "Невідомо",
+                      number: number.toString(),
+                      dateGet: latest.dateGet || "-",
+                      daysHeld
+                    });
+                  }
+                } else {
+                  console.log(`Територія ${number} не на руках: dateGet=${latest.dateGet}, dateProcess=${latest.dateProcess}`);
+                }
+              } else {
+                console.log(`Територія ${number} не має записів у history`);
+              }
+            } catch (error) {
+              console.error(`Помилка при отриманні history для території ${number}:`, error);
+            }
+          }
+
+          renderReport();
+        };
+
+        const renderReport = () => {
+          reportContainer.innerHTML = "";
+          summaryContainer.innerHTML = `<p class="text-lg font-semibold mb-4">Загальна кількість територій на руках: ${results.length}</p>`;
+
+          if (results.length === 0) {
+            console.log("Немає територій, де dateGet є, а dateProcess відсутній або порожній");
+            reportContainer.innerHTML = '<p class="text-gray-600">Немає територій на руках.</p>';
+            return;
+          }
+
+          console.log("Результати для відображення:", results);
+          results.forEach((result, index) => {
+            const entry = document.createElement("div");
+            entry.className = "card bg-white p-6 rounded-lg shadow-md mb-4";
+            entry.innerHTML = `
+              <div class="mb-2"><b>#:</b> ${index + 1}</div>
+              <div class="mb-2"><b>Вісник:</b> ${result.pib}</div>
+              <div class="mb-2"><b>Територія:</b> ${result.number}</div>
+              <div class="mb-2"><b>Дата отримання:</b> ${formatDate(result.dateGet)}</div>
+              <div class="mb-2"><b>Днів на руках:</b> ${result.daysHeld}</div>
+              <a href="details.html?number=${result.number}" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mt-2 inline-block">Переглянути деталі</a>
+            `;
+            reportContainer.appendChild(entry);
+          });
+        };
+
+        const sortResults = (key, order) => {
+          results.sort((a, b) => {
+            if (key === "pib") {
+              return order * a.pib.localeCompare(b.pib, "uk");
+            } else if (key === "number") {
+              return order * (parseInt(a.number) - parseInt(b.number));
+            } else if (key === "daysHeld") {
+              return order * (a.daysHeld - b.daysHeld);
+            }
+            return 0;
+          });
+          renderReport();
+        };
+
+        daysInput.addEventListener("input", generateReport);
+        sortPibBtn.addEventListener("click", () => sortResults("pib", 1));
+        sortNumberBtn.addEventListener("click", () => sortResults("number", 1));
+        sortDaysBtn.addEventListener("click", () => sortResults("daysHeld", -1)); // Descending for days
+
+        await generateReport();
       });
     });
   </script>
@@ -150,11 +184,22 @@
 
   <main class="flex-grow p-4">
     <div class="max-w-7xl mx-auto">
+      <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+        <h3 class="text-lg font-semibold mb-4">Фільтр звіту</h3>
+        <label class="block mb-2">Території на руках більше (днів):</label>
+        <input id="daysThreshold" type="number" min="0" placeholder="Введіть кількість днів" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <div class="flex space-x-2">
+          <button id="sortPib" class="btn bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">Сортувати за Вісником</button>
+          <button id="sortNumber" class="btn bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">Сортувати за Номером</button>
+          <button id="sortDays" class="btn bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">Сортувати за Днями</button>
+        </div>
+      </div>
+      <div id="summary" class="mb-4"></div>
       <div id="report" class="space-y-4"></div>
     </div>
   </main>
 
-  <footer class="bg-white shadow-inner p-4 mt-auto">
+  <footer class="bg-white shadow-inner Clinp-4 mt-auto">
     <div class="max-w-7xl mx-auto text-center text-gray-600">
       © 2025 Території. Всі права захищено.
     </div>
