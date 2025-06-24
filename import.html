@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Імпорт історії територій</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+    }
+    .btn {
+      transition: all 0.3s ease;
+    }
+    #progress-container {
+      display: none;
+      margin-top: 1rem;
+    }
+    #progress-bar {
+      width: 100%;
+      background-color: #e0e0e0;
+      border-radius: 0.5rem;
+      overflow: hidden;
+    }
+    #progress-fill {
+      height: 1.5rem;
+      background-color: #4CAF50;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    #progress-text {
+      margin-top: 0.5rem;
+      font-weight: 600;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="max-w-7xl mx-auto text-center">
+    <h1 id="title" class="text-2xl font-bold text-gray-800 mb-4">Імпорт історії територій</h1>
+    <input type="file" id="excelFile" accept=".xlsx, .xls" class="mb-4" />
+    <button onclick="importExcel()" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Імпортувати</button>
+    <div id="progress-container">
+      <div id="progress-bar">
+        <div id="progress-fill"></div>
+      </div>
+      <div id="progress-text">Прогрес: 0%</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+      authDomain: "map-illintsi.firebaseapp.com",
+      projectId: "map-illintsi",
+      storageBucket: "map-illintsi.appspot.com",
+      messagingSenderId: "62267872375",
+      appId: "1:62267872375:web:10945d2d63b93bccc5e272"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const formatDateForFirestore = (dateStr) => {
+      if (!dateStr) return "";
+      const date = new Date(dateStr);
+      if (isNaN(date)) return "";
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    window.importExcel = async function() {
+      try {
+        if (!auth.currentUser) {
+          alert('Будь ласка, увійдіть у систему для імпорту.');
+          location.href = "index.html";
+          return;
+        }
+
+        if (typeof XLSX === 'undefined') {
+          throw new Error('Бібліотека XLSX не завантажена');
+        }
+
+        const fileInput = document.getElementById('excelFile');
+        if (!fileInput.files.length) {
+          alert('Будь ласка, виберіть Excel-файл для імпорту.');
+          return;
+        }
+
+        const progressContainer = document.getElementById('progress-container');
+        const progressFill = document.getElementById('progress-fill');
+        const progressText = document.getElementById('progress-text');
+        progressContainer.style.display = 'block';
+        progressFill.style.width = '0%';
+        progressText.innerText = 'Прогрес: 0%';
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+
+        reader.onload = async (e) => {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+            console.log('Дані з Excel:', jsonData);
+
+            if (!jsonData.length) {
+              alert('Excel-файл порожній.');
+              progressContainer.style.display = 'none';
+              return;
+            }
+
+            const totalRows = jsonData.length;
+            let processedRows = 0;
+
+            for (const row of jsonData) {
+              const territoryNumber = row['№ території'];
+              const pib = row['вісник'] || "";
+              const dateGet = formatDateForFirestore(row['дата отримання']);
+              const dateProcess = formatDateForFirestore(row['дата опрацювання']);
+
+              if (!territoryNumber) {
+                console.warn(`Пропущено рядок без номера території:`, row);
+                processedRows++;
+                continue;
+              }
+
+              const status = dateProcess ? "опрацьовано" : "на руках";
+              const historyRef = collection(db, `territories/${territoryNumber}/history`);
+
+              await addDoc(historyRef, {
+                pib,
+                dateGet,
+                dateProcess,
+                note: "",
+                user: auth.currentUser.uid,
+                timestamp: serverTimestamp(),
+                status
+              });
+
+              console.log(`Додано запис для території ${territoryNumber}:`, { pib, dateGet, dateProcess });
+
+              processedRows++;
+              const progress = Math.min(Math.round((processedRows / totalRows) * 100), 100);
+              progressFill.style.width = `${progress}%`;
+              progressText.innerText = `Прогрес: ${progress}%`;
+            }
+
+            alert('Дані успішно імпортовано до Firestore.');
+            progressContainer.style.display = 'none';
+            fileInput.value = ''; // Очистити поле вводу
+          } catch (error) {
+            console.error('Помилка обробки Excel:', error);
+            alert('Сталася помилка під час обробки Excel: ' + error.message);
+            progressContainer.style.display = 'none';
+          }
+        };
+
+        reader.onerror = () => {
+          console.error('Помилка читання файлу');
+          alert('Помилка читання Excel-файлу.');
+          progressContainer.style.display = 'none';
+        };
+
+        reader.readAsArrayBuffer(file);
+      } catch (error) {
+        console.error('Помилка імпорту:', error);
+        alert('Сталася помилка під час імпорту: ' + error.message);
+        progressContainer.style.display = 'none';
+      }
+    };
+  </script>
+</body>
+</html>
