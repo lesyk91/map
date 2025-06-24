@@ -4,7 +4,7 @@
   <meta name="robots" content="noindex, nofollow">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Звіт по територіях</title>
+  <title>Звіт по територіях на руках</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
     .card {
@@ -24,7 +24,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, query, orderBy, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -39,64 +39,50 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    const diffDays = (start, end = new Date()) =>
-      start ? Math.ceil((new Date(end) - new Date(start)) / 86400000) : null;
-
     document.addEventListener("DOMContentLoaded", async () => {
       onAuthStateChanged(auth, async (user) => {
         if (!user) return (location.href = "index.html");
 
-        const daysInput = document.getElementById("daysThreshold");
         const reportContainer = document.getElementById("report");
-        
-        const generateReport = async () => {
-          const days = parseInt(daysInput.value) || 0;
-          reportContainer.innerHTML = '<p class="text-gray-600">Завантаження...</p>';
 
-          const territoriesRef = collection(db, "territories");
-          const territoriesSnap = await getDocs(territoriesRef);
-          const results = [];
+        reportContainer.innerHTML = '<p class="text-gray-600">Завантаження...</p>';
 
-          for (const territoryDoc of territoriesSnap.docs) {
-            const number = territoryDoc.id;
-            const historyRef = collection(db, `territories/${number}/history`);
-            const q = query(historyRef, orderBy("timestamp", "desc"));
-            const historySnap = await getDocs(q);
-            const latest = historySnap.docs[0]?.data();
+        const territoriesRef = collection(db, "territories");
+        const territoriesSnap = await getDocs(territoriesRef);
+        const results = [];
 
-            if (latest && latest.status === "на руках" && latest.dateGet) {
-              const daysHeld = diffDays(latest.dateGet);
-              if (daysHeld > days) {
-                const userRef = doc(db, "users", latest.user);
-                const userSnap = await getDoc(userRef);
-                const userName = userSnap.exists() ? userSnap.data().name : "Невідомо";
-                results.push({ pib: latest.pib, number, daysHeld, user: userName });
-              }
-            }
+        for (const territoryDoc of territoriesSnap.docs) {
+          const number = territoryDoc.id;
+          const historyRef = collection(db, `territories/${number}/history`);
+          const q = query(historyRef, orderBy("timestamp", "desc"));
+          const historySnap = await getDocs(q);
+          const latest = historySnap.docs[0]?.data();
+
+          if (latest && latest.status === "на руках") {
+            const userRef = doc(db, "users", latest.user);
+            const userSnap = await getDoc(userRef);
+            const userName = userSnap.exists() ? userSnap.data().name : "Невідомо";
+            results.push({ pib: latest.pib, number, user: userName });
           }
+        }
 
-          reportContainer.innerHTML = "";
-          if (results.length === 0) {
-            reportContainer.innerHTML = '<p class="text-gray-600">Немає територій, що відповідають критеріям.</p>';
-            return;
-          }
+        reportContainer.innerHTML = "";
+        if (results.length === 0) {
+          reportContainer.innerHTML = '<p class="text-gray-600">Немає територій на руках.</p>';
+          return;
+        }
 
-          results.forEach(result => {
-            const entry = document.createElement("div");
-            entry.className = "card bg-white p-6 rounded-lg shadow-md mb-4";
-            entry.innerHTML = `
-              <div class="mb-2"><b>Вісник:</b> ${result.pib}</div>
-              <div class="mb-2"><b>Територія:</b> ${result.number}</div>
-              <div class="mb-2"><b>Кількість днів на руках:</b> ${result.daysHeld}</div>
-              <div class="mb-2"><b>Користувач:</b> ${result.user}</div>
-              <a href="details.html?number=${result.number}" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mt-2 inline-block">Переглянути деталі</a>
-            `;
-            reportContainer.appendChild(entry);
-          });
-        };
-
-        daysInput.addEventListener("input", generateReport);
-        await generateReport();
+        results.forEach(result => {
+          const entry = document.createElement("div");
+          entry.className = "card bg-white p-6 rounded-lg shadow-md mb-4";
+          entry.innerHTML = `
+            <div class="mb-2"><b>Вісник:</b> ${result.pib}</div>
+            <div class="mb-2"><b>Територія:</b> ${result.number}</div>
+            <div class="mb-2"><b>Користувач:</b> ${result.user}</div>
+            <a href="details.html?number=${result.number}" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mt-2 inline-block">Переглянути деталі</a>
+          `;
+          reportContainer.appendChild(entry);
+        });
       });
     });
   </script>
@@ -111,18 +97,13 @@
           </svg>
           Назад
         </a>
-        <h1 class="text-2xl font-bold text-gray-800">Звіт по територіях</h1>
+        <h1 class="text-2xl font-bold text-gray-800">Звіт: Території на руках</h1>
       </div>
     </div>
   </header>
 
   <main class="flex-grow p-4">
     <div class="max-w-7xl mx-auto">
-      <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-        <h3 class="text-lg font-semibold mb-4">Фільтр звіту</h3>
-        <label class="block mb-2">Території на руках більше (днів):</label>
-        <input id="daysThreshold" type="number" min="0" placeholder="Введіть кількість днів" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
       <div id="report" class="space-y-4"></div>
     </div>
   </main>
