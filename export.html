@@ -62,13 +62,10 @@
 
         console.log('Початок експорту...');
 
-        const territoriesSnapshot = await getDocs(collection(db, 'territories'));
-        console.log(`Знайдено територій: ${territoriesSnapshot.size}`);
-
         const data = [];
-        const maxTerritoryNumber = 102; // Максимальний номер території з шаблону
+        const maxTerritoryNumber = 102; // Максимальний номер території
 
-        // Проходження по всіх можливих номерах територій (1 до 102)
+        // Ітеруємо по всіх територіях від 1 до 102
         for (let territoryNumber = 1; territoryNumber <= maxTerritoryNumber; territoryNumber++) {
           const row = { '№ території': territoryNumber.toString() };
           
@@ -79,17 +76,16 @@
             row[`Дата опрацювання ${i}`] = "";
           }
 
-          // Перевірка, чи існує документ для території
-          const territoryDoc = territoriesSnapshot.docs.find(doc => doc.id === territoryNumber.toString());
-          if (territoryDoc) {
-            const historyQuery = query(
-              collection(db, `territinds/${territoryNumber}/history`),
-              orderBy('timestamp', 'desc'),
-              limit(4)
-            );
-            const historySnapshot = await getDocs(historyQuery);
-            console.log(`Знайдено записів у history для території ${territoryNumber}: ${historySnapshot.size}`);
+          // Запит до history для поточної території
+          const historyQuery = query(
+            collection(db, `territories/${territoryNumber}/history`),
+            orderBy('timestamp', 'desc'),
+            limit(4)
+          );
+          const historySnapshot = await getDocs(historyQuery);
+          console.log(`Знайдено записів у history для території ${territoryNumber}: ${historySnapshot.size}`);
 
+          if (!historySnapshot.empty) {
             let recordIndex = 1;
             historySnapshot.forEach(doc => {
               const record = doc.data();
@@ -100,7 +96,7 @@
               recordIndex++;
             });
           } else {
-            console.log(`Територія ${territoryNumber} не має документа в territories`);
+            console.log(`Територія ${territoryNumber} не має записів у history`);
           }
 
           data.push(row);
