@@ -20,6 +20,27 @@
     html {
       scroll-behavior: smooth;
     }
+    #progress-container {
+      display: none;
+      margin-top: 1rem;
+    }
+    #progress-bar {
+      width: 100%;
+      background-color: #e0e0e0;
+      border-radius: 0.5rem;
+      overflow: hidden;
+    }
+    #progress-fill {
+      height: 1.5rem;
+      background-color: #4CAF50;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    #progress-text {
+      margin-top: 0.5rem;
+      font-weight: 600;
+      color: #333;
+    }
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
@@ -55,15 +76,24 @@
         const reportContainer = document.getElementById("report");
         const summaryContainer = document.getElementById("summary");
         const daysInput = document.getElementById("daysThreshold");
+        const pibFilter = document.getElementById("pibFilter");
+        const searchBtn = document.getElementById("searchBtn");
         const sortPibBtn = document.getElementById("sortPib");
         const sortNumberBtn = document.getElementById("sortNumber");
         const sortDaysBtn = document.getElementById("sortDays");
+        const progressContainer = document.getElementById("progress-container");
+        const progressFill = document.getElementById("progress-fill");
+        const progressText = document.getElementById("progress-text");
 
         let results = [];
+        let publishers = new Map(); // Track territories per publisher
 
         const generateReport = async () => {
-          reportContainer.innerHTML = '<p class="text-gray-600">Завантаження...</p>';
-          const daysThreshold = parseInt(daysInput.value) || 0;
+          reportContainer.innerHTML = '<p class="text-gray-600">Очікування пошуку...</p>';
+          summaryContainer.innerHTML = "";
+          progressContainer.style.display = 'block';
+          progressFill.style.width = '0%';
+          progressText.innerText = 'Прогрес: 0%';
 
           // Check specific record for debugging
           console.log("Перевірка конкретного запису: /territories/66/history/LF71D0KkEXaI8tNcwg0W");
@@ -80,7 +110,9 @@
           }
 
           results = [];
+          publishers.clear();
           const maxTerritoryNumber = 102;
+          const progressStep = 100 / maxTerritoryNumber;
 
           for (let number = 1; number <= maxTerritoryNumber; number++) {
             console.log(`Обробка території: ${number}`);
@@ -95,13 +127,17 @@
                 console.log(`Останній запис для території ${number}:`, latest);
                 if (latest.dateGet && (latest.dateProcess === null || latest.dateProcess === undefined || latest.dateProcess === "")) {
                   const daysHeld = diffDays(latest.dateGet);
-                  if (daysHeld >= daysThreshold) {
+                  const pib = latest.pib || "Невідомо";
+                  const daysThreshold = parseInt(daysInput.value) || 0;
+                  if (daysHeld >= daysThreshold && (!pibFilter.value || pib.toLowerCase().includes(pibFilter.value.toLowerCase()))) {
                     results.push({
-                      pib: latest.pib || "Невідомо",
+                      pib,
                       number: number.toString(),
                       dateGet: latest.dateGet || "-",
                       daysHeld
                     });
+                    // Update publisher territory count
+                    publishers.set(pib, (publishers.get(pib) || 0) + 1);
                   }
                 } else {
                   console.log(`Територія ${number} не на руках: dateGet=${latest.dateGet}, dateProcess=${latest.dateProcess}`);
@@ -112,9 +148,15 @@
             } catch (error) {
               console.error(`Помилка при отриманні history для території ${number}:`, error);
             }
+            // Update progress
+            const progress = Math.min(Math.round((number / maxTerritoryNumber) * 100), 100);
+            progressFill.style.width = `${progress}%`;
+            progressText.innerText = `Прогрес: ${progress}%`;
           }
 
-          renderReport();
+          // Sort by publisher territory count by default
+          sortByPublisherCount();
+          progressContainer.style.display = 'none';
         };
 
         const renderReport = () => {
@@ -137,10 +179,20 @@
               <div class="mb-2"><b>Територія:</b> ${result.number}</div>
               <div class="mb-2"><b>Дата отримання:</b> ${formatDate(result.dateGet)}</div>
               <div class="mb-2"><b>Днів на руках:</b> ${result.daysHeld}</div>
-              <a href="details.html?number=${result.number}" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mt-2 inline-block">Переглянути деталі</a>
+              <a href="territory-detail.html?number=${result.number}" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mt-2 inline-block">Переглянути деталі</a>
             `;
             reportContainer.appendChild(entry);
           });
+        };
+
+        const sortByPublisherCount = () => {
+          results.sort((a, b) => {
+            const countA = publishers.get(a.pib) || 0;
+            const countB = publishers.get(b.pib) || 0;
+            if (countA !== countB) return countB - countA; // Descending by count
+            return a.pib.localeCompare(b.pib, "uk"); // Alphabetically if equal
+          });
+          renderReport();
         };
 
         const sortResults = (key, order) => {
@@ -157,12 +209,12 @@
           renderReport();
         };
 
+        searchBtn.addEventListener("click", generateReport);
+        pibFilter.addEventListener("input", generateReport);
         daysInput.addEventListener("input", generateReport);
         sortPibBtn.addEventListener("click", () => sortResults("pib", 1));
         sortNumberBtn.addEventListener("click", () => sortResults("number", 1));
-        sortDaysBtn.addEventListener("click", () => sortResults("daysHeld", -1)); // Descending for days
-
-        await generateReport();
+        sortDaysBtn.addEventListener("click", () => sortResults("daysHeld", -1));
       });
     });
   </script>
@@ -188,18 +240,27 @@
         <h3 class="text-lg font-semibold mb-4">Фільтр звіту</h3>
         <label class="block mb-2">Території на руках більше (днів):</label>
         <input id="daysThreshold" type="number" min="0" placeholder="Введіть кількість днів" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <div class="flex space-x-2">
-          <button id="sortPib" class="btn bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">Сортувати за Вісником</button>
+        <label class="block mb-2">Фільтр за Вісником:</label>
+        <input id="pibFilter" type="text" placeholder="Введіть ім'я вісника" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <div class="flex space-x-2 mb-4">
+          <button id="sortPib" class="btn bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">Сортувати за Вісником (А-Я)</button>
           <button id="sortNumber" class="btn bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">Сортувати за Номером</button>
           <button id="sortDays" class="btn bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">Сортувати за Днями</button>
         </div>
+        <button id="searchBtn" class="btn bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg">Пошук</button>
+      </div>
+      <div id="progress-container">
+        <div id="progress-bar">
+          <div id="progress-fill"></div>
+        </div>
+        <div id="progress-text">Прогрес: 0%</div>
       </div>
       <div id="summary" class="mb-4"></div>
       <div id="report" class="space-y-4"></div>
     </div>
   </main>
 
-  <footer class="bg-white shadow-inner Clinp-4 mt-auto">
+  <footer class="bg-white shadow-inner p-4 mt-auto">
     <div class="max-w-7xl mx-auto text-center text-gray-600">
       © 2025 Території. Всі права захищено.
     </div>
