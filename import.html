@@ -41,6 +41,23 @@
       font-weight: 600;
       color: #333;
     }
+    .example-table {
+      margin-top: 1rem;
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 600px;
+      background-color: white;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .example-table th, .example-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    .example-table th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -53,6 +70,36 @@
         <div id="progress-fill"></div>
       </div>
       <div id="progress-text">Прогрес: 0%</div>
+    </div>
+    <div class="mt-6">
+      <h2 class="text-lg font-semibold text-gray-700 mb-2">Як створити Excel-файл для імпорту</h2>
+      <p class="text-gray-600 mb-4">
+        Створіть Excel-файл із першим листом (наприклад, "Лист1"). Використовуйте наступні стовпці: <strong>№ території</strong>, <strong>вісник</strong>, <strong>дата отримання</strong>, <strong>дата опрацювання</strong>. Дати мають бути у форматі <strong>DD.MM.YY</strong> (наприклад, 22.06.24). Форматуйте клітинки дат як текст або спеціальний формат "DD.MM.YY". Нижче наведено приклад:
+      </p>
+      <table class="example-table mx-auto">
+        <thead>
+          <tr>
+            <th>№ території</th>
+            <th>вісник</th>
+            <th>дата отримання</th>
+            <th>дата опрацювання</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>66</td>
+            <td>Соболівська Наталія</td>
+            <td>22.06.24</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>67</td>
+            <td>Печерська Людмила</td>
+            <td>22.06.24</td>
+            <td>01.06.25</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -157,15 +204,15 @@
             console.log('Дані з Excel:', jsonData);
 
             if (!jsonData.length) {
-                alert('Ділянки Excel порожні.');
-                progressContainer.style.display = 'none';
-                return;
+              alert('Excel-файл порожній.');
+              progressContainer.style.display = 'none';
+              return;
             }
 
             const totalRows = jsonData.length;
             let processedRows = 0;
 
-            for (let row of jsonData) {
+            for (const row of jsonData) {
               const territoryNumber = row['№ території'];
               const pib = row['вісник'] || "";
               const dateGet = formatDateForFirestore(row['дата отримання']);
