@@ -76,12 +76,27 @@
 
     const formatDateForFirestore = (dateStr) => {
       if (!dateStr) return "";
-      const date = new Date(dateStr);
-      if (isNaN(date)) return "";
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
+      const parts = dateStr.split('/');
+      if (parts.length !== 3) {
+        console.warn(`Невалідний формат дати: ${dateStr}`);
+        return "";
+      }
+      let [month, day, year] = parts;
+      month = parseInt(month, 10);
+      day = parseInt(day, 10);
+      year = parseInt(year, 10);
+      if (year < 100) {
+        year += year < 70 ? 2000 : 1900;
+      }
+      const date = new Date(year, month - 1, day);
+      if (isNaN(date)) {
+        console.warn(`Невалідна дата після парсингу: ${dateStr}`);
+        return "";
+      }
+      const formattedYear = date.getFullYear();
+      const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
+      const formattedDay = String(date.getDate()).padStart(2, '0');
+      return `${formattedYear}-${formattedMonth}-${formattedDay}`;
     };
 
     window.importExcel = async function() {
@@ -115,7 +130,7 @@
         reader.onload = async (e) => {
           try {
             const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
+            const workbook = XLSX.read(data, { type: 'array', cellDates: true });
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet);
@@ -166,7 +181,7 @@
 
             alert('Дані успішно імпортовано до Firestore.');
             progressContainer.style.display = 'none';
-            fileInput.value = ''; // Очистити поле вводу
+            fileInput.value = '';
           } catch (error) {
             console.error('Помилка обробки Excel:', error);
             alert('Сталася помилка під час обробки Excel: ' + error.message);
