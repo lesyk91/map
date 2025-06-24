@@ -179,7 +179,7 @@
               <div class="mb-2"><b>Територія:</b> ${result.number}</div>
               <div class="mb-2"><b>Дата отримання:</b> ${formatDate(result.dateGet)}</div>
               <div class="mb-2"><b>Днів на руках:</b> ${result.daysHeld}</div>
-              <a href="details.html?number=${result.number}" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mt-2 inline-block">Переглянути деталі</a>
+              <a href="territory-detail.html?number=${result.number}" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mt-2 inline-block">Переглянути деталі</a>
             `;
             reportContainer.appendChild(entry);
           });
