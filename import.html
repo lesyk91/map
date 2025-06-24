@@ -74,29 +74,48 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    const formatDateForFirestore = (dateStr) => {
-      if (!dateStr) return "";
-      const parts = dateStr.split('/');
-      if (parts.length !== 3) {
-        console.warn(`Невалідний формат дати: ${dateStr}`);
+    const formatDateForFirestore = (dateInput) => {
+      if (!dateInput) {
+        console.log('Дата відсутня або порожня:', dateInput);
         return "";
       }
-      let [month, day, year] = parts;
-      month = parseInt(month, 10);
-      day = parseInt(day, 10);
-      year = parseInt(year, 10);
-      if (year < 100) {
-        year += year < 70 ? 2000 : 1900;
+
+      let date;
+      if (dateInput instanceof Date) {
+        console.log('Дата є об’єктом Date:', dateInput);
+        date = dateInput;
+      } else if (typeof dateInput === 'string') {
+        console.log('Дата є рядком:', dateInput);
+        const parts = dateInput.split('/');
+        if (parts.length !== 3) {
+          console.warn(`Невалідний формат рядка дати: ${dateInput}`);
+          return "";
+        }
+        let [month, day, year] = parts.map(part => parseInt(part, 10));
+        if (year < 100) {
+          year += year < 70 ? 2000 : 1900;
+        }
+        date = new Date(year, month - 1, day);
+      } else if (typeof dateInput === 'number') {
+        console.log('Дата є числом (Excel date):', dateInput);
+        // Excel dates are days since 1900-01-01, adjust for Excel's 1900 leap year bug
+        const excelEpoch = new Date(1900, 0, 1);
+        const dateFromExcel = new Date(excelEpoch.getTime() + (dateInput - 1) * 24 * 60 * 60 * 1000);
+        date = dateFromExcel;
+      } else {
+        console.warn(`Непідтримуваний тип дати: ${typeof dateInput}`, dateInput);
+        return "";
       }
-      const date = new Date(year, month - 1, day);
+
       if (isNaN(date)) {
-        console.warn(`Невалідна дата після парсингу: ${dateStr}`);
+        console.warn(`Невалідна дата після парсингу: ${dateInput}`);
         return "";
       }
-      const formattedYear = date.getFullYear();
-      const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
-      const formattedDay = String(date.getDate()).padStart(2, '0');
-      return `${formattedYear}-${formattedMonth}-${formattedDay}`;
+
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     };
 
     window.importExcel = async function() {
