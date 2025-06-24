@@ -86,7 +86,7 @@
         date = dateInput;
       } else if (typeof dateInput === 'string') {
         console.log('Дата є рядком:', dateInput);
-        const parts = dateInput.split('.');
+        const parts = dateInput.trim().split('.');
         if (parts.length !== 3) {
           console.warn(`Невалідний формат рядка дати: ${dateInput}`);
           return "";
@@ -149,7 +149,7 @@
         reader.onload = async (e) => {
           try {
             const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+            const workbook = XLSX.read(data, { type: 'array', cellDates: false, dateNF: 'dd.mm.yy' });
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet);
@@ -157,15 +157,15 @@
             console.log('Дані з Excel:', jsonData);
 
             if (!jsonData.length) {
-              alert('Excel-файл порожній.');
-              progressContainer.style.display = 'none';
-              return;
+                alert('Ділянки Excel порожні.');
+                progressContainer.style.display = 'none';
+                return;
             }
 
             const totalRows = jsonData.length;
             let processedRows = 0;
 
-            for (const row of jsonData) {
+            for (let row of jsonData) {
               const territoryNumber = row['№ території'];
               const pib = row['вісник'] || "";
               const dateGet = formatDateForFirestore(row['дата отримання']);
