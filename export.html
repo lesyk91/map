@@ -20,12 +20,39 @@
     .btn {
       transition: all 0.3s ease;
     }
+    #progress-container {
+      display: none;
+      margin-top: 1rem;
+    }
+    #progress-bar {
+      width: 100%;
+      background-color: #e0e0e0;
+      border-radius: 0.5rem;
+      overflow: hidden;
+    }
+    #progress-fill {
+      height: 1.5rem;
+      background-color: #4CAF50;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    #progress-text {
+      margin-top: 0.5rem;
+      font-weight: 600;
+      color: #333;
+    }
   </style>
 </head>
 <body>
   <div class="max-w-7xl mx-auto text-center">
     <h1 id="title" class="text-2xl font-bold text-gray-800 mb-4">Експорт історії всіх територій</h1>
     <button onclick="exportToExcel()" class="btn bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg">Експорт в Excel</button>
+    <div id="progress-container">
+      <div id="progress-bar">
+        <div id="progress-fill"></div>
+      </div>
+      <div id="progress-text">Прогрес: 0%</div>
+    </div>
   </div>
 
   <script type="module">
@@ -62,21 +89,26 @@
 
         console.log('Початок експорту...');
 
-        const data = [];
-        const maxTerritoryNumber = 102; // Максимальний номер території
+        const progressContainer = document.getElementById('progress-container');
+        const progressFill = document.getElementById('progress-fill');
+        const progressText = document.getElementById('progress-text');
+        progressContainer.style.display = 'block';
+        progressFill.style.width = '0%';
+        progressText.innerText = 'Прогрес: 0%';
 
-        // Ітеруємо по всіх територіях від 1 до 102
+        const data = [];
+        const maxTerritoryNumber = 102;
+        const progressStep = 100 / maxTerritoryNumber;
+
         for (let territoryNumber = 1; territoryNumber <= maxTerritoryNumber; territoryNumber++) {
           const row = { '№ території': territoryNumber.toString() };
           
-          // Ініціалізація порожніх полів для 4 записів
           for (let i = 1; i <= 4; i++) {
             row[`Вісник ${i}`] = "";
             row[`Дата отримання ${i}`] = "";
             row[`Дата опрацювання ${i}`] = "";
           }
 
-          // Запит до history для поточної території
           const historyQuery = query(
             collection(db, `territories/${territoryNumber}/history`),
             orderBy('timestamp', 'desc'),
@@ -100,6 +132,10 @@
           }
 
           data.push(row);
+
+          const progress = Math.min(Math.round((territoryNumber / maxTerritoryNumber) * 100), 100);
+          progressFill.style.width = `${progress}%`;
+          progressText.innerText = `Прогрес: ${progress}%`;
         }
 
         console.log('Дані для Excel:', data);
@@ -107,10 +143,10 @@
         if (data.length === 0) {
           console.warn('Немає даних для експорту');
           alert('Немає даних для експорту.');
+          progressContainer.style.display = 'none';
           return;
         }
 
-        // Створення Excel-файлу
         const worksheet = XLSX.utils.json_to_sheet(data, {
           header: [
             '№ території',
@@ -123,15 +159,15 @@
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Записи');
         
-        // Додавання заголовка
         XLSX.utils.sheet_add_aoa(worksheet, [['ЗАПИСИ ПРО ОПРАЦЮВАННЯ ТЕРИТОРІЙ']], { origin: 'A1' });
         
-        // Завантаження файлу
         XLSX.writeFile(workbook, 'ЗаписТериторій.xlsx');
         console.log('Файл успішно створено та завантажено');
+        progressContainer.style.display = 'none';
       } catch (error) {
         console.error('Помилка експорту:', error);
         alert('Сталася помилка під час експорту: ' + error.message);
+        progressContainer.style.display = 'none';
       }
     };
   </script>
