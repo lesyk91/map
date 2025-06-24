@@ -179,7 +179,7 @@
               <div class="mb-2"><b>Територія:</b> ${result.number}</div>
               <div class="mb-2"><b>Дата отримання:</b> ${formatDate(result.dateGet)}</div>
               <div class="mb-2"><b>Днів на руках:</b> ${result.daysHeld}</div>
-              <a href="territory-detail.html?number=${result.number}" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mt-2 inline-block">Переглянути деталі</a>
+              <a href="details.html?number=${result.number}" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mt-2 inline-block">Переглянути деталі</a>
             `;
             reportContainer.appendChild(entry);
           });
@@ -210,8 +210,6 @@
         };
 
         searchBtn.addEventListener("click", generateReport);
-        pibFilter.addEventListener("input", generateReport);
-        daysInput.addEventListener("input", generateReport);
         sortPibBtn.addEventListener("click", () => sortResults("pib", 1));
         sortNumberBtn.addEventListener("click", () => sortResults("number", 1));
         sortDaysBtn.addEventListener("click", () => sortResults("daysHeld", -1));
@@ -256,7 +254,9 @@
         <div id="progress-text">Прогрес: 0%</div>
       </div>
       <div id="summary" class="mb-4"></div>
-      <div id="report" class="space-y-4"></div>
+      <div id="report" class="space-y-4">
+        <p class="text-gray-600">Очікування пошуку...</p>
+      </div>
     </div>
   </main>
 
