@@ -86,22 +86,21 @@
         date = dateInput;
       } else if (typeof dateInput === 'string') {
         console.log('Дата є рядком:', dateInput);
-        const parts = dateInput.split('/');
+        const parts = dateInput.split('.');
         if (parts.length !== 3) {
           console.warn(`Невалідний формат рядка дати: ${dateInput}`);
           return "";
         }
-        let [month, day, year] = parts.map(part => parseInt(part, 10));
+        let [day, month, year] = parts.map(part => parseInt(part, 10));
         if (year < 100) {
           year += year < 70 ? 2000 : 1900;
         }
         date = new Date(year, month - 1, day);
       } else if (typeof dateInput === 'number') {
         console.log('Дата є числом (Excel date):', dateInput);
-        // Excel dates are days since 1900-01-01, adjust for Excel's 1900 leap year bug
         const excelEpoch = new Date(1900, 0, 1);
-        const dateFromExcel = new Date(excelEpoch.getTime() + (dateInput - 1) * 24 * 60 * 60 * 1000);
-        date = dateFromExcel;
+        const leapYearAdjustment = dateInput > 60 ? 1 : 0;
+        date = new Date(excelEpoch.getTime() + (dateInput - 1 - leapYearAdjustment) * 24 * 60 * 60 * 1000);
       } else {
         console.warn(`Непідтримуваний тип дати: ${typeof dateInput}`, dateInput);
         return "";
@@ -115,6 +114,7 @@
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
+      console.log(`Сформатована дата для ${dateInput}: ${year}-${month}-${day}`);
       return `${year}-${month}-${day}`;
     };
 
