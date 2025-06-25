@@ -153,7 +153,11 @@
   <div class="report-container">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-800">Звіт по територіях</h1>
-          </div>
+      <div class="space-x-2">
+        <a href="enter.html"><button id="login-btn" class="bg-white border border-gray-300 rounded shadow-sm px-4 py-2 text-sm hover:bg-gray-100 hidden">🔐 Увійти</button></a>
+        <button id="logout-btn" class="bg-white border border-gray-300 rounded shadow-sm px-4 py-2 text-sm hover:bg-gray-100 hidden">🚪 Вийти</button>
+      </div>
+    </div>
     <div id="auth-message" class="text-red-600 text-center text-lg hidden">Будь ласка, увійдіть для перегляду звіту.</div>
     <div id="report-content" class="hidden">
       <div class="summary">
@@ -340,7 +344,7 @@
             <td>Територія ${number}</td>
             <td>${processDate.toLocaleDateString('uk-UA')}</td>
             <td>${daysSinceProcessed}</td>
-            <td><a href="territory-detail.html?number={number}" class="text-blue-600 hover:underline">Відкрити</a></td>
+            <td><a href="index.html?territory=${number}" class="text-blue-600 hover:underline">Відкрити</a></td>
           </tr>`;
       });
 
