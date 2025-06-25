@@ -60,44 +60,33 @@
       background-color: #f1f5f9;
     }
     .input-days {
-      width: 100px;
+      width: 80px;
       padding: 8px;
       border: 1px solid #d1d5db;
       border-radius: 4px;
       font-size: 0.875rem;
     }
     .summary {
-      background: #e0f2fe;
+      background-color: #e0f2fe;
       padding: 1rem;
       border-radius: 8px;
-      margin-bottom: 1.5rem;
-    }
-    #progress-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0,0.5);
-      display: none;
-      z-index: 2000;
-      justify-content: center;
-      align-items: center;
+      margin-bottom: 0.875rem;
     }
     #progress-container {
       background: white;
-      padding: 20px;
+      padding: 1rem;
       border-radius: 8px;
       text-align: center;
-      width: 80%;
-      max-width: 300px;
+      margin-bottom: 0.875rem;
+      border: 1px solid #e5e7eb;
+      display: none;
     }
     #progress-bar {
       width: 100%;
       height: 20px;
       background: #e0e0e0;
       border-radius: 4px;
-      overflow: flex;
+      overflow: hidden;
     }
     #progress-fill {
       height: 100%;
@@ -112,13 +101,12 @@
       .report-section {
         padding: 1rem;
       }
-      .report-table th,
-      .report-table td {
+      .report-table th, .report-table td {
         font-size: 0.75rem;
         padding: 8px;
       }
       .input-days {
-        width: 80px;
+        width: 60px;
         font-size: 0.75rem;
       }
       .summary {
@@ -126,9 +114,7 @@
         padding: 0.75rem;
       }
       #progress-container {
-        padding: 15px;
-        width: 90%;
-        max-width: 250px;
+        padding: 0.75rem;
       }
       #progress-bar {
         height: 16px;
@@ -140,15 +126,6 @@
   </style>
 </head>
 <body class="bg-gray-50">
-  <div id="progress-overlay" class="flex">
-    <div id="progress-container" class="bg-white p-5 rounded-lg shadow-lg">
-      <h2 class="text-lg font-semibold mb-2">Завантаження звіту...</h2>
-      <div id="progress-bar">
-        <div id="progress-fill"></div>
-      </div>
-      <p id="progress-text" class="mt-2 text-sm">0%</p>
-    </div>
-  </div>
   <div id="loader" class="bg-white border border-gray-300 rounded shadow-sm">Завантаження...</div>
   <div class="report-container">
     <div class="flex justify-between items-center mb-6">
@@ -160,6 +137,13 @@
     </div>
     <div id="auth-message" class="text-red-600 text-center text-lg hidden">Будь ласка, увійдіть для перегляду звіту.</div>
     <div id="report-content" class="hidden">
+      <div id="progress-container" class="bg-white rounded-lg shadow-sm">
+        <h2 class="text-lg font-semibold text-gray-800 mb-2">Завантаження звіту...</h2>
+        <div id="progress-bar">
+          <div id="progress-fill"></div>
+        </div>
+        <p id="progress-text" class="mt-2 text-sm text-gray-600">0%</p>
+      </div>
       <div class="summary">
         <p id="summary-text" class="text-gray-700">Територій без записів: <span id="no-records-count">0</span>, Опрацьованих територій: <span id="processed-count">0</span></p>
       </div>
@@ -228,7 +212,7 @@
     const loader = document.getElementById('loader');
     const noRecordsCount = document.getElementById('no-records-count');
     const processedCount = document.getElementById('processed-count');
-    const progressOverlay = document.getElementById('progress-overlay');
+    const progressContainer = document.getElementById('progress-container');
     const progressFill = document.getElementById('progress-fill');
     const progressText = document.getElementById('progress-text');
 
@@ -239,11 +223,11 @@
 
     function updateProgress(percentage) {
       if (percentage < 100) {
-        progressOverlay.style.display = 'flex';
+        progressContainer.style.display = 'block';
         progressFill.style.width = `${percentage}%`;
         progressText.textContent = `${Math.round(percentage)}%`;
       } else {
-        progressOverlay.style.display = 'none';
+        progressContainer.style.display = 'none';
       }
     }
 
@@ -257,12 +241,13 @@
       } else {
         loginBtn.classList.remove('hidden');
         logoutBtn.classList.add('hidden');
-        authMessage.classList.remove('hidden');
+        authMessage.classList.add('hidden');
         reportContent.classList.add('hidden');
         noRecordsTable.innerHTML = '';
         processedTable.innerHTML = '';
         noRecordsCount.textContent = '0';
         processedCount.textContent = '0';
+        progressContainer.style.display = 'none';
       }
     });
 
