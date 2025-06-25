@@ -19,19 +19,23 @@
       left: 50%;
       transform: translateX(-50%);
       z-index: 1000;
-      padding: 8px;
+      padding: 8px 12px;
       background: white;
       border: 1px solid #ccc;
-      border-radius: 10px;
+      border-radius: 8px;
       display: none;
     }
     .report-container {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
-      padding: 20px;
+      padding: 1.5rem;
     }
     .report-section {
-      margin-bottom: 2rem;
+      margin-bottom: 2.5rem;
+      background: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     .report-table {
       width: 100%;
@@ -39,70 +43,91 @@
       margin-top: 1rem;
     }
     .report-table th, .report-table td {
-      border: 1px solid #ddd;
-      padding: 8px;
+      border: 1px solid #e5e7eb;
+      padding: 10px;
       text-align: left;
+      font-size: 0.875rem;
     }
     .report-table th {
-      background-color: #f2f2f2;
+      background-color: #f3f4f6;
+      font-weight: 600;
       cursor: pointer;
     }
     .report-table tr:nth-child(even) {
-      background-color: #f9f9f9;
+      background-color: #f9fafb;
     }
     .report-table tr:hover {
-      background-color: #f1f1f1;
+      background-color: #f1f5f9;
     }
     .input-days {
       width: 100px;
-      padding: 6px;
-      border: 1px solid #ccc;
+      padding: 8px;
+      border: 1px solid #d1d5db;
       border-radius: 4px;
+      font-size: 0.875rem;
+    }
+    .summary {
+      background: #e0f2fe;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
     }
     @media (max-width: 640px) {
       .report-container {
-        padding: 10px;
+        padding: 1rem;
+      }
+      .report-section {
+        padding: 1rem;
       }
       .report-table th, .report-table td {
-        font-size: 14px;
-        padding: 6px;
+        font-size: 0.75rem;
+        padding: 8px;
       }
       .input-days {
         width: 80px;
-        font-size: 14px;
+        font-size: 0.75rem;
+      }
+      .summary {
+        font-size: 0.875rem;
+        padding: 0.75rem;
       }
     }
   </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-50">
   <div id="loader" class="bg-white border border-gray-300 rounded shadow-sm">Завантаження...</div>
   <div class="report-container">
-    <div class="flex justify-between items-center mb-4">
-      <h1 class="text-2xl font-bold">Звіт по територіях</h1>
-      <div>
-        <a href="enter.html"><button id="login-btn" class="bg-white border border-gray-300 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100 hidden">🔐 Увійти</button></a>
-        <button id="logout-btn" class="bg-white border border-gray-300 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100 hidden">🚪 Вийти</button>
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-800">Звіт по територіях</h1>
+      <div class="space-x-2">
+        <a href="enter.html"><button id="login-btn" class="bg-white border border-gray-300 rounded shadow-sm px-4 py-2 text-sm hover:bg-gray-100 hidden">🔐 Увійти</button></a>
+        <button id="logout-btn" class="bg-white border border-gray-300 rounded shadow-sm px-4 py-2 text-sm hover:bg-gray-100 hidden">🚪 Вийти</button>
       </div>
     </div>
-    <div id="auth-message" class="text-red-600 hidden">Будь ласка, увійдіть для перегляду звіту.</div>
+    <div id="auth-message" class="text-red-600 text-center text-lg hidden">Будь ласка, увійдіть для перегляду звіту.</div>
     <div id="report-content" class="hidden">
+      <div class="summary">
+        <p id="summary-text" class="text-gray-700">Територій без записів: <span id="no-records-count">0</span>, Опрацьованих територій: <span id="processed-count">0</span></p>
+      </div>
       <div class="report-section">
-        <h2 class="text-xl font-semibold mb-2">Території без записів</h2>
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Території без записів</h2>
+        <button id="no-records-search-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-4">Пошук</button>
         <table class="report-table">
           <thead>
             <tr>
               <th>Номер території</th>
+              <th>Дія</th>
             </tr>
           </thead>
           <tbody id="no-records-table"></tbody>
         </table>
       </div>
       <div class="report-section">
-        <h2 class="text-xl font-semibold mb-2">Опрацьовані території</h2>
-        <div class="mb-4">
-          <label for="days-input" class="text-sm sm:text-base">Мінімальна кількість днів з опрацювання:</label>
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Опрацьовані території</h2>
+        <div class="flex items-center mb-4 space-x-4">
+          <label for="days-input" class="text-sm text-gray-700">Мінімальна кількість днів з опрацювання:</label>
           <input type="number" id="days-input" class="input-days" min="0" value="0">
-          <button id="filter-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 ml-2">Фільтрувати</button>
+          <button id="processed-search-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Пошук</button>
         </div>
         <table class="report-table">
           <thead>
@@ -110,6 +135,7 @@
               <th>Номер території</th>
               <th>Дата опрацювання</th>
               <th class="sort-desc" data-sort="days">Днів з опрацювання <span>↓</span></th>
+              <th>Дія</th>
             </tr>
           </thead>
           <tbody id="processed-table"></tbody>
@@ -142,13 +168,17 @@
     const reportContent = document.getElementById('report-content');
     const noRecordsTable = document.getElementById('no-records-table');
     const processedTable = document.getElementById('processed-table');
+    const noRecordsSearchBtn = document.getElementById('no-records-search-btn');
+    const processedSearchBtn = document.getElementById('processed-search-btn');
     const daysInput = document.getElementById('days-input');
-    const filterBtn = document.getElementById('filter-btn');
     const loader = document.getElementById('loader');
+    const noRecordsCount = document.getElementById('no-records-count');
+    const processedCount = document.getElementById('processed-count');
 
-    const today = new Date('2025-06-25'); // Fixed date for calculation
+    const today = new Date(); // Dynamic date
     let currentUser = null;
-    let processedTerritories = [];
+    let noRecordsData = [];
+    let processedData = [];
 
     onAuthStateChanged(auth, user => {
       currentUser = user;
@@ -157,7 +187,6 @@
         logoutBtn.classList.remove('hidden');
         authMessage.classList.add('hidden');
         reportContent.classList.remove('hidden');
-        generateReport();
       } else {
         loginBtn.classList.remove('hidden');
         logoutBtn.classList.add('hidden');
@@ -165,6 +194,8 @@
         reportContent.classList.add('hidden');
         noRecordsTable.innerHTML = '';
         processedTable.innerHTML = '';
+        noRecordsCount.textContent = '0';
+        processedCount.textContent = '0';
       }
     });
 
@@ -173,27 +204,52 @@
       window.location.reload();
     });
 
-    async function generateReport(daysFilter = 0) {
+    async function fetchNoRecords() {
       loader.style.display = 'block';
       noRecordsTable.innerHTML = '';
-      processedTable.innerHTML = '';
-      processedTerritories = [];
+      noRecordsData = [];
 
-      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1).filter(n => n !== 27); // 1 to 102, excluding 27
+      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1).filter(n => n !== 27);
 
       for (const num of territoryNumbers) {
         const q = query(collection(db, `territories/${num}/history`), orderBy('timestamp', 'desc'));
         try {
           const snap = await getDocs(q);
           if (snap.empty) {
-            noRecordsTable.innerHTML += `<tr><td>Територія ${num}</td></tr>`;
-          } else {
+            noRecordsData.push(num);
+            noRecordsTable.innerHTML += `
+              <tr>
+                <td>Територія ${num}</td>
+                <td><a href="index.html?territory=${num}" class="text-blue-600 hover:underline">Відкрити</a></td>
+              </tr>`;
+          }
+        } catch (err) {
+          console.warn(`Помилка для території ${num}: ${err.message}`);
+        }
+      }
+
+      noRecordsCount.textContent = noRecordsData.length;
+      loader.style.display = 'none';
+    }
+
+    async function fetchProcessed(daysFilter = 0) {
+      loader.style.display = 'block';
+      processedTable.innerHTML = '';
+      processedData = [];
+
+      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1).filter(n => n !== 27);
+
+      for (const num of territoryNumbers) {
+        const q = query(collection(db, `territories/${num}/history`), orderBy('timestamp', 'desc'));
+        try {
+          const snap = await getDocs(q);
+          if (!snap.empty) {
             const latest = snap.docs[0].data();
             if (latest.dateGet && latest.dateProcess) {
               const processDate = new Date(latest.dateProcess);
               const daysSinceProcessed = Math.floor((today - processDate) / (1000 * 60 * 60 * 24));
               if (daysSinceProcessed >= daysFilter) {
-                processedTerritories.push({ number: num, processDate, daysSinceProcessed });
+                processedData.push({ number: num, processDate, daysSinceProcessed });
               }
             }
           }
@@ -202,32 +258,31 @@
         }
       }
 
-      processedTerritories.sort((a, b) => b.daysSinceProcessed - a.daysSinceProcessed);
-      processedTerritories.forEach(({ number, processDate, daysSinceProcessed }) => {
+      processedData.sort((a, b) => b.daysSinceProcessed - a.daysSinceProcessed);
+      processedData.forEach(({ number, processDate, daysSinceProcessed }) => {
         processedTable.innerHTML += `
           <tr>
             <td>Територія ${number}</td>
             <td>${processDate.toLocaleDateString('uk-UA')}</td>
             <td>${daysSinceProcessed}</td>
+            <td><a href="index.html?territory=${number}" class="text-blue-600 hover:underline">Відкрити</a></td>
           </tr>`;
       });
 
+      processedCount.textContent = processedData.length;
       loader.style.display = 'none';
     }
 
-    filterBtn.addEventListener('click', () => {
+    noRecordsSearchBtn.addEventListener('click', fetchNoRecords);
+
+    processedSearchBtn.addEventListener('click', () => {
       const days = parseInt(daysInput.value) || 0;
       if (days >= 0) {
-        generateReport(days);
+        fetchProcessed(days);
       } else {
         alert('Введіть невід’ємне число днів.');
       }
     });
-
-    // Initial report generation
-    if (currentUser) {
-      generateReport();
-    }
   </script>
 </body>
 </html>
