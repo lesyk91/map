@@ -329,8 +329,8 @@
             <td>Територія ${number}</td>
             <td>${processDate.toLocaleDateString('uk-UA')}</td>
             <td>${daysSinceProcessed}</td>
-            <td><a href="index.html?territory=${number}" class="text-blue-600 hover:underline">Відкрити</a></td>
-          </tr>`;
+            <td><a href="territory-detail.html?number=${number}" class="text-blue-600 hover:underline">Відкрити</a></td>
+          </tr>`;  
       });
 
       processedCount.textContent = processedData.length;
