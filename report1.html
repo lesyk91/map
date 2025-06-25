@@ -267,7 +267,7 @@
 
       const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1).filter(n => n !== 27);
       const totalTerritories = territoryNumbers.length;
-      let processedCount = 0;
+      let territoryCount = 0;
 
       for (const num of territoryNumbers) {
         const q = query(collection(db, `territories/${num}/history`), orderBy('timestamp', 'desc'));
@@ -284,8 +284,8 @@
         } catch (err) {
           console.warn(`Помилка для території ${num}: ${err.message}`);
         } finally {
-          processedCount++;
-          updateProgress((processedCount / totalTerritories) * 100);
+          territoryCount++;
+          updateProgress((territoryCount / totalTerritories) * 100);
         }
       }
 
@@ -302,7 +302,7 @@
 
       const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1).filter(n => n !== 27);
       const totalTerritories = territoryNumbers.length;
-      let processedCount = 0;
+      let territoryCount = 0;
 
       for (const num of territoryNumbers) {
         const q = query(collection(db, `territories/${num}/history`), orderBy('timestamp', 'desc'));
@@ -321,8 +321,8 @@
         } catch (err) {
           console.warn(`Помилка для території ${num}: ${err.message}`);
         } finally {
-          processedCount++;
-          updateProgress((processedCount / totalTerritories) * 100);
+          territoryCount++;
+          updateProgress((territoryCount / totalTerritories) * 100);
         }
       }
 
@@ -338,7 +338,7 @@
           </tr>`;
       });
 
-      processedCount.textContent = processedData.length;
+      processedCount.textContent = processedData.length.toString();
       loader.style.display = 'none';
       progressContainer.style.display = 'none';
     }
