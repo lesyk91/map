@@ -126,10 +126,24 @@
   </style>
 </head>
 <body class="bg-gray-50">
+  <header class="bg-white shadow-md p-4 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      
+	  <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+	  <nav class="flex space-x-2">
+      <a href="index.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Карта</a>
+      <a href="territories.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Території</a>
+      <a href="user.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Користувачі</a>
+	  <a href="zvit.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Звіти</a>
+	   </nav>
+	    </div>
+	  
+    </div>
+  </header>
   <div id="loader" class="bg-white border border-gray-300 rounded shadow-sm">Завантаження...</div>
   <div class="report-container">
     <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">Звіт по територіях</h1>
+      
       <div class="space-x-2">
         <a href="enter.html"><button id="login-btn" class="bg-white border border-gray-300 rounded shadow-sm px-4 py-2 text-sm hover:bg-gray-100 hidden">🔐 Увійти</button></a>
         <button id="logout-btn" class="bg-white border border-gray-300 rounded shadow-sm px-4 py-2 text-sm hover:bg-gray-100 hidden">🚪 Вийти</button>
