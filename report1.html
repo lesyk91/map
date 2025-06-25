@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+  <meta charset="utf-8" />
+  <title>Звіт по територіях "Іллінці"</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+    #loader {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      padding: 8px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      display: none;
+    }
+    .report-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .report-section {
+      margin-bottom: 2rem;
+    }
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    .report-table th, .report-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    .report-table th {
+      background-color: #f2f2f2;
+      cursor: pointer;
+    }
+    .report-table tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    .report-table tr:hover {
+      background-color: #f1f1f1;
+    }
+    .input-days {
+      width: 100px;
+      padding: 6px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    @media (max-width: 640px) {
+      .report-container {
+        padding: 10px;
+      }
+      .report-table th, .report-table td {
+        font-size: 14px;
+        padding: 6px;
+      }
+      .input-days {
+        width: 80px;
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div id="loader" class="bg-white border border-gray-300 rounded shadow-sm">Завантаження...</div>
+  <div class="report-container">
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-bold">Звіт по територіях</h1>
+      <div>
+        <a href="enter.html"><button id="login-btn" class="bg-white border border-gray-300 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100 hidden">🔐 Увійти</button></a>
+        <button id="logout-btn" class="bg-white border border-gray-300 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100 hidden">🚪 Вийти</button>
+      </div>
+    </div>
+    <div id="auth-message" class="text-red-600 hidden">Будь ласка, увійдіть для перегляду звіту.</div>
+    <div id="report-content" class="hidden">
+      <div class="report-section">
+        <h2 class="text-xl font-semibold mb-2">Території без записів</h2>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Номер території</th>
+            </tr>
+          </thead>
+          <tbody id="no-records-table"></tbody>
+        </table>
+      </div>
+      <div class="report-section">
+        <h2 class="text-xl font-semibold mb-2">Опрацьовані території</h2>
+        <div class="mb-4">
+          <label for="days-input" class="text-sm sm:text-base">Мінімальна кількість днів з опрацювання:</label>
+          <input type="number" id="days-input" class="input-days" min="0" value="0">
+          <button id="filter-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 ml-2">Фільтрувати</button>
+        </div>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Номер території</th>
+              <th>Дата опрацювання</th>
+              <th class="sort-desc" data-sort="days">Днів з опрацювання <span>↓</span></th>
+            </tr>
+          </thead>
+          <tbody id="processed-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getFirestore, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+      authDomain: "map-illintsi.firebaseapp.com",
+      projectId: "map-illintsi",
+      storageBucket: "map-illintsi.appspot.com",
+      messagingSenderId: "62267872375",
+      appId: "1:62267872375:web:10945d2d63b93bccc5e272"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const loginBtn = document.getElementById('login-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+    const authMessage = document.getElementById('auth-message');
+    const reportContent = document.getElementById('report-content');
+    const noRecordsTable = document.getElementById('no-records-table');
+    const processedTable = document.getElementById('processed-table');
+    const daysInput = document.getElementById('days-input');
+    const filterBtn = document.getElementById('filter-btn');
+    const loader = document.getElementById('loader');
+
+    const today = new Date('2025-06-25'); // Fixed date for calculation
+    let currentUser = null;
+    let processedTerritories = [];
+
+    onAuthStateChanged(auth, user => {
+      currentUser = user;
+      if (user) {
+        loginBtn.classList.add('hidden');
+        logoutBtn.classList.remove('hidden');
+        authMessage.classList.add('hidden');
+        reportContent.classList.remove('hidden');
+        generateReport();
+      } else {
+        loginBtn.classList.remove('hidden');
+        logoutBtn.classList.add('hidden');
+        authMessage.classList.remove('hidden');
+        reportContent.classList.add('hidden');
+        noRecordsTable.innerHTML = '';
+        processedTable.innerHTML = '';
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.reload();
+    });
+
+    async function generateReport(daysFilter = 0) {
+      loader.style.display = 'block';
+      noRecordsTable.innerHTML = '';
+      processedTable.innerHTML = '';
+      processedTerritories = [];
+
+      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1).filter(n => n !== 27); // 1 to 102, excluding 27
+
+      for (const num of territoryNumbers) {
+        const q = query(collection(db, `territories/${num}/history`), orderBy('timestamp', 'desc'));
+        try {
+          const snap = await getDocs(q);
+          if (snap.empty) {
+            noRecordsTable.innerHTML += `<tr><td>Територія ${num}</td></tr>`;
+          } else {
+            const latest = snap.docs[0].data();
+            if (latest.dateGet && latest.dateProcess) {
+              const processDate = new Date(latest.dateProcess);
+              const daysSinceProcessed = Math.floor((today - processDate) / (1000 * 60 * 60 * 24));
+              if (daysSinceProcessed >= daysFilter) {
+                processedTerritories.push({ number: num, processDate, daysSinceProcessed });
+              }
+            }
+          }
+        } catch (err) {
+          console.warn(`Помилка для території ${num}: ${err.message}`);
+        }
+      }
+
+      processedTerritories.sort((a, b) => b.daysSinceProcessed - a.daysSinceProcessed);
+      processedTerritories.forEach(({ number, processDate, daysSinceProcessed }) => {
+        processedTable.innerHTML += `
+          <tr>
+            <td>Територія ${number}</td>
+            <td>${processDate.toLocaleDateString('uk-UA')}</td>
+            <td>${daysSinceProcessed}</td>
+          </tr>`;
+      });
+
+      loader.style.display = 'none';
+    }
+
+    filterBtn.addEventListener('click', () => {
+      const days = parseInt(daysInput.value) || 0;
+      if (days >= 0) {
+        generateReport(days);
+      } else {
+        alert('Введіть невід’ємне число днів.');
+      }
+    });
+
+    // Initial report generation
+    if (currentUser) {
+      generateReport();
+    }
+  </script>
+</body>
+</html>
