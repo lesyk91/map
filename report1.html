@@ -144,10 +144,10 @@
         </div>
         <p id="progress-text" class="mt-2 text-sm text-gray-600">0%</p>
       </div>
-      <div class="summary">
-        <p id="summary-text" class="text-gray-700">Територій без записів: <span id="no-records-count">0</span>, Опрацьованих територій: <span id="processed-count">0</span></p>
-      </div>
       <div class="report-section">
+        <div class="summary">
+          <p class="text-gray-700">Територій без записів: <span id="no-records-count">0</span></p>
+        </div>
         <h2 class="text-xl font-semibold text-gray-800 mb-4">Території без записів</h2>
         <button id="no-records-search-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-4">Пошук</button>
         <table class="report-table">
@@ -161,6 +161,9 @@
         </table>
       </div>
       <div class="report-section">
+        <div class="summary">
+          <p class="text-gray-700">Опрацьованих територій: <span id="processed-count">0</span></p>
+        </div>
         <h2 class="text-xl font-semibold text-gray-800 mb-4">Опрацьовані території</h2>
         <div class="flex items-center mb-4 space-x-4">
           <label for="days-input" class="text-sm text-gray-700">Мінімальна кількість днів з опрацювання:</label>
@@ -241,7 +244,7 @@
       } else {
         loginBtn.classList.remove('hidden');
         logoutBtn.classList.add('hidden');
-        authMessage.classList.add('hidden');
+        authMessage.classList.remove('hidden');
         reportContent.classList.add('hidden');
         noRecordsTable.innerHTML = '';
         processedTable.innerHTML = '';
@@ -288,6 +291,7 @@
 
       noRecordsCount.textContent = noRecordsData.length;
       loader.style.display = 'none';
+      progressContainer.style.display = 'none';
     }
 
     async function fetchProcessed(daysFilter = 0) {
@@ -323,6 +327,7 @@
       }
 
       processedData.sort((a, b) => b.daysSinceProcessed - a.daysSinceProcessed);
+      processedTable.innerHTML = '';
       processedData.forEach(({ number, processDate, daysSinceProcessed }) => {
         processedTable.innerHTML += `
           <tr>
@@ -330,11 +335,12 @@
             <td>${processDate.toLocaleDateString('uk-UA')}</td>
             <td>${daysSinceProcessed}</td>
             <td><a href="territory-detail.html?number=${number}" class="text-blue-600 hover:underline">Відкрити</a></td>
-          </tr>`;  
+          </tr>`;
       });
 
       processedCount.textContent = processedData.length;
       loader.style.display = 'none';
+      progressContainer.style.display = 'none';
     }
 
     noRecordsSearchBtn.addEventListener('click', fetchNoRecords);
