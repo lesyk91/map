@@ -187,8 +187,8 @@
         loginBtn.style.display = 'inline-block';
         logoutBtn.style.display = 'none';
         territoriesBtn.style.display = 'none';
-        takenControl.style.display = 'none';
-        freeControl.style.display = 'none';
+        takenControl.style.display = 'block';
+        freeControl.style.display = 'block';
         Object.keys(territoryStatuses).forEach(id => territoryStatuses[id] = "вільно");
         updateTerritoriesDisplay();
       }
@@ -598,11 +598,11 @@
         const showTakenCheckbox = document.getElementById('showTaken');
         const showFreeCheckbox = document.getElementById('showFree');
 
-toggleAllCheckbox.checked = true;
-if (showTakenCheckbox) showTakenCheckbox.checked = false;
-if (showFreeCheckbox) showFreeCheckbox.checked = false;
-toggleAllLabel.innerText = 'Показати всіх';
-updateTerritoriesDisplay();
+        // Ініціалізація стану чекбоксів
+        toggleAllCheckbox.checked = true;
+        if (showTakenCheckbox) showTakenCheckbox.checked = false;
+        if (showFreeCheckbox) showFreeCheckbox.checked = false;
+        toggleAllLabel.innerText = 'Показати всіх';
 
         toggleAllCheckbox.addEventListener('change', () => {
           console.log('toggleAll changed:', toggleAllCheckbox.checked); // Дебаг
