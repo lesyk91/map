@@ -403,69 +403,64 @@
         });
       });
     }
-	
-	
-	
 
     (async () => {
-  showLoading(true);
-  updateProgress(0);
-  let loadedCount = 0;
-  const totalDistricts = districts.length;
+      showLoading(true);
+      updateProgress(0);
+      let loadedCount = 0;
+      const totalDistricts = districts.length;
 
-  try {
-    const res = await fetch('all_districts.json');
-    if (!res.ok) throw new Error(`Не вдалося завантажити all_districts.json: ${res.status}`);
-    const data = await res.json();
+      for (const d of districts) {
+        const layer = L.layerGroup();
+        try {
+          const res = await fetch(`${d.id}.json`);
+          if (!res.ok) {
+            console.warn(`Не вдалося завантажити ${d.id}.json: ${res.status}`);
+            loadedCount++;
+            updateProgress((loadedCount / totalDistricts) * 100);
+            continue;
+          }
+          const data = await res.json();
 
-    data.features.forEach((feature, index) => {
-      const d = districts.find(d => d.id === feature.id);
-      if (!d) {
-        console.warn(`Територія з id ${feature.id} не знайдена в districts`);
-        return;
+          const geoJsonLayer = L.geoJSON(data, {
+            onEachFeature: (feature, layer) => {
+              const center = layer.getBounds().getCenter();
+              districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
+
+              layer.on("click", async () => {
+                const popupContent = await getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
+                layer.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
+              });
+            },
+            style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
+          }).addTo(layer);
+
+          territoryStatuses[d.id] = "вільно";
+          loadedLayers.push({ name: d.name, layer });
+          overlayMaps[d.name] = layer;
+
+          const coordinates = [];
+          const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
+          geometries.forEach(geom => {
+            const coords = geom.coordinates;
+            const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
+            if (geom.type === "Polygon") coords.forEach(pushCoords);
+            if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
+          });
+
+          districtGeometries.push({ name: d.name, coordinates });
+        } catch (err) {
+          console.warn(`Помилка при завантаженні ${d.id}.json: ${err.message}`);
+        } finally {
+          loadedCount++;
+          updateProgress((loadedCount / totalDistricts) * 100);
+        }
       }
 
-      const layer = L.layerGroup();
-      const geoJsonLayer = L.geoJSON(feature, {
-        onEachFeature: (feat, layer) => {
-          const center = layer.getBounds().getCenter();
-          districtCenters.push({ name: feat.properties?.name || d.name, latlng: center });
-
-          layer.on("click", async () => {
-            const popupContent = await getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-            layer.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
-          });
-        },
-        style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
-      }).addTo(layer);
-
-      territoryStatuses[d.id] = "вільно";
-      loadedLayers.push({ name: d.name, layer });
-      overlayMaps[d.name] = layer;
-
-      const coordinates = [];
-      const geometries = feature.geometry.type === "GeometryCollection" ? feature.geometry.geometries : [feature.geometry];
-      geometries.forEach(geom => {
-        const coords = geom.coordinates;
-        const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
-        if (geom.type === "Polygon") coords.forEach(pushCoords);
-        if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
-      });
-
-      districtGeometries.push({ name: d.name, coordinates });
-      loadedCount++;
-      updateProgress((loadedCount / totalDistricts) * 100);
-    });
-  } catch (err) {
-    console.warn(`Помилка при завантаженні all_districts.json: ${err.message}`);
-  }
-
-  showLoading(false);
-  updateTerritoryStatuses();
-  tryAddLayersControl();
-})();
-
-
+      showLoading(false);
+      updateTerritoryStatuses();
+      tryAddLayersControl();
+    })();
 
     let currentMarker = null, currentCircle = null, routeControl = null, currentLocation = null;
 
