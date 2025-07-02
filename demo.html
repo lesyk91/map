@@ -200,38 +200,29 @@
       location.reload();
     });
 
-    async function getTerritoryStatusPopup(territoryNumber, territoryName) {
-  if (!currentUser) {
-    return `<b>${territoryName}</b><br><i>Увійдіть, щоб побачити статус</i>`;
-  }
-
-  try {
-    const historyCollection = collection(db, `territories/${territoryNumber}/history`);
-    const q = query(historyCollection, orderBy("timestamp", "desc"), limit(1)); // Отримуємо лише останній документ
-    const querySnapshot = await getDocs(q);
-
-    let popupContent = `<b>${territoryName}</b><br>`;
-
-    if (querySnapshot.empty) {
-      popupContent += `<b>Статус:</b> вільно`;
-    } else {
-      const latestStatus = querySnapshot.docs[0].data();
-      const status = latestStatus.status === "на руках" ? "на руках" : "вільно";
-
-      popupContent += `<b>Статус:</b> ${status}<br>`;
-
-      if (status === "на руках") {
-        popupContent += `<b>ПІБ:</b> ${latestStatus.pib || "невідомо"}<br>`;
-        popupContent += `<b>Дата отримання:</b> ${latestStatus.dateGet ? new Date(latestStatus.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
+    async function getTerritoryStatusPopup(number, name) {
+      if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
+      const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+      const snap = await getDocs(q);
+      let popup = `<b>${name}</b><br>`;
+      if (snap.empty) {
+        popup += `<b>Статус:</b> вільно`;
+      } else {
+        const latest = snap.docs[0].data();
+        let status = "вільно";
+        if (latest.status === "на руках") {
+          status = "на руках";
+        } else if (latest.status === "опрацьовано") {
+          status = "вільно";
+        }
+        popup += `<b>Статус:</b> ${status}<br>`;
+        if (status === "на руках") {
+          popup += `<b>ПІБ:</b> ${latest.pib || "невідомо"}<br>`;
+          popup += `<b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
+        }
       }
+      return popup;
     }
-
-    return popupContent;
-  } catch (error) {
-    console.error(`Помилка при отриманні статусу території ${territoryNumber}:`, error);
-    return `<b>${territoryName}</b><br><i>Помилка при отриманні статусу</i>`;
-  }
-}
 
     const map = L.map('map', { zoomControl: false }).setView([49.1029, 29.2074], 13);
 
@@ -412,64 +403,69 @@
         });
       });
     }
+	
+	
+	
 
     (async () => {
-      showLoading(true);
-      updateProgress(0);
-      let loadedCount = 0;
-      const totalDistricts = districts.length;
+  showLoading(true);
+  updateProgress(0);
+  let loadedCount = 0;
+  const totalDistricts = districts.length;
 
-      for (const d of districts) {
-        const layer = L.layerGroup();
-        try {
-          const res = await fetch(`${d.id}.json`);
-          if (!res.ok) {
-            console.warn(`Не вдалося завантажити ${d.id}.json: ${res.status}`);
-            loadedCount++;
-            updateProgress((loadedCount / totalDistricts) * 100);
-            continue;
-          }
-          const data = await res.json();
+  try {
+    const res = await fetch('all_districts.json');
+    if (!res.ok) throw new Error(`Не вдалося завантажити all_districts.json: ${res.status}`);
+    const data = await res.json();
 
-          const geoJsonLayer = L.geoJSON(data, {
-            onEachFeature: (feature, layer) => {
-              const center = layer.getBounds().getCenter();
-              districtCenters.push({ name: feature.properties?.name || d.name, latlng: center });
-
-              layer.on("click", async () => {
-                const popupContent = await getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-                layer.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
-              });
-            },
-            style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
-          }).addTo(layer);
-
-          territoryStatuses[d.id] = "вільно";
-          loadedLayers.push({ name: d.name, layer });
-          overlayMaps[d.name] = layer;
-
-          const coordinates = [];
-          const geometries = data.type === "GeometryCollection" ? data.geometries : [data.geometry];
-          geometries.forEach(geom => {
-            const coords = geom.coordinates;
-            const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
-            if (geom.type === "Polygon") coords.forEach(pushCoords);
-            if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
-          });
-
-          districtGeometries.push({ name: d.name, coordinates });
-        } catch (err) {
-          console.warn(`Помилка при завантаженні ${d.id}.json: ${err.message}`);
-        } finally {
-          loadedCount++;
-          updateProgress((loadedCount / totalDistricts) * 100);
-        }
+    data.features.forEach((feature, index) => {
+      const d = districts.find(d => d.id === feature.id);
+      if (!d) {
+        console.warn(`Територія з id ${feature.id} не знайдена в districts`);
+        return;
       }
 
-      showLoading(false);
-      updateTerritoryStatuses();
-      tryAddLayersControl();
-    })();
+      const layer = L.layerGroup();
+      const geoJsonLayer = L.geoJSON(feature, {
+        onEachFeature: (feat, layer) => {
+          const center = layer.getBounds().getCenter();
+          districtCenters.push({ name: feat.properties?.name || d.name, latlng: center });
+
+          layer.on("click", async () => {
+            const popupContent = await getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
+            layer.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
+          });
+        },
+        style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
+      }).addTo(layer);
+
+      territoryStatuses[d.id] = "вільно";
+      loadedLayers.push({ name: d.name, layer });
+      overlayMaps[d.name] = layer;
+
+      const coordinates = [];
+      const geometries = feature.geometry.type === "GeometryCollection" ? feature.geometry.geometries : [feature.geometry];
+      geometries.forEach(geom => {
+        const coords = geom.coordinates;
+        const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
+        if (geom.type === "Polygon") coords.forEach(pushCoords);
+        if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
+      });
+
+      districtGeometries.push({ name: d.name, coordinates });
+      loadedCount++;
+      updateProgress((loadedCount / totalDistricts) * 100);
+    });
+  } catch (err) {
+    console.warn(`Помилка при завантаженні all_districts.json: ${err.message}`);
+  }
+
+  showLoading(false);
+  updateTerritoryStatuses();
+  tryAddLayersControl();
+})();
+
+
 
     let currentMarker = null, currentCircle = null, routeControl = null, currentLocation = null;
 
