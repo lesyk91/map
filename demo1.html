@@ -13,80 +13,60 @@
     html, body, #map {
       height: 100%; margin: 0; padding: 0;
     }
-
-    /* Стилі для кнопок */
-    button.layer-toggle, button.locate-btn, button.login-btn, button.logout-btn, button.territories-btn {
+  
+    button.layer-toggle, button.locate-btn, button.login-btn, button.logout-btn, button.territories-btn, button.share-btn {
       position: absolute;
       left: 10px;
       z-index: 1000;
-      padding: 8px 16px;
-      background: linear-gradient(145deg, #ffffff, #e6e6e6);
-      border: none;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+      padding: 5px 15px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
       cursor: pointer;
-      font-weight: 500;
-      transition: all 0.2s ease-in-out;
-    }
-    button.layer-toggle:hover, button.locate-btn:hover, button.login-btn:hover, button.logout-btn:hover, button.territories-btn:hover {
-      background: linear-gradient(145deg, #e6e6e6, #ffffff);
-      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-      transform: translateY(-2px);
     }
     button.locate-btn { top: 10px; }
-    button.layer-toggle { top: 60px; }
-    button.login-btn, button.logout-btn { top: 110px; }
-    button.territories-btn { top: 160px; }
-
-    /* Стилі для елементів керування */
+    button.layer-toggle { top: 50px; }
+    button.login-btn, button.logout-btn { top: 46px; }
+    button.territories-btn { top: 200px; }
+    #taken-control, #free-control {
+      margin: 5px 0;
+    }
+    
     .controls {
       position: absolute;
-      top: 220px;
+      top: 90px;
       left: 10px;
       z-index: 1000;
       background: white;
-      padding: 12px;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      border: 1px solid #e5e7eb;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
     }
     .controls label {
-      margin-left: 8px;
+      margin-left: 5px;
       cursor: pointer;
-      font-size: 14px;
-      color: #374151;
     }
     .controls input[type="checkbox"] {
-      accent-color: #3b82f6;
-      width: 16px;
-      height: 16px;
+      margin: 5px 0;
     }
-    #taken-control, #free-control {
-      margin: 8px 0;
-    }
-
-    /* Стилі для лоадера */
     #loader {
       position: absolute;
       top: 10px;
-      left: 200px;
+      left: 215px;
       z-index: 1000;
-      padding: 8px 16px;
+      padding: 8px;
       background: white;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      font-size: 14px;
-      color: #374151;
+      border: 1px solid #ccc;
+      border-radius: 10px;
     }
-
-    /* Стилі для прогрес-бару */
+    /* Progress Overlay */
     #progress-overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.6);
+      background: rgba(0, 0, 0, 0.5);
       display: none;
       z-index: 2000;
       justify-content: center;
@@ -94,91 +74,44 @@
     }
     #progress-container {
       background: white;
-      padding: 24px;
-      border-radius: 12px;
-      box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+      padding: 20px;
+      border-radius: 8px;
       text-align: center;
-      width: 90%;
-      max-width: 350px;
+      width: 80%;
+      max-width: 300px;
     }
     #progress-bar {
       width: 100%;
-      height: 24px;
-      background: #e5e7eb;
-      border-radius: 12px;
+      height: 20px;
+      background: #e0e0e0;
+      border-radius: 10px;
       overflow: hidden;
-      position: relative;
     }
     #progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, #3b82f6, #60a5fa);
+      background: #4caf50;
       width: 0;
-      transition: width 0.4s ease-in-out;
-      position: relative;
-      overflow: hidden;
+      transition: width 0.3s ease;
     }
-    #progress-fill::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(
-        45deg,
-        rgba(255, 255, 255, 0.2) 25%,
-        transparent 25%,
-        transparent 50%,
-        rgba(255, 255, 255, 0.2) 50%,
-        rgba(255, 255, 255, 0.2) 75%,
-        transparent 75%,
-        transparent
-      );
-      background-size: 20px 20px;
-      animation: move 2s linear infinite;
-    }
-    #progress-text {
-      margin-top: 12px;
-      font-size: 16px;
-      font-weight: 500;
-      color: #374151;
-    }
-    @keyframes move {
-      0% { background-position: 0 0; }
-      100% { background-position: 20px 20px; }
-    }
-
-    /* Адаптація для мобільних пристроїв */
+    /* Mobile-specific adjustments */
     @media (max-width: 640px) {
-      button.layer-toggle, button.locate-btn, button.login-btn, button.logout-btn, button.territories-btn {
-        left: 8px;
-        padding: 6px 12px;
-        font-size: 12px;
-        border-radius: 6px;
+      button.layer-toggle, button.locate-btn, button.login-btn, button.logout-btn, button.territories-btn, button.share-btn {
+        left: 10px;
+        padding: 5px 10px;
+        font-size: 14px;
       }
       .controls {
-        left: 8px;
-        top: 200px;
-        padding: 8px;
-        width: 170px;
+        left: 10px;
+        top: 80px;
+        padding: 6px;
+        width: 160px;
       }
       #loader {
-        left: 170px;
-        padding: 6px 12px;
-        font-size: 12px;
+        left: 180px;
+        padding: 6px;
       }
       button.territories-btn {
-        top: 150px;
-      }
-      #progress-container {
-        padding: 16px;
-        max-width: 280px;
-      }
-      #progress-bar {
-        height: 20px;
-      }
-      #progress-text {
-        font-size: 14px;
+        top: 195px;
       }
     }
   </style>
@@ -186,24 +119,23 @@
 <body>
   <div id="progress-overlay" class="flex">
     <div id="progress-container" class="bg-white p-5 rounded-lg shadow-lg">
-      <h2 class="text-lg font-semibold mb-3 text-gray-800">Завантаження територій...</h2>
+      <h2 class="text-lg font-semibold mb-2">Завантаження територій...</h2>
       <div id="progress-bar">
         <div id="progress-fill"></div>
       </div>
-      <p prophesied="progress-text" class="mt-3 text-sm text-gray-600">0%</p>
+      <p id="progress-text" class="mt-2 text-sm">0%</p>
     </div>
   </div>
-  <button onclick="findLocation()" class="locate-btn bg-white text-gray-700 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100">📍 Показати моє місце</button>
-  <button onclick="toggleLayers()" class="layer-toggle bg-white text-gray-700 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100">🗺 Шари</button>
+  <button onclick="findLocation()" class="locate-btn bg-white border border-gray-300 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100">📍 Показати моє місце</button>
   <div id="auth-buttons">
-    <a href="enter.html"><button class="login-btn bg-white text-gray-700 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100" style="display:none">🔐 Увійти</button></a>
-    <button class="logout-btn bg-white text-gray-700 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100" style="display:none">🚪 Вийти</button>
-    <a href="territories.html"><button class="territories-btn bg-white text-gray-700 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100" style="display:none">🏞 Території</button></a>
+    <a href="enter.html"><button class="login-btn bg-white border border-gray-300 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100" style="display:none">🔐 Увійти</button></a>
+    <button class="logout-btn bg-white border border-gray-300 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100" style="display:none">🚪 Вийти</button>
+    <a href="territories.html"><button class="territories-btn bg-white border border-gray-300 rounded shadow-sm px-3 py-2 text-sm sm:text-base hover:bg-gray-100" style="display:none">🏞 Території</button></a>
   </div>
-  <div id="loader" class="bg-white rounded shadow-sm"></div>
-  <div class="controls bg-white rounded shadow-sm p-2 sm:p-3">
+  <div id="loader" class="bg-white border border-gray-300 rounded shadow-sm"></div>
+  <div class="controls bg-white border border-gray-300 rounded shadow-sm p-2 sm:p-3">
     <input type="checkbox" id="toggleAll" checked>
-    <label for="toggleAll" id="toggleAllLabel" class="text-sm sm:text-base">Показати всіх</label><br>
+    <label for="toggleAll" id="toggleAllLabel" class="text-sm sm:text-base">Показати всі</label><br>
     <div id="taken-control" style="display: none">
       <input type="checkbox" id="showTaken">
       <label for="showTaken" class="text-sm sm:text-base">На руках</label><br>
@@ -218,7 +150,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.rgstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
     import { getFirestore, collection, query, orderBy, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
@@ -231,7 +163,7 @@
       appId: "1:62267872375:web:10945d2d63b93bccc5e272"
     };
 
-    const app = initializeApp(firebaseConfig);
+    const app = initializeAppFireConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
     let currentUser = null;
@@ -285,10 +217,12 @@
         }
         popup += `<b>Статус:</b> ${status}<br>`;
         if (status === "на руках") {
-          popup += `<b>ПІБ:</b> ${latest.pib || "невідомо"}<br>`;
-          popup += `<b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
+              popup += `<b>ПІБ:</b> ${latest.pib || "невідомо"}<br>`;
+              popup += `<b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
         }
       }
+      popup += `<br><button style="background-color: blue; color: white; margin-top: 5px;" onclick="routeToDistrict('${name}')">📌 Прокласти маршрут сюди</button>`;
+      popup += `<br><button style="background-color: green; color: white; margin-top: 5px;" onclick="shareTerritory('${name}', '${number}')">📤 Поділитися</button>`;
       return popup;
     }
 
@@ -426,6 +360,14 @@
       document.getElementById('loader').innerText = show ? 'Завантаження...' : '';
     }
 
+    function showNotification(message, type = 'success') {
+      const notification = document.createElement('div');
+      notification.className = `fixed top-4 right-4 p-4 rounded shadow-lg text-white ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`;
+      notification.innerText = message;
+      document.body.appendChild(notification);
+      setTimeout(() => notification.remove(), 3000);
+    }
+
     function updateProgress(percentage) {
       const progressOverlay = document.getElementById('progress-overlay');
       const progressFill = document.getElementById('progress-fill');
@@ -433,9 +375,10 @@
       if (percentage < 100) {
         progressOverlay.style.display = 'flex';
         progressFill.style.width = `${percentage}%`;
-        progressText.innerText = `${Math.round(percentage)}%`;
+        progressText.innerText = `Завантажено ${Math.round(percentage)}%`;
       } else {
         progressOverlay.style.display = 'none';
+        showNotification('Території успішно завантажено!');
       }
     }
 
@@ -472,6 +415,30 @@
       });
     }
 
+    function shareTerritory(districtName, districtNumber) {
+      const shareUrl = `${window.location.origin}${window.location.pathname}?district=${districtNumber}`;
+      const shareData = {
+        title: `Територія ${districtName}`,
+        text: `Перегляньте територію ${districtName} на карті Іллінців`,
+        url: shareUrl
+      };
+      if (navigator.share) {
+        navigator.share(shareData).catch(err => {
+          console.error('Помилка при надсиланні:', err);
+          showNotification('Не вдалося надіслати. Скопіюйте посилання вручну.', 'error');
+          navigator.clipboard.writeText(shareUrl).then(() => {
+            showNotification('Посилання скопійовано в буфер обміну!');
+          });
+        });
+      } else {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          showNotification('Посилання скопійовано в буфер обміну!');
+        }).catch(() => {
+          showNotification('Не вдалося скопіювати посилання.', 'error');
+        });
+      }
+    }
+
     (async () => {
       showLoading(true);
       updateProgress(0);
@@ -498,7 +465,7 @@
 
               layer.on("click", async () => {
                 const popupContent = await getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-                layer.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
+                layer.bindPopup(popupContent).openPopup();
               });
             },
             style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
@@ -521,8 +488,30 @@
           loadedCount++;
           updateProgress((loadedCount / totalDistricts) * 100);
         });
+
+        // Перевірка URL параметра для виділення території
+        const urlParams = new URLSearchParams(window.location.search);
+        const districtNumber = urlParams.get('district');
+        if (districtNumber) {
+          const district = districts.find(d => d.id === `district${districtNumber}`);
+          if (district) {
+            const layer = loadedLayers.find(l => l.name === district.name);
+            if (layer) {
+              const center = districtCenters.find(dc => dc.name === district.name)?.latlng;
+              if (center) {
+                map.setView(center, 15);
+                getTerritoryStatusPopup(districtNumber, district.name).then(popupContent => {
+                  layer.layer.eachLayer(l => {
+                    l.bindPopup(popupContent).openPopup();
+                  });
+                });
+              }
+            }
+          }
+        }
       } catch (err) {
         console.warn(`Помилка при завантаженні all_districts.json: ${err.message}`);
+        showNotification('Не вдалося завантажити дані територій.', 'error');
       }
 
       showLoading(false);
@@ -535,7 +524,7 @@
     function findLocation() {
       console.log("findLocation called");
       if (!navigator.geolocation) {
-        alert('⚠ Ваш браузер не підтримує геолокацію.');
+        showNotification('Ваш браузер не підтримує геолокацію.', 'error');
         return;
       }
       showLoading(true);
@@ -562,22 +551,31 @@
         error => {
           showLoading(false);
           console.error("Geolocation error:", error.message);
-          alert(`⚠ Не вдалося визначити місцерозташування: ${error.message}`);
+          showNotification(`Не вдалося визначити місцерозташування: ${translateError(error.message)}`, 'error');
         },
         { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
       );
     }
 
+    function translateError(message) {
+      const errors = {
+        'Permission denied': 'Дозвіл на геолокацію відхилено',
+        'Position unavailable': 'Місцезнаходження недоступне',
+        'Timeout': 'Час запиту вичерпано'
+      };
+      return errors[message] || 'Невідома помилка';
+    }
+
     function routeToDistrict(districtName) {
       console.log("routeToDistrict called for:", districtName);
       if (!currentLocation) {
-        alert("⛔ Спочатку натисніть 📍 «Показати моє місце»");
+        showNotification("Спочатку натисніть 📍 «Показати моє місце»", 'error');
         return;
       }
       const district = districtGeometries.find(d => d.name === districtName);
       if (!district || !district.coordinates.length) {
         console.warn(`No coordinates for ${districtName}`);
-        alert(`⚠ Немає координат для ${districtName}`);
+        showNotification(`Немає координат для ${districtName}`, 'error');
         return;
       }
       console.log("District coordinates:", district.coordinates);
@@ -605,12 +603,14 @@
         currentMarker?.bindPopup(`Ваше місцерозташування<br>Маршрут до <b>${districtName}</b><br>Відстань: ${distText}`).openPopup();
       }).on('routingerror', function(e) {
         console.error("Routing error:", e.error);
-        alert(`⚠ Не вдалося прокласти маршрут: ${e.error.message}`);
+        showNotification(`Не вдалося прокласти маршрут: ${translateError(e.error.message)}`, 'error');
       }).addTo(map);
     }
 
+    // Експорт функцій до глобальної області видимості
     window.findLocation = findLocation;
     window.routeToDistrict = routeToDistrict;
+    window.shareTerritory = shareTerritory;
 
     function updateTerritoriesDisplay() {
       const toggleAllCheckbox = document.getElementById('toggleAll');
@@ -660,6 +660,7 @@
         const showTakenCheckbox = document.getElementById('showTaken');
         const showFreeCheckbox = document.getElementById('showFree');
 
+        // Ініціалізація стану чекбоксів
         toggleAllCheckbox.checked = true;
         if (showTakenCheckbox) showTakenCheckbox.checked = false;
         if (showFreeCheckbox) showFreeCheckbox.checked = false;
