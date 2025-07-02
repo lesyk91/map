@@ -201,27 +201,24 @@
     });
 
     async function getTerritoryStatusPopup(number, name) {
-      if (!currentUser) return `<b>${name}</b><br><i>Увійдіть, щоб побачити статус</i>`;
-      const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-      const snap = await getDocs(q);
-      let popup = `<b>${name}</b><br>`;
-      if (snap.empty) {
-        popup += `<b>Статус:</b> вільно`;
-      } else {
-        const latest = snap.docs[0].data();
-        let status = "вільно";
-        if (latest.status === "на руках") {
-          status = "на руках";
-        } else if (latest.status === "опрацьовано") {
-          status = "вільно";
-        }
-        popup += `<b>Статус:</b> ${status}<br>`;
-        if (status === "на руках") {
-          popup += `<b>ПІБ:</b> ${latest.pib || "невідомо"}<br>`;
-          popup += `<b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
-        }
-      }
-      return popup;
+    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
+const snap = await getDocs(q);
+let popup = `<b>${name}</b><br>`;
+
+if (snap.empty) {
+  popup += `<b>Статус:</b> вільно`;
+} else {
+  const latest = snap.docs[0].data();
+  let status = latest.status === "на руках" ? "на руках" : "вільно";
+  popup += `<b>Статус:</b> ${status}`;
+
+  if (currentUser && status === "на руках") {
+    popup += `<br><b>ПІБ:</b> ${latest.pib || "невідомо"}`;
+    popup += `<br><b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
+  }
+}
+return popup;
+
     }
 
     const map = L.map('map', { zoomControl: false }).setView([49.1029, 29.2074], 13);
@@ -378,13 +375,24 @@
     });
 
     async function updateTerritoryStatuses() {
-      if (!currentUser) {
-        districts.forEach(d => {
-          territoryStatuses[d.id] = "вільно";
-        });
-        updateTerritoriesDisplay();
-        return;
-      }
+      // Завжди оновлюємо статуси з Firestore
+districts.forEach(d => {
+  const q = query(collection(db, `territories/${d.id.replace("district", "")}/history`), orderBy("timestamp", "desc"));
+  onSnapshot(q, (snap) => {
+    if (snap.empty) {
+      territoryStatuses[d.id] = "вільно";
+    } else {
+      const latest = snap.docs[0].data();
+      territoryStatuses[d.id] = latest.status === "на руках" ? "на руках" : "вільно";
+    }
+    updateTerritoriesDisplay();
+  }, (err) => {
+    console.warn(`Помилка при отриманні статусу для ${d.id}: ${err.message}`);
+    territoryStatuses[d.id] = "вільно";
+    updateTerritoriesDisplay();
+  });
+});
+
 
       districts.forEach(d => {
         const q = query(collection(db, `territories/${d.id.replace("district", "")}/history`), orderBy("timestamp", "desc"));
