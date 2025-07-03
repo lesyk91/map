@@ -135,7 +135,7 @@
   <div id="loader" class="bg-white border border-gray-300 rounded shadow-sm"></div>
   <div class="controls bg-white border border-gray-300 rounded shadow-sm p-2 sm:p-3">
     <input type="checkbox" id="toggleAll" checked>
-    <label for="toggleAll" id="toggleAllLabel" class="text-sm sm:text-base">Показати всі1</label><br>
+    <label for="toggleAll" id="toggleAllLabel" class="text-sm sm:text-base">Показати всі</label><br>
     <div id="taken-control" style="display: none">
       <input type="checkbox" id="showTaken">
       <label for="showTaken" class="text-sm sm:text-base">На руках</label><br>
@@ -474,21 +474,27 @@ districts.forEach(d => {
   updateTerritoryStatuses();
   tryAddLayersControl();
   
-  const urlParams = new URLSearchParams(window.location.search);
+const urlParams = new URLSearchParams(window.location.search);
 const targetId = urlParams.get("territory");
 if (targetId) {
-  // Приховати всі шари
+  // Приховати всі інші території
   loadedLayers.forEach(({ layer }) => map.removeLayer(layer));
-  const target = loadedLayers.find(({ name }) => {
-    const match = districts.find(d => d.name === name);
-    return match?.id === targetId;
-  });
+
+  const match = districts.find(d => d.id === targetId);
+  const target = loadedLayers.find(({ name }) => name === match?.name);
+
   if (target) {
     map.addLayer(target.layer);
     const center = target.layer.getBounds().getCenter();
     map.setView(center, 16);
+
+    const popupContent = await getTerritoryStatusPopup(targetId.replace("district", ""), match.name);
+    target.layer.eachLayer(l => {
+      l.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${match.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
+    });
   }
 }
+
 })();
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -595,13 +601,15 @@ if (targetId) {
 	
 	window.shareTerritory = function(number) {
   const url = `${window.location.origin}${window.location.pathname}?territory=district${number}`;
+const title = `Карта: Територія №${number}`;
   if (navigator.share) {
     navigator.share({
-      title: `Територія ${number}`,
-      url: url
-    }).catch(console.warn);
+  title,
+  text: `Переглянь цю територію: №${number}`,
+  url
+}).catch(console.warn);
   } else {
-    prompt("Скопіюй це посилання:", url);
+    prompt(`Посилання на територію №${number}:`, url);
   }
 };
 
