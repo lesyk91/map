@@ -135,7 +135,7 @@
   <div id="loader" class="bg-white border border-gray-300 rounded shadow-sm"></div>
   <div class="controls bg-white border border-gray-300 rounded shadow-sm p-2 sm:p-3">
     <input type="checkbox" id="toggleAll" checked>
-    <label for="toggleAll" id="toggleAllLabel" class="text-sm sm:text-base">Показати всі</label><br>
+    <label for="toggleAll" id="toggleAllLabel" class="text-sm sm:text-base">Показати всі1</label><br>
     <div id="taken-control" style="display: none">
       <input type="checkbox" id="showTaken">
       <label for="showTaken" class="text-sm sm:text-base">На руках</label><br>
@@ -450,7 +450,7 @@ districts.forEach(d => {
       }).addTo(layer);
 
       territoryStatuses[d.id] = "вільно";
-      loadedLayers.push({ name: d.name, layer });
+      loadedLayers.push({ name: d.name, layer: geoJsonLayer });
       overlayMaps[d.name] = layer;
 
       const coordinates = [];
