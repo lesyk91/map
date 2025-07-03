@@ -217,9 +217,17 @@ if (snap.empty) {
     popup += `<br><b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
   }
 }
+
+// Кнопка "Поділитися"
 popup += `<br><button onclick="shareTerritory('${number}')" style="background-color: green; color: white;">🔗 Поділитися</button>`;
 
+// Кнопка "Редагувати" — лише для авторизованих
+if (currentUser) {
+  popup += `<br><a href="territory-detail.html?number=${number}"><button style="background-color: orange; color: white;">✏️ Редагувати</button></a>`;
+}
+
 return popup;
+
 
     }
 
