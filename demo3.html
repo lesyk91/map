@@ -473,6 +473,22 @@ districts.forEach(d => {
   showLoading(false);
   updateTerritoryStatuses();
   tryAddLayersControl();
+  
+  const urlParams = new URLSearchParams(window.location.search);
+const targetId = urlParams.get("territory");
+if (targetId) {
+  // Приховати всі шари
+  loadedLayers.forEach(({ layer }) => map.removeLayer(layer));
+  const target = loadedLayers.find(({ name }) => {
+    const match = districts.find(d => d.name === name);
+    return match?.id === targetId;
+  });
+  if (target) {
+    map.addLayer(target.layer);
+    const center = target.layer.getBounds().getCenter();
+    map.setView(center, 16);
+  }
+}
 })();
 
 const urlParams = new URLSearchParams(window.location.search);
