@@ -507,7 +507,7 @@ districts.forEach(d => {
         error => {
           showLoading(false);
           console.error("Geolocation error:", error.message);
-          alert(`⚠ Не вдалося визначити місцерозташування: ${error.message}`);
+          alert(`⚠ Не вдалося визначити місцерозташування: ${error.message}. Включіть геолокацію на вашому пристрої`);
         },
         { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
       );
