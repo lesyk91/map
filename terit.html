@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Території</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .territory-btn {
+      transition: all 0.3s ease;
+    }
+    .territory-btn hovered {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+    #modal {
+      display: none;
+    }
+    #modal.active {
+      display: flex;
+    }
+  </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+      authDomain: "map-illintsi.firebaseapp.com",
+      projectId: "map-illintsi",
+      storageBucket: "map-illintsi.firebasestorage.app",
+      messagingSenderId: "62267872375",
+      appId: "1:62267872375:web:10945d2d63b93bccc5e272",
+      measurementId: "G-22L16KP5Z0"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const container = document.getElementById("territories");
+      const logoutBtn = document.getElementById("logout");
+      const searchInput = document.getElementById("search");
+      const createBtn = document.getElementById("create-territory");
+      const modal = document.getElementById("modal");
+      const closeModalBtn = document.getElementById("close-modal");
+      const createForm = document.getElementById("create-form");
+      let territoryButtons = [];
+
+      onAuthStateChanged(auth, (user) => {
+        if (!user) {
+          window.location.href = "index.html";
+        } else {
+          loadTerritories();
+        }
+      });
+
+      logoutBtn.onclick = () => signOut(auth);
+
+      createBtn.onclick = () => modal.classList.add("active");
+
+      closeModalBtn.onclick = () => modal.classList.remove("active");
+
+      createForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const name = document.getElementById("territory-name").value.trim();
+        const type = document.getElementById("territory-type").value;
+        if (!name || !type) {
+          alert("Будь ласка, заповніть усі поля.");
+          return;
+        }
+        try {
+          const territoriesRef = collection(db, "territories");
+          const snapshot = await getDocs(territoriesRef);
+          const newId = snapshot.size + 1; // Generate sequential ID
+          await addDoc(territoriesRef, {
+            id: newId,
+            name,
+            type,
+            createdAt: new Date()
+          });
+          modal.classList.remove("active");
+          createForm.reset();
+          loadTerritories();
+        } catch (error) {
+          console.error("Помилка створення території:", error);
+          alert("Виникла помилка при створенні території.");
+        }
+      };
+
+      async function loadTerritories() {
+        container.innerHTML = '<div class="text-center">Завантаження...</div>';
+        territoryButtons = [];
+        try {
+          const territoriesRef = collection(db, "territories");
+          const snapshot = await getDocs(territoriesRef);
+          container.innerHTML = '';
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            const btn = document.createElement("button");
+            btn.textContent = `${data.name} (${data.type})`;
+            btn.className = "territory-btn bg-blue-500 text-white font-semibold py-3 px-6 rounded-lg w-full";
+            btn.dataset.id = data.id;
+            btn.dataset.name = data.name;
+            btn.dataset.type = data.type;
+            btn.onclick = () => window.location.href = `territory-detail.html?number=${data.id}`;
+            container.appendChild(btn);
+            territoryButtons.push(btn);
+          });
+        } catch (error) {
+          console.error("Помилка завантаження територій:", error);
+          container.innerHTML = '<div class="text-center text-red-500">Помилка завантаження територій</div>';
+        }
+      }
+
+      searchInput.addEventListener("input", (e) => {
+        const searchTerm = e.target.value.trim().toLowerCase();
+        territoryButtons.forEach(btn => {
+          const name = btn.dataset.name.toLowerCase();
+          const type = btn.dataset.type.toLowerCase();
+          const id = btn.dataset.id;
+          btn.style.display = searchTerm === '' || name.includes(searchTerm) || type.includes(searchTerm) || id.includes(searchTerm) ? 'block' : 'none';
+        });
+      });
+    });
+  </script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+  <header class="bg-white shadow-md p-4 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+      <h1 class="text-2xl font-bold text-gray-800">Список територій</h1>
+      <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+        <button id="create-territory" class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+          Створити Територію
+        </button>
+        <input 
+          id="search" 
+          type="text" 
+          placeholder="Пошук за назвою, типом або номером" 
+          class="w-full sm:w-64 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+        <nav class="flex space-x-2">
+          <a href="index.html">
+            <button class="bg-green-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              Карта
+            </button>
+          </a>
+          <a href="user.html">
+            <button class="bg-yellow-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              Користувачі
+            </button>
+          </a>
+          <a href="zvit.html">
+            <button class="bg-gray-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              Звіти
+            </button>
+          </a>
+          <button id="logout" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+            Вийти
+          </button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow p-4">
+    <div class="max-w-7xl mx-auto">
+      <div id="territories" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+    </div>
+  </main>
+
+  <div id="modal" class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center">
+    <div class="bg-white p-6 rounded-lg w-full max-w-md">
+      <h2 class="text-xl font-bold mb-4">Створити нову територію</h2>
+      <form id="create-form">
+        <div class="mb-4">
+          <label for="territory-name" class="block text-gray-700">Назва території</label>
+          <input 
+            id="territory-name" 
+            type="text" 
+            placeholder="Введіть назву" 
+            class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          >
+        </div>
+        <div class="mb-4">
+          <label for="territory-type" class="block text-gray-700">Тип території</label>
+          <select 
+            id="territory-type" 
+            class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          >
+            <option value="" disabled selected>Виберіть тип</option>
+            <option value="Приватна">Приватна</option>
+            <option value="Поверхівки">Поверхівки</option>
+            <option value="Ділова">Ділова</option>
+          </select>
+        </div>
+        <div class="flex justify-end space-x-2">
+          <button type="button" id="close-modal" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">
+            Скасувати
+          </button>
+          <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">
+            Створити
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="bg-white shadow-inner p-4 mt-auto">
+    <div class="max-w-7xl mx-auto text-center text-gray-600">
+      © 2025 Території. Всі права захищено.
+    </div>
+  </footer>
+</body>
+</html>
