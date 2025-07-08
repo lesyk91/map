@@ -81,25 +81,33 @@
 
       onAuthStateChanged(auth, async (user) => {
         if (!user) {
+          console.log("Користувач не авторизований, перенаправлення на index.html");
           window.location.href = "index.html";
         } else {
+          console.log("Користувач авторизований:", user.uid);
           await loadTerritories();
         }
       });
 
-      logoutBtn.onclick = () => signOut(auth);
+      logoutBtn.onclick = () => {
+        console.log("Вихід із системи");
+        signOut(auth);
+      };
 
       createBtn.onclick = () => {
+        console.log("Відкриття модального вікна створення");
         createModal.classList.add("show");
       };
 
       closeCreateModal.onclick = () => {
+        console.log("Закриття модального вікна створення");
         createModal.classList.remove("show");
         createForm.reset();
         errorMessage.textContent = "";
       };
 
       closeEditModal.onclick = () => {
+        console.log("Закриття модального вікна редагування");
         editModal.classList.remove("show");
         editForm.reset();
         editErrorMessage.textContent = "";
@@ -109,11 +117,16 @@
         container.innerHTML = '<p class="text-gray-600">Завантаження територій...</p>';
         territoryButtons = [];
         try {
+          console.log("Початок завантаження територій із Firestore");
           const territoriesRef = collection(db, "territories");
-          const snapshot = await getDocs(territoriesRef);
+          const snapshot = await Promise.race([
+            getDocs(territoriesRef),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Таймаут запиту до Firestore")), 10000))
+          ]);
           console.log(`Знайдено ${snapshot.size} територій`);
 
           if (snapshot.empty) {
+            console.log("Колекція territories порожня");
             container.innerHTML = '<p class="text-gray-600">Території відсутні. Створіть нову територію.</p>';
             return;
           }
@@ -133,6 +146,7 @@
 
           territories.sort((a, b) => a.number - b.number);
 
+          container.innerHTML = '';
           territories.forEach(territory => {
             const { id, number, name, type } = territory;
             const div = document.createElement("div");
@@ -142,11 +156,12 @@
                 ${name} <span class="text-sm text-gray-300">(${type})</span>
               </button>
               <div class="flex space-x-2">
-                <button class="action-btn bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-lg" onclick="editTerritory('${id}', '${name}', '${type}')">Редагувати</button>
+                <button class="action-btn bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-lg" onclick="editTerritory('${id}', '${name.replace(/'/g, "\\'")}', '${type.replace(/'/g, "\\'")}')">Редагувати</button>
                 <button class="action-btn bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-lg" onclick="deleteTerritory('${id}')">Видалити</button>
               </div>
             `;
             div.querySelector(".territory-btn").onclick = () => {
+              console.log(`Перехід до деталей території ${id}`);
               window.location.href = `territory-detail.html?number=${id}`;
             };
             container.appendChild(div);
@@ -154,11 +169,12 @@
           });
 
           if (territoryButtons.length === 0) {
+            console.log("Не створено жодної кнопки для територій");
             container.innerHTML = '<p class="text-gray-600">Території відсутні. Створіть нову територію.</p>';
           }
         } catch (error) {
           console.error("Помилка завантаження територій:", error);
-          container.innerHTML = '<p class="text-red-600">Помилка завантаження територій.</p>';
+          container.innerHTML = `<p class="text-red-600">Помилка завантаження територій: ${error.message}</p>`;
         }
       }
 
@@ -168,6 +184,7 @@
       function filterTerritories() {
         const searchTerm = searchInput.value.trim().toLowerCase();
         const selectedType = typeFilter.value;
+        console.log(`Фільтрація: пошук="${searchTerm}", тип="${selectedType}"`);
         territoryButtons.forEach(btn => {
           const territoryNumber = btn.dataset.number;
           const territoryType = btn.dataset.type;
@@ -186,6 +203,7 @@
 
         if (!number || isNaN(number) || parseInt(number) <= 0) {
           errorMessage.textContent = "Введіть дійсний номер території (ціле число більше 0)";
+          console.log("Помилка валідації номера території:", number);
           return;
         }
 
@@ -196,10 +214,12 @@
 
         if (existingNumbers.includes(territoryId)) {
           errorMessage.textContent = `Територія з номером ${number} вже існує`;
+          console.log(`Територія ${number} вже існує`);
           return;
         }
 
         try {
+          console.log(`Створення території ${territoryId}:`, { number: parseInt(number), name: name || `Територія ${number}`, type });
           await setDoc(territoryRef, {
             number: parseInt(number),
             name: name || `Територія ${number}`,
@@ -216,6 +236,7 @@
       };
 
       window.editTerritory = async (territoryId, currentName, currentType) => {
+        console.log(`Відкриття редагування території ${territoryId}: name=${currentName}, type=${currentType}`);
         editForm.querySelector("input[name='name']").value = currentName;
         editForm.querySelector(`select[name='type'] option[value='${currentType === "Не призначено" ? "Не призначено" : currentType}']`).selected = true;
         editForm.onsubmit = async (e) => {
@@ -225,6 +246,7 @@
           const type = formData.get("type") === "Не призначено" ? null : formData.get("type");
 
           try {
+            console.log(`Оновлення території ${territoryId}:`, { name: name || `Територія ${territoryId}`, type });
             await updateDoc(doc(db, `territories/${territoryId}`), {
               name: name || `Територія ${territoryId}`,
               type: type
@@ -241,15 +263,18 @@
       };
 
       window.deleteTerritory = async (territoryId) => {
+        console.log(`Спроба видалення території ${territoryId}`);
         const historyRef = collection(db, `territories/${territoryId}/history`);
         const historySnapshot = await getDocs(historyRef);
         if (!historySnapshot.empty) {
+          console.log(`Територія ${territoryId} має ${historySnapshot.size} записів в історії, видалення заборонено`);
           alert("Територію не можна видалити, оскільки вона має записи в історії.");
           return;
         }
 
         if (confirm(`Ви впевнені, що хочете видалити територію ${territoryId}?`)) {
           try {
+            console.log(`Видалення території ${territoryId}`);
             await deleteDoc(doc(db, `territories/${territoryId}`));
             await loadTerritories();
           } catch (error) {
