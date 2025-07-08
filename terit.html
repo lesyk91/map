@@ -7,10 +7,10 @@
   <title>Території</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
-    .territory-btn {
+    .territory-btn, .action-btn {
       transition: all 0.3s ease;
     }
-    .territory-btn:hover {
+    .territory-btn:hover, .action-btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
@@ -21,7 +21,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, collection, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -80,25 +80,31 @@
             territories.push({
               id: territoryId,
               number: data.number || parseInt(territoryId) || 0,
+              name: data.name || `Територія ${territoryId}`,
               type: data.type || "Приватна"
             });
           });
 
-          // Сортування за номером
           territories.sort((a, b) => a.number - b.number);
 
           territories.forEach(territory => {
-            const { id, number, type } = territory;
-            const btn = document.createElement("button");
-            btn.innerHTML = `Територія ${number} <span class="text-sm text-gray-300">(${type})</span>`;
-            btn.className = "territory-btn bg-blue-500 text-white font-semibold py-3 px-6 rounded-lg w-full";
-            btn.dataset.number = number;
-            btn.dataset.type = type;
-            btn.onclick = () => {
+            const { id, number, name, type } = territory;
+            const div = document.createElement("div");
+            div.className = "flex items-center justify-between bg-blue-500 text-white font-semibold py-3 px-6 rounded-lg w-full mb-2";
+            div.innerHTML = `
+              <button class="territory-btn flex-grow text-left" data-number="${number}" data-type="${type}">
+                ${name} <span class="text-sm text-gray-300">(${type})</span>
+              </button>
+              <div class="flex space-x-2">
+                <button class="action-btn bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-lg" onclick="editTerritory('${id}', '${name}', '${type}')">Редагувати</button>
+                <button class="action-btn bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-lg" onclick="deleteTerritory('${id}')">Видалити</button>
+              </div>
+            `;
+            div.querySelector(".territory-btn").onclick = () => {
               window.location.href = `territory-detail.html?number=${id}`;
             };
-            container.appendChild(btn);
-            territoryButtons.push(btn);
+            container.appendChild(div);
+            territoryButtons.push(div.querySelector(".territory-btn"));
           });
 
           if (territoryButtons.length === 0) {
@@ -121,7 +127,7 @@
           const territoryType = btn.dataset.type;
           const matchesSearch = searchTerm === '' || `територія ${territoryNumber}`.toLowerCase().includes(searchTerm);
           const matchesType = selectedType === '' || selectedType === territoryType;
-          btn.style.display = matchesSearch && matchesType ? 'block' : 'none';
+          btn.parentElement.style.display = matchesSearch && matchesType ? 'flex' : 'none';
         });
       }
 
@@ -129,6 +135,7 @@
         e.preventDefault();
         const formData = new FormData(createForm);
         const number = formData.get("number").trim();
+        const name = formData.get("name").trim();
         const type = formData.get("type");
 
         if (!number || isNaN(number) || parseInt(number) <= 0) {
@@ -149,6 +156,7 @@
         try {
           await setDoc(territoryRef, {
             number: parseInt(number),
+            name: name || `Територія ${number}`,
             type: type
           });
           errorMessage.textContent = "";
@@ -157,6 +165,77 @@
         } catch (error) {
           console.error("Помилка створення території:", error);
           errorMessage.textContent = "Помилка при створенні території: " + error.message;
+        }
+      };
+
+      window.editTerritory = async (territoryId, currentName, currentType) => {
+        const form = document.createElement("form");
+        form.className = "bg-white p-6 rounded-lg shadow-md mb-6";
+        form.innerHTML = `
+          <h3 class="text-lg font-semibold mb-4">Редагувати територію ${territoryId}</h3>
+          <div class="mb-4">
+            <input 
+              name="name" 
+              value="${currentName}" 
+              placeholder="Назва території" 
+              class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+          </div>
+          <div class="mb-4">
+            <select 
+              name="type" 
+              required 
+              class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Приватна" ${currentType === "Приватна" ? "selected" : ""}>Приватна</option>
+              <option value="Поверхівки" ${currentType === "Поверхівки" ? "selected" : ""}>Поверхівки</option>
+              <option value="Ділова" ${currentType === "Ділова" ? "selected" : ""}>Ділова</option>
+            </select>
+          </div>
+          <button 
+            type="submit" 
+            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg"
+          >
+            Зберегти
+          </button>
+        `;
+        form.onsubmit = async (e) => {
+          e.preventDefault();
+          const formData = new FormData(form);
+          const name = formData.get("name").trim();
+          const type = formData.get("type");
+
+          try {
+            await updateDoc(doc(db, `territories/${territoryId}`), {
+              name: name || `Територія ${territoryId}`,
+              type: type
+            });
+            await loadTerritories();
+          } catch (error) {
+            console.error("Помилка редагування території:", error);
+            errorMessage.textContent = "Помилка при редагуванні території: " + error.message;
+          }
+        };
+        container.innerHTML = '';
+        container.appendChild(form);
+      };
+
+      window.deleteTerritory = async (territoryId) => {
+        const historyRef = collection(db, `territories/${territoryId}/history`);
+        const historySnapshot = await getDocs(historyRef);
+        if (!historySnapshot.empty) {
+          alert("Територію не можна видалити, оскільки вона має записи в історії.");
+          return;
+        }
+
+        if (confirm(`Ви впевнені, що хочете видалити територію ${territoryId}?`)) {
+          try {
+            await deleteDoc(doc(db, `territories/${territoryId}`));
+            await loadTerritories();
+          } catch (error) {
+            console.error("Помилка видалення території:", error);
+            errorMessage.textContent = "Помилка при видаленні території: " + error.message;
+          }
         }
       };
     });
@@ -178,7 +257,7 @@
             <option value="">Всі типи</option>
             <option value="Приватна">Приватна</option>
             <option value="Поверхівки">Поверхівки</option>
-            <option value="Ділова">Ділова</option>
+            <option value="Ділова cirka">Ділова</option>
           </select>
         </div>
         <nav class="flex space-x-2">
@@ -220,6 +299,14 @@
             >
           </div>
           <div>
+            <input 
+              name="name" 
+              type="text" 
+              placeholder="Назва території (необов’язково)" 
+              class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+          </div>
+          <div>
             <select 
               name="type" 
               required 
@@ -239,7 +326,7 @@
         </form>
         <p id="error-message" class="text-red-600 mt-2"></p>
       </div>
-      <div id="territories" class="grid grid-cols-3 gap-4"></div>
+      <div id="territories" class="grid grid-cols-1 gap-4"></div>
     </div>
   </main>
 
