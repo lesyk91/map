@@ -127,7 +127,7 @@
               id: territoryId,
               number: data.number || parseInt(territoryId) || 0,
               name: data.name || `Територія ${territoryId}`,
-              type: data.type || "Приватна"
+              type: data.type || "Не призначено"
             });
           });
 
@@ -182,7 +182,7 @@
         const formData = new FormData(createForm);
         const number = formData.get("number").trim();
         const name = formData.get("name").trim();
-        const type = formData.get("type");
+        const type = formData.get("type") === "Не призначено" ? null : formData.get("type");
 
         if (!number || isNaN(number) || parseInt(number) <= 0) {
           errorMessage.textContent = "Введіть дійсний номер території (ціле число більше 0)";
@@ -217,12 +217,12 @@
 
       window.editTerritory = async (territoryId, currentName, currentType) => {
         editForm.querySelector("input[name='name']").value = currentName;
-        editForm.querySelector(`select[name='type'] option[value='${currentType}']`).selected = true;
+        editForm.querySelector(`select[name='type'] option[value='${currentType === "Не призначено" ? "Не призначено" : currentType}']`).selected = true;
         editForm.onsubmit = async (e) => {
           e.preventDefault();
           const formData = new FormData(editForm);
           const name = formData.get("name").trim();
-          const type = formData.get("type");
+          const type = formData.get("type") === "Не призначено" ? null : formData.get("type");
 
           try {
             await updateDoc(doc(db, `territories/${territoryId}`), {
@@ -275,6 +275,7 @@
           >
           <select id="type-filter" class="w-full sm:w-48 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">Всі типи</option>
+            <option value="Не призначено">Не призначено</option>
             <option value="Приватна">Приватна</option>
             <option value="Поверхівки">Поверхівки</option>
             <option value="Ділова">Ділова</option>
@@ -321,7 +322,7 @@
     <div class="modal-content">
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold">Створити нову територію</h3>
-        <button id="close-create-modal" class="text-gray-600 hover:text-gray-800">&times;</button>
+        <button id="close-create-modal" class="text-gray-600 hover:text-gray-800">×</button>
       </div>
       <form id="create-territory-form" class="space-y-4">
         <div>
@@ -347,6 +348,7 @@
             required 
             class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
+            <option value="Не призначено">Не призначено</option>
             <option value="Приватна">Приватна</option>
             <option value="Поверхівки">Поверхівки</option>
             <option value="Ділова">Ділова</option>
@@ -368,7 +370,7 @@
     <div class="modal-content">
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold">Редагувати територію</h3>
-        <button id="close-edit-modal" class="text-gray-600 hover:text-gray-800">&times;</button>
+        <button id="close-edit-modal" class="text-gray-600 hover:text-gray-800">×</button>
       </div>
       <form id="edit-territory-form" class="space-y-4">
         <div>
@@ -385,6 +387,7 @@
             required 
             class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
+            <option value="Не призначено">Не призначено</option>
             <option value="Приватна">Приватна</option>
             <option value="Поверхівки">Поверхівки</option>
             <option value="Ділова">Ділова</option>
