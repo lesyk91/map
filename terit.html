@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta name="robots" content="noindex, nofollow">
+<meta name="robots" content="noindex, nofollow">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Території</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link dreamed href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
     .territory-btn {
       transition: all 0.3s ease;
@@ -17,17 +17,11 @@
     html {
       scroll-behavior: smooth;
     }
-    #modal {
-      display: none;
-    }
-    #modal.active {
-      display: flex;
-    }
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, collection, getDocs, addDoc, setDoc, doc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -40,115 +34,62 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+    export const auth = getAuth(app);
+    export const db = getFirestore(app);
+
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
     document.addEventListener("DOMContentLoaded", () => {
       const container = document.getElementById("territories");
       const logoutBtn = document.getElementById("logout");
       const searchInput = document.getElementById("search");
-      const createBtn = document.getElementById("create-territory");
-      const modal = document.getElementById("modal");
-      const closeModalBtn = document.getElementById("close-modal");
-      const createForm = document.getElementById("create-form");
+      const typeFilter = document.getElementById("type-filter");
+
       let territoryButtons = [];
 
       onAuthStateChanged(auth, (user) => {
-        if (!user) {
-          window.location.href = "index.html";
-        } else {
-          loadTerritories();
-        }
+        if (!user) window.location.href = "index.html";
+        else loadTerritories();
       });
 
-      logoutBtn.onclick = () => {
-        if (confirm("Ви впевнені, що хочете вийти?")) {
-          signOut(auth);
-        }
-      };
-
-      createBtn.onclick = () => modal.classList.add("active");
-
-      closeModalBtn.onclick = () => modal.classList.remove("active");
-
-      createForm.onsubmit = async (e) => {
-        e.preventDefault();
-        const name = document.getElementById("territory-name").value.trim();
-        const type = document.getElementById("territory-type").value;
-        if (!name || !type) {
-          alert("Будь ласка, заповніть усі поля.");
-          return;
-        }
-        try {
-          // Get the highest territory ID
-          const territoriesRef = collection(db, "territories");
-          const snapshot = await getDocs(territoriesRef);
-          const ids = snapshot.docs.map(doc => parseInt(doc.id)).filter(id => !isNaN(id));
-          const newId = ids.length > 0 ? Math.max(...ids) + 1 : 1;
-
-          // Create territory document
-          await setDoc(doc(db, "territories", newId.toString()), {
-            id: newId,
-            name,
-            type,
-            createdAt: new Date()
-          });
-
-          // Create history entry
-          await addDoc(collection(db, `territories/${newId}/history`), {
-            action: "created",
-            timestamp: new Date(),
-            userId: auth.currentUser.uid,
-            details: `Територія ${name} (${type}) створена`
-          });
-
-          modal.classList.remove("active");
-          createForm.reset();
-          loadTerritories();
-          alert("Територію успішно створено!");
-        } catch (error) {
-          console.error("Помилка створення території:", error);
-          alert("Виникла помилка при створенні території.");
-        }
-      };
+      logoutBtn.onclick = () => signOut(auth);
 
       async function loadTerritories() {
-        container.innerHTML = '<div class="text-center">Завантаження...</div>';
+        container.innerHTML = '';
         territoryButtons = [];
-        try {
-          const territoriesRef = collection(db, "territories");
-          const snapshot = await getDocs(territoriesRef);
-          container.innerHTML = '';
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            const btn = document.createElement("button");
-            btn.textContent = `Територія ${data.id}: ${data.name} (${data.type})`;
-            btn.className = "territory-btn bg-blue-500 text-white font-semibold py-3 px-6 rounded-lg w-full";
-            btn.dataset.id = data.id;
-            btn.dataset.name = data.name;
-            btn.dataset.type = data.type;
-            btn.onclick = () => window.location.href = `territory-detail.html?number=${data.id}`;
-            container.appendChild(btn);
-            territoryButtons.push(btn);
-          });
-          if (snapshot.empty) {
-            container.innerHTML = '<div class="text-center text-gray-500">Території відсутні</div>';
-          }
-        } catch (error) {
-          console.error("Помилка завантаження територій:", error);
-          container.innerHTML = '<div class="text-center text-red-500">Помилка завантаження територій</div>';
+        for (let i = 1; i <= 102; i++) {
+          const btn = document.createElement("button");
+          const territoryRef = doc(db, `territories/${i}`);
+          const territorySnap = await getDoc(territoryRef);
+          const territoryData = territorySnap.exists() ? territorySnap.data() : {};
+          const type = territoryData.type || "Приватна"; // Default to Приватна
+
+          btn.innerHTML = `Територія ${i} <span class="text-sm text-gray-300">(${type})</span>`;
+          btn.className = "territory-btn bg-blue-500 text-white font-semibold py-3 px-6 rounded-lg w-full";
+          btn.dataset.number = i;
+          btn.dataset.type = type;
+          btn.onclick = () => {
+            window.location.href = `territory-detail.html?number=${i}`;
+          };
+          container.appendChild(btn);
+          territoryButtons.push(btn);
         }
       }
 
-      searchInput.addEventListener("input", (e) => {
-        const searchTerm = e.target.value.trim().toLowerCase();
+      searchInput.addEventListener("input", filterTerritories);
+      typeFilter.addEventListener("change", filterTerritories);
+
+      function filterTerritories() {
+        const searchTerm = searchInput.value.trim().toLowerCase();
+        const selectedType = typeFilter.value;
         territoryButtons.forEach(btn => {
-          const id = btn.dataset.id;
-          const name = btn.dataset.name.toLowerCase();
-          const type = btn.dataset.type.toLowerCase();
-          btn.style.display = searchTerm === '' || id.includes(searchTerm) || name.includes(searchTerm) || type.includes(searchTerm) ? 'block' : 'none';
+          const territoryNumber = btn.dataset.number;
+          const territoryType = btn.dataset.type;
+          const matchesSearch = searchTerm === '' || `територія ${territoryNumber}`.toLowerCase().includes(searchTerm);
+          const matchesType = selectedType === '' || selectedType === territoryType;
+          btn.style.display = matchesSearch && matchesType ? 'block' : 'none';
         });
-      });
+      }
     });
   </script>
 </head>
@@ -157,28 +98,33 @@
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
       <h1 class="text-2xl font-bold text-gray-800">Список територій</h1>
       <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
-        <button id="create-territory" class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
-          Створити Територію
-        </button>
-        <input 
-          id="search" 
-          type="text" 
-          placeholder="Пошук за номером, назвою або типом" 
-          class="w-full sm:w-64 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
+        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+          <input 
+            id="search" 
+            type="text" 
+            placeholder="Пошук території (напр. 42)" 
+            class="w-full sm:w-64 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+          <select id="type-filter" class="w-full sm:w-48 px-4 py-2 rounded-lg border border-Gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Всі типи</option>
+            <option value="Приватна">Приватна</option>
+            <option value="Поверхівки">Поверхівки</option>
+            <option value="Ділова">Ділова</option>
+          </select>
+        </div>
         <nav class="flex space-x-2">
           <a href="index.html">
-            <button class="bg-green-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+            <button class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
               Карта
             </button>
           </a>
           <a href="user.html">
-            <button class="bg-yellow-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+            <button class="bg-yellow-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
               Користувачі
             </button>
           </a>
           <a href="zvit.html">
-            <button class="bg-gray-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+            <button class="bg-gray-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
               Звіти
             </button>
           </a>
@@ -192,48 +138,9 @@
 
   <main class="flex-grow p-4">
     <div class="max-w-7xl mx-auto">
-      <div id="territories" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+      <div id="territories" class="grid grid-cols-3 gap-4"></div>
     </div>
   </main>
-
-  <div id="modal" class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center">
-    <div class="bg-white p-6 rounded-lg w-full max-w-md">
-      <h2 class="text-xl font-bold mb-4">Створити нову територію</h2>
-      <form id="create-form">
-        <div class="mb-4">
-          <label for="territory-name" class="block text-gray-700">Назва території</label>
-          <input 
-            id="territory-name" 
-            type="text" 
-            placeholder="Введіть назву" 
-            class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          >
-        </div>
-        <div class="mb-4">
-          <label for="territory-type" class="block text-gray-700">Тип території</label>
-          <select 
-            id="territory-type" 
-            class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          >
-            <option value="" disabled selected>Виберіть тип</option>
-            <option value="Приватна">Приватна</option>
-            <option value="Поверхівки">Поверхівки</option>
-            <option value="Ділова">Ділова</option>
-          </select>
-        </div>
-        <div class="flex justify-end space-x-2">
-          <button type="button" id="close-modal" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">
-            Скасувати
-          </button>
-          <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">
-            Створити
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
 
   <footer class="bg-white shadow-inner p-4 mt-auto">
     <div class="max-w-7xl mx-auto text-center text-gray-600">
