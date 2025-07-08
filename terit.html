@@ -135,7 +135,11 @@
           snapshot.forEach(docSnap => {
             const territoryId = docSnap.id;
             const data = docSnap.data();
-            console.log(`Територія ${territoryId}:`, data);
+            console.log(`Територія ${territoryId}:`, {
+              id: territoryId,
+              exists: docSnap.exists(),
+              data: data
+            });
             territories.push({
               id: territoryId,
               number: data.number || parseInt(territoryId) || 0,
@@ -149,6 +153,7 @@
           container.innerHTML = '';
           territories.forEach(territory => {
             const { id, number, name, type } = territory;
+            console.log(`Додаємо кнопку для території ${id}: name=${name}, type=${type}`);
             const div = document.createElement("div");
             div.className = "flex items-center justify-between bg-blue-500 text-white font-semibold py-3 px-6 rounded-lg w-full mb-2";
             div.innerHTML = `
