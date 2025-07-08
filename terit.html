@@ -10,7 +10,7 @@
     .territory-btn {
       transition: all 0.3s ease;
     }
-    .territory-btn hovered {
+    .territory-btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
@@ -27,7 +27,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, addDoc, setDoc, doc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -61,7 +61,11 @@
         }
       });
 
-      logoutBtn.onclick = () => signOut(auth);
+      logoutBtn.onclick = () => {
+        if (confirm("Ви впевнені, що хочете вийти?")) {
+          signOut(auth);
+        }
+      };
 
       createBtn.onclick = () => modal.classList.add("active");
 
@@ -76,18 +80,32 @@
           return;
         }
         try {
+          // Get the highest territory ID
           const territoriesRef = collection(db, "territories");
           const snapshot = await getDocs(territoriesRef);
-          const newId = snapshot.size + 1; // Generate sequential ID
-          await addDoc(territoriesRef, {
+          const ids = snapshot.docs.map(doc => parseInt(doc.id)).filter(id => !isNaN(id));
+          const newId = ids.length > 0 ? Math.max(...ids) + 1 : 1;
+
+          // Create territory document
+          await setDoc(doc(db, "territories", newId.toString()), {
             id: newId,
             name,
             type,
             createdAt: new Date()
           });
+
+          // Create history entry
+          await addDoc(collection(db, `territories/${newId}/history`), {
+            action: "created",
+            timestamp: new Date(),
+            userId: auth.currentUser.uid,
+            details: `Територія ${name} (${type}) створена`
+          });
+
           modal.classList.remove("active");
           createForm.reset();
           loadTerritories();
+          alert("Територію успішно створено!");
         } catch (error) {
           console.error("Помилка створення території:", error);
           alert("Виникла помилка при створенні території.");
@@ -104,7 +122,7 @@
           snapshot.forEach(doc => {
             const data = doc.data();
             const btn = document.createElement("button");
-            btn.textContent = `${data.name} (${data.type})`;
+            btn.textContent = `Територія ${data.id}: ${data.name} (${data.type})`;
             btn.className = "territory-btn bg-blue-500 text-white font-semibold py-3 px-6 rounded-lg w-full";
             btn.dataset.id = data.id;
             btn.dataset.name = data.name;
@@ -113,6 +131,9 @@
             container.appendChild(btn);
             territoryButtons.push(btn);
           });
+          if (snapshot.empty) {
+            container.innerHTML = '<div class="text-center text-gray-500">Території відсутні</div>';
+          }
         } catch (error) {
           console.error("Помилка завантаження територій:", error);
           container.innerHTML = '<div class="text-center text-red-500">Помилка завантаження територій</div>';
@@ -122,10 +143,10 @@
       searchInput.addEventListener("input", (e) => {
         const searchTerm = e.target.value.trim().toLowerCase();
         territoryButtons.forEach(btn => {
+          const id = btn.dataset.id;
           const name = btn.dataset.name.toLowerCase();
           const type = btn.dataset.type.toLowerCase();
-          const id = btn.dataset.id;
-          btn.style.display = searchTerm === '' || name.includes(searchTerm) || type.includes(searchTerm) || id.includes(searchTerm) ? 'block' : 'none';
+          btn.style.display = searchTerm === '' || id.includes(searchTerm) || name.includes(searchTerm) || type.includes(searchTerm) ? 'block' : 'none';
         });
       });
     });
@@ -142,7 +163,7 @@
         <input 
           id="search" 
           type="text" 
-          placeholder="Пошук за назвою, типом або номером" 
+          placeholder="Пошук за номером, назвою або типом" 
           class="w-full sm:w-64 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
         <nav class="flex space-x-2">
