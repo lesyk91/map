@@ -21,7 +21,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, collection, getDocs, doc, setDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -49,37 +49,65 @@
 
       let territoryButtons = [];
 
-      onAuthStateChanged(auth, (user) => {
-        if (!user) window.location.href = "index.html";
-        else loadTerritories();
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          window.location.href = "index.html";
+        } else {
+          await loadTerritories();
+        }
       });
 
       logoutBtn.onclick = () => signOut(auth);
 
       async function loadTerritories() {
-        container.innerHTML = '';
+        container.innerHTML = '<p class="text-gray-600">Завантаження територій...</p>';
         territoryButtons = [];
-        const territoriesRef = collection(db, "territories");
-        const q = query(territoriesRef, orderBy("number", "asc"));
-        const snapshot = await getDocs(q);
+        try {
+          const territoriesRef = collection(db, "territories");
+          const snapshot = await getDocs(territoriesRef);
+          console.log(`Знайдено ${snapshot.size} територій`);
 
-        snapshot.forEach(docSnap => {
-          const territoryId = docSnap.id;
-          const data = docSnap.data();
-          const type = data.type || "Приватна";
-          const number = data.number;
+          if (snapshot.empty) {
+            container.innerHTML = '<p class="text-gray-600">Території відсутні. Створіть нову територію.</p>';
+            return;
+          }
 
-          const btn = document.createElement("button");
-          btn.innerHTML = `Територія ${number} <span class="text-sm text-gray-300">(${type})</span>`;
-          btn.className = "territory-btn bg-blue-500 text-white font-semibold py-3 px-6 rounded-lg w-full";
-          btn.dataset.number = number;
-          btn.dataset.type = type;
-          btn.onclick = () => {
-            window.location.href = `territory-detail.html?number=${territoryId}`;
-          };
-          container.appendChild(btn);
-          territoryButtons.push(btn);
-        });
+          const territories = [];
+          snapshot.forEach(docSnap => {
+            const territoryId = docSnap.id;
+            const data = docSnap.data();
+            console.log(`Територія ${territoryId}:`, data);
+            territories.push({
+              id: territoryId,
+              number: data.number || parseInt(territoryId) || 0,
+              type: data.type || "Приватна"
+            });
+          });
+
+          // Сортування за номером
+          territories.sort((a, b) => a.number - b.number);
+
+          territories.forEach(territory => {
+            const { id, number, type } = territory;
+            const btn = document.createElement("button");
+            btn.innerHTML = `Територія ${number} <span class="text-sm text-gray-300">(${type})</span>`;
+            btn.className = "territory-btn bg-blue-500 text-white font-semibold py-3 px-6 rounded-lg w-full";
+            btn.dataset.number = number;
+            btn.dataset.type = type;
+            btn.onclick = () => {
+              window.location.href = `territory-detail.html?number=${id}`;
+            };
+            container.appendChild(btn);
+            territoryButtons.push(btn);
+          });
+
+          if (territoryButtons.length === 0) {
+            container.innerHTML = '<p class="text-gray-600">Території відсутні. Створіть нову територію.</p>';
+          }
+        } catch (error) {
+          console.error("Помилка завантаження територій:", error);
+          container.innerHTML = '<p class="text-red-600">Помилка завантаження територій.</p>';
+        }
       }
 
       searchInput.addEventListener("input", filterTerritories);
@@ -108,11 +136,12 @@
           return;
         }
 
-        const territoryRef = doc(db, `territories/${number}`);
-        const territorySnap = await getDocs(collection(db, "territories"));
-        const existingNumbers = territorySnap.docs.map(doc => doc.data().number);
+        const territoryId = number;
+        const territoryRef = doc(db, `territories/${territoryId}`);
+        const territoriesSnapshot = await getDocs(collection(db, "territories"));
+        const existingNumbers = territoriesSnapshot.docs.map(doc => doc.id);
 
-        if (existingNumbers.includes(parseInt(number))) {
+        if (existingNumbers.includes(territoryId)) {
           errorMessage.textContent = `Територія з номером ${number} вже існує`;
           return;
         }
@@ -126,6 +155,7 @@
           createForm.reset();
           await loadTerritories();
         } catch (error) {
+          console.error("Помилка створення території:", error);
           errorMessage.textContent = "Помилка при створенні території: " + error.message;
         }
       };
