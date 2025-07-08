@@ -17,6 +17,29 @@
     html {
       scroll-behavior: smooth;
     }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 50;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.4);
+    }
+    .modal-content {
+      background-color: white;
+      margin: 15% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    .modal.show {
+      display: block;
+    }
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
@@ -44,8 +67,15 @@
       const logoutBtn = document.getElementById("logout");
       const searchInput = document.getElementById("search");
       const typeFilter = document.getElementById("type-filter");
+      const createModal = document.getElementById("create-territory-modal");
+      const editModal = document.getElementById("edit-territory-modal");
+      const createBtn = document.getElementById("create-territory-btn");
+      const closeCreateModal = document.getElementById("close-create-modal");
+      const closeEditModal = document.getElementById("close-edit-modal");
       const createForm = document.getElementById("create-territory-form");
+      const editForm = document.getElementById("edit-territory-form");
       const errorMessage = document.getElementById("error-message");
+      const editErrorMessage = document.getElementById("edit-error-message");
 
       let territoryButtons = [];
 
@@ -58,6 +88,22 @@
       });
 
       logoutBtn.onclick = () => signOut(auth);
+
+      createBtn.onclick = () => {
+        createModal.classList.add("show");
+      };
+
+      closeCreateModal.onclick = () => {
+        createModal.classList.remove("show");
+        createForm.reset();
+        errorMessage.textContent = "";
+      };
+
+      closeEditModal.onclick = () => {
+        editModal.classList.remove("show");
+        editForm.reset();
+        editErrorMessage.textContent = "";
+      };
 
       async function loadTerritories() {
         container.innerHTML = '<p class="text-gray-600">Завантаження територій...</p>';
@@ -161,6 +207,7 @@
           });
           errorMessage.textContent = "";
           createForm.reset();
+          createModal.classList.remove("show");
           await loadTerritories();
         } catch (error) {
           console.error("Помилка створення території:", error);
@@ -169,39 +216,11 @@
       };
 
       window.editTerritory = async (territoryId, currentName, currentType) => {
-        const form = document.createElement("form");
-        form.className = "bg-white p-6 rounded-lg shadow-md mb-6";
-        form.innerHTML = `
-          <h3 class="text-lg font-semibold mb-4">Редагувати територію ${territoryId}</h3>
-          <div class="mb-4">
-            <input 
-              name="name" 
-              value="${currentName}" 
-              placeholder="Назва території" 
-              class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-          </div>
-          <div class="mb-4">
-            <select 
-              name="type" 
-              required 
-              class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="Приватна" ${currentType === "Приватна" ? "selected" : ""}>Приватна</option>
-              <option value="Поверхівки" ${currentType === "Поверхівки" ? "selected" : ""}>Поверхівки</option>
-              <option value="Ділова" ${currentType === "Ділова" ? "selected" : ""}>Ділова</option>
-            </select>
-          </div>
-          <button 
-            type="submit" 
-            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg"
-          >
-            Зберегти
-          </button>
-        `;
-        form.onsubmit = async (e) => {
+        editForm.querySelector("input[name='name']").value = currentName;
+        editForm.querySelector(`select[name='type'] option[value='${currentType}']`).selected = true;
+        editForm.onsubmit = async (e) => {
           e.preventDefault();
-          const formData = new FormData(form);
+          const formData = new FormData(editForm);
           const name = formData.get("name").trim();
           const type = formData.get("type");
 
@@ -210,14 +229,15 @@
               name: name || `Територія ${territoryId}`,
               type: type
             });
+            editErrorMessage.textContent = "";
+            editModal.classList.remove("show");
             await loadTerritories();
           } catch (error) {
             console.error("Помилка редагування території:", error);
-            errorMessage.textContent = "Помилка при редагуванні території: " + error.message;
+            editErrorMessage.textContent = "Помилка при редагуванні території: " + error.message;
           }
         };
-        container.innerHTML = '';
-        container.appendChild(form);
+        editModal.classList.add("show");
       };
 
       window.deleteTerritory = async (territoryId) => {
@@ -257,8 +277,14 @@
             <option value="">Всі типи</option>
             <option value="Приватна">Приватна</option>
             <option value="Поверхівки">Поверхівки</option>
-            <option value="Ділова cirka">Ділова</option>
+            <option value="Ділова">Ділова</option>
           </select>
+          <button 
+            id="create-territory-btn" 
+            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg"
+          >
+            Створити територію
+          </button>
         </div>
         <nav class="flex space-x-2">
           <a href="index.html">
@@ -286,49 +312,94 @@
 
   <main class="flex-grow p-4">
     <div class="max-w-7xl mx-auto">
-      <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-        <h3 class="text-lg font-semibold mb-4">Створити нову територію</h3>
-        <form id="create-territory-form" class="space-y-4">
-          <div>
-            <input 
-              name="number" 
-              type="number" 
-              placeholder="Номер території" 
-              required 
-              class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-          </div>
-          <div>
-            <input 
-              name="name" 
-              type="text" 
-              placeholder="Назва території (необов’язково)" 
-              class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-          </div>
-          <div>
-            <select 
-              name="type" 
-              required 
-              class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="Приватна">Приватна</option>
-              <option value="Поверхівки">Поверхівки</option>
-              <option value="Ділова">Ділова</option>
-            </select>
-          </div>
-          <button 
-            type="submit" 
-            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg"
-          >
-            Створити
-          </button>
-        </form>
-        <p id="error-message" class="text-red-600 mt-2"></p>
-      </div>
       <div id="territories" class="grid grid-cols-1 gap-4"></div>
     </div>
   </main>
+
+  <!-- Modal for creating territory -->
+  <div id="create-territory-modal" class="modal">
+    <div class="modal-content">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Створити нову територію</h3>
+        <button id="close-create-modal" class="text-gray-600 hover:text-gray-800">&times;</button>
+      </div>
+      <form id="create-territory-form" class="space-y-4">
+        <div>
+          <input 
+            name="number" 
+            type="number" 
+            placeholder="Номер території" 
+            required 
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+        </div>
+        <div>
+          <input 
+            name="name" 
+            type="text" 
+            placeholder="Назва території (необов’язково)" 
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+        </div>
+        <div>
+          <select 
+            name="type" 
+            required 
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="Приватна">Приватна</option>
+            <option value="Поверхівки">Поверхівки</option>
+            <option value="Ділова">Ділова</option>
+          </select>
+        </div>
+        <button 
+          type="submit" 
+          class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg"
+        >
+          Створити
+        </button>
+      </form>
+      <p id="error-message" class="text-red-600 mt-2"></p>
+    </div>
+  </div>
+
+  <!-- Modal for editing territory -->
+  <div id="edit-territory-modal" class="modal">
+    <div class="modal-content">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Редагувати територію</h3>
+        <button id="close-edit-modal" class="text-gray-600 hover:text-gray-800">&times;</button>
+      </div>
+      <form id="edit-territory-form" class="space-y-4">
+        <div>
+          <input 
+            name="name" 
+            type="text" 
+            placeholder="Назва території (необов’язково)" 
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+        </div>
+        <div>
+          <select 
+            name="type" 
+            required 
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="Приватна">Приватна</option>
+            <option value="Поверхівки">Поверхівки</option>
+            <option value="Ділова">Ділова</option>
+          </select>
+        </div>
+        <button 
+          type="submit" 
+          class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg"
+        >
+          Зберегти
+        </button>
+      </form>
+      <p id="edit-error-message" class="text-red-600 mt-2"></p>
+    </div>
+  </div>
 
   <footer class="bg-white shadow-inner p-4 mt-auto">
     <div class="max-w-7xl mx-auto text-center text-gray-600">
