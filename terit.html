@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<meta name="robots" content="noindex, nofollow">
+  <meta name="robots" content="noindex, nofollow">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Території</title>
-  <link dreamed href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
     .territory-btn {
       transition: all 0.3s ease;
@@ -21,7 +21,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, doc, setDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -34,8 +34,8 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    export const auth = getAuth(app);
-    export const db = getFirestore(app);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
     import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
@@ -44,6 +44,8 @@
       const logoutBtn = document.getElementById("logout");
       const searchInput = document.getElementById("search");
       const typeFilter = document.getElementById("type-filter");
+      const createForm = document.getElementById("create-territory-form");
+      const errorMessage = document.getElementById("error-message");
 
       let territoryButtons = [];
 
@@ -57,23 +59,27 @@
       async function loadTerritories() {
         container.innerHTML = '';
         territoryButtons = [];
-        for (let i = 1; i <= 102; i++) {
-          const btn = document.createElement("button");
-          const territoryRef = doc(db, `territories/${i}`);
-          const territorySnap = await getDoc(territoryRef);
-          const territoryData = territorySnap.exists() ? territorySnap.data() : {};
-          const type = territoryData.type || "Приватна"; // Default to Приватна
+        const territoriesRef = collection(db, "territories");
+        const q = query(territoriesRef, orderBy("number", "asc"));
+        const snapshot = await getDocs(q);
 
-          btn.innerHTML = `Територія ${i} <span class="text-sm text-gray-300">(${type})</span>`;
+        snapshot.forEach(docSnap => {
+          const territoryId = docSnap.id;
+          const data = docSnap.data();
+          const type = data.type || "Приватна";
+          const number = data.number;
+
+          const btn = document.createElement("button");
+          btn.innerHTML = `Територія ${number} <span class="text-sm text-gray-300">(${type})</span>`;
           btn.className = "territory-btn bg-blue-500 text-white font-semibold py-3 px-6 rounded-lg w-full";
-          btn.dataset.number = i;
+          btn.dataset.number = number;
           btn.dataset.type = type;
           btn.onclick = () => {
-            window.location.href = `territory-detail.html?number=${i}`;
+            window.location.href = `territory-detail.html?number=${territoryId}`;
           };
           container.appendChild(btn);
           territoryButtons.push(btn);
-        }
+        });
       }
 
       searchInput.addEventListener("input", filterTerritories);
@@ -90,6 +96,39 @@
           btn.style.display = matchesSearch && matchesType ? 'block' : 'none';
         });
       }
+
+      createForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(createForm);
+        const number = formData.get("number").trim();
+        const type = formData.get("type");
+
+        if (!number || isNaN(number) || parseInt(number) <= 0) {
+          errorMessage.textContent = "Введіть дійсний номер території (ціле число більше 0)";
+          return;
+        }
+
+        const territoryRef = doc(db, `territories/${number}`);
+        const territorySnap = await getDocs(collection(db, "territories"));
+        const existingNumbers = territorySnap.docs.map(doc => doc.data().number);
+
+        if (existingNumbers.includes(parseInt(number))) {
+          errorMessage.textContent = `Територія з номером ${number} вже існує`;
+          return;
+        }
+
+        try {
+          await setDoc(territoryRef, {
+            number: parseInt(number),
+            type: type
+          });
+          errorMessage.textContent = "";
+          createForm.reset();
+          await loadTerritories();
+        } catch (error) {
+          errorMessage.textContent = "Помилка при створенні території: " + error.message;
+        }
+      };
     });
   </script>
 </head>
@@ -105,7 +144,7 @@
             placeholder="Пошук території (напр. 42)" 
             class="w-full sm:w-64 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-          <select id="type-filter" class="w-full sm:w-48 px-4 py-2 rounded-lg border border-Gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select id="type-filter" class="w-full sm:w-48 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">Всі типи</option>
             <option value="Приватна">Приватна</option>
             <option value="Поверхівки">Поверхівки</option>
@@ -119,12 +158,12 @@
             </button>
           </a>
           <a href="user.html">
-            <button class="bg-yellow-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+            <button class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
               Користувачі
             </button>
           </a>
           <a href="zvit.html">
-            <button class="bg-gray-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+            <button class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
               Звіти
             </button>
           </a>
@@ -138,6 +177,38 @@
 
   <main class="flex-grow p-4">
     <div class="max-w-7xl mx-auto">
+      <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+        <h3 class="text-lg font-semibold mb-4">Створити нову територію</h3>
+        <form id="create-territory-form" class="space-y-4">
+          <div>
+            <input 
+              name="number" 
+              type="number" 
+              placeholder="Номер території" 
+              required 
+              class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+          </div>
+          <div>
+            <select 
+              name="type" 
+              required 
+              class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Приватна">Приватна</option>
+              <option value="Поверхівки">Поверхівки</option>
+              <option value="Ділова">Ділова</option>
+            </select>
+          </div>
+          <button 
+            type="submit" 
+            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg"
+          >
+            Створити
+          </button>
+        </form>
+        <p id="error-message" class="text-red-600 mt-2"></p>
+      </div>
       <div id="territories" class="grid grid-cols-3 gap-4"></div>
     </div>
   </main>
