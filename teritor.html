@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta name="robots" content="noindex, nofollow">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Території</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .territory-btn {
+      transition: all 0.3s ease;
+    }
+    .territory-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+  </style>
+  <script type="module">
+    // firebase.js remains unchanged
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+      authDomain: "map-illintsi.firebaseapp.com",
+      projectId: "map-illintsi",
+      storageBucket: "map-illintsi.firebasestorage.app",
+      messagingSenderId: "62267872375",
+      appId: "1:62267872375:web:10945d2d63b93bccc5e272",
+      measurementId: "G-22L16KP5Z0"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    export const auth = getAuth(app);
+    export const db = getFirestore(app);
+
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const container = document.getElementById("territories");
+      const logoutBtn = document.getElementById("logout");
+      const searchInput = document.getElementById("search");
+
+      // Store buttons for search filtering
+      let territoryButtons = [];
+
+      onAuthStateChanged(auth, (user) => {
+        if (!user) window.location.href = "index.html";
+        else loadTerritories();
+      });
+
+      logoutBtn.onclick = () => signOut(auth);
+
+      function loadTerritories() {
+        container.innerHTML = ''; // Clear container
+        territoryButtons = []; // Reset buttons array
+        for (let i = 1; i <= 102; i++) {
+          const btn = document.createElement("button");
+          btn.textContent = `Територія ${i}`;
+          btn.className = "territory-btn bg-blue-500 text-white font-semibold py-3 px-6 rounded-lg w-full";
+          btn.dataset.number = i; // Store territory number for search
+          btn.onclick = () => {
+            window.location.href = `territory-detail.html?number=${i}`;
+          };
+          container.appendChild(btn);
+          territoryButtons.push(btn);
+        }
+      }
+
+      // Search functionality
+      searchInput.addEventListener("input", (e) => {
+        const searchTerm = e.target.value.trim().toLowerCase();
+        territoryButtons.forEach(btn => {
+          const territoryNumber = btn.dataset.number;
+          if (searchTerm === '' || `територія ${territoryNumber}`.toLowerCase().includes(searchTerm)) {
+            btn.style.display = 'block';
+          } else {
+            btn.style.display = 'none';
+          }
+        });
+      });
+    });
+  </script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+  <header class="bg-white shadow-md p-4 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+      <h1 class="text-2xl font-bold text-gray-800">Список територій</h1>
+      <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+        <!-- Added search input -->
+        <input 
+          id="search" 
+          type="text" 
+          placeholder="Пошук території (напр. 42)" 
+          class="w-full sm:w-64 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+        <nav class="flex space-x-2">
+          <a href="index.html">
+            <button class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              Карта
+            </button>
+          </a>
+          <a href="user.html">
+            <button class="bg-yellow-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              Користувачі
+            </button>
+          </a>
+		   <a href="zvit.html">
+            <button class="bg-gray-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              Звіти
+            </button>
+          </a>
+	<button id="logout" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+            Вийти
+          </button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow p-4">
+    <div class="max-w-7xl mx-auto">
+      <!-- Updated grid to 3 columns on all screen sizes -->
+      <div id="territories" class="grid grid-cols-3 gap-4"></div>
+    </div>
+  </main>
+
+  <footer class="bg-white shadow-inner p-4 mt-auto">
+    <div class="max-w-7xl mx-auto text-center text-gray-600">
+      © 2025 Території. Всі права захищено.
+    </div>
+  </footer>
+</body>
+</html>
