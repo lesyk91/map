@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Імпорт територій</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+      authDomain: "map-illintsi.firebaseapp.com",
+      projectId: "map-illintsi",
+      storageBucket: "map-illintsi.firebasestorage.app",
+      messagingSenderId: "62267872375",
+      appId: "1:62267872375:web:10945d2d63b93bccc5e272",
+      measurementId: "G-22L16KP5Z0"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const fileInput = document.getElementById("file");
+      const logArea = document.getElementById("log");
+      const importBtn = document.getElementById("import-btn");
+      let parsedData = [];
+
+      fileInput.addEventListener("change", handleFile);
+      importBtn.addEventListener("click", importData);
+
+      function log(message, isError = false) {
+        const p = document.createElement("p");
+        p.textContent = message;
+        p.className = isError ? "text-red-600" : "text-green-700";
+        logArea.appendChild(p);
+      }
+
+      function handleFile(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+          parsedData = json.filter(row => row.number); // пропускати пусті рядки
+          logArea.innerHTML = "";
+          log(`Зчитано ${parsedData.length} рядків із файлу`);
+        };
+        reader.readAsArrayBuffer(file);
+      }
+
+      async function importData() {
+        if (parsedData.length === 0) {
+          log("Файл не завантажено або не містить даних", true);
+          return;
+        }
+
+        let imported = 0;
+        let skipped = 0;
+
+        for (const row of parsedData) {
+          const number = row.number?.toString().trim();
+          const type = row.type?.toString().trim() || "";
+
+          if (!number || isNaN(Number(number))) {
+            log(`❌ Пропущено: некоректний номер → "${number}"`, true);
+            skipped++;
+            continue;
+          }
+
+          const territoryId = number;
+          const docRef = doc(db, `territories/${territoryId}`);
+          const docSnap = await getDoc(docRef);
+
+          if (docSnap.exists()) {
+            log(`⚠️ Пропущено: територія №${number} вже існує`);
+            skipped++;
+            continue;
+          }
+
+          const name = `Територія ${number}`;
+          try {
+            await setDoc(docRef, {
+              number: Number(number),
+              name: name,
+              type: type
+            });
+            log(`✅ Імпортовано: №${number} → "${name}", тип: "${type}"`);
+            imported++;
+          } catch (err) {
+            log(`❌ Помилка імпорту №${number}: ${err.message}`, true);
+          }
+        }
+
+        log(`\n🏁 Імпорт завершено. Додано: ${imported}, пропущено: ${skipped}`);
+      }
+    });
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4">
+  <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-md p-6">
+    <h1 class="text-2xl font-bold mb-4">Імпорт територій з Excel</h1>
+    <input id="file" type="file" accept=".xlsx" class="mb-4 w-full border rounded p-2" />
+    <button id="import-btn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded w-full mb-4">
+      Імпортувати у Firebase
+    </button>
+    <div id="log" class="text-sm space-y-1 max-h-96 overflow-y-auto bg-gray-50 border p-3 rounded"></div>
+  </div>
+</body>
+</html>
