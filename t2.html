@@ -44,7 +44,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, collection, getDocs, doc, setDoc, updateDoc, deleteDoc, listDocuments } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -135,20 +135,13 @@
         try {
           console.log("Початок завантаження територій із Firestore");
           const territoriesRef = collection(db, "territories");
-          const docRefs = await listDocuments(territoriesRef);
-          console.log(`Знайдено ${docRefs.length} територій`);
-
-          if (docRefs.length === 0) {
-            console.log("Колекція territories порожня");
-            container.innerHTML = '<p class="text-gray-600">Території відсутні. Створіть нову територію.</p>';
-            return;
-          }
+          const snapshot = await getDocs(territoriesRef);
+          console.log(`Знайдено ${snapshot.size} документів із даними`);
 
           const territories = [];
-          for (const docRef of docRefs) {
-            const docSnap = await docRef.get();
-            const territoryId = docRef.id;
-            const data = docSnap.exists() ? docSnap.data() : {};
+          snapshot.forEach(docSnap => {
+            const territoryId = docSnap.id;
+            const data = docSnap.data();
             console.log(`Територія ${territoryId}:`, {
               id: territoryId,
               exists: docSnap.exists(),
@@ -160,8 +153,10 @@
               name: data.name || `Територія ${territoryId}`,
               type: data.type || "Не призначено"
             });
-          }
+          });
 
+          // Note: Empty documents (e.g., /territories/3 with only subcollections) won't appear in getDocs
+          // To include them, run the migration script provided below
           territories.sort((a, b) => a.number - b.number);
 
           container.innerHTML = '';
@@ -188,8 +183,10 @@
           });
 
           if (territoryButtons.length === 0) {
-            console.log("Не створено жодної кнопки для територій");
+            console.log("Не знайдено жодної території");
             container.innerHTML = '<p class="text-gray-600">Території відсутні. Створіть нову територію.</p>';
+          } else {
+            console.log(`Відображено ${territoryButtons.length} територій`);
           }
         } catch (error) {
           console.error("Помилка завантаження територій:", error);
