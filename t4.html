@@ -4,7 +4,7 @@
   <meta name="robots" content="noindex, nofollow">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Імпорт територій</title>
+  <title>Імпорт територій із CSV</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
     .action-btn {
@@ -75,7 +75,8 @@
           console.log(`Знайдено ${territories.length} територій у CSV`);
 
           for (const territory of territories) {
-            const { id, number, name, type } = territory;
+            const { number, name, type } = territory;
+            const id = number.toString(); // Використовуємо number як ID документа
             console.log(`Оновлення території ${id}:`, { number, name, type });
             await setDoc(
               doc(db, `territories/${id}`),
@@ -106,15 +107,14 @@
             const text = event.target.result;
             const lines = text.trim().split("\n").slice(1); // Пропускаємо заголовок
             lines.forEach((line, index) => {
-              const [id, number, name, type] = line.split(",").map(item => item.trim());
-              if (!id || isNaN(number) || parseInt(number) <= 0) {
-                console.warn(`Помилка в рядку ${index + 2}: Недійсний id (${id}) або number (${number})`);
+              const [name, number, type] = line.split(",").map(item => item.trim());
+              if (!number || isNaN(number) || parseInt(number) <= 0) {
+                console.warn(`Помилка в рядку ${index + 2}: Недійсний number (${number})`);
                 return;
               }
               territories.push({
-                id,
                 number: parseInt(number),
-                name: name || `Територія ${id}`,
+                name: name || `Територія ${number}`,
                 type: type === "null" ? null : type || null
               });
             });
@@ -163,11 +163,11 @@
     <div class="max-w-7xl mx-auto">
       <div class="bg-white shadow-md p-6 rounded-lg">
         <h2 class="text-xl font-semibold mb-4">Імпорт даних із CSV</h2>
-        <p class="text-gray-600 mb-4">Виберіть CSV-файл із даними територій у форматі: <code>id,number,name,type</code>. Наприклад:</p>
+        <p class="text-gray-600 mb-4">Виберіть CSV-файл із даними територій у форматі: <code>name,number,type</code>. Наприклад:</p>
         <pre class="bg-gray-100 p-2 rounded mb-4">
-id,number,name,type
-3,3,Територія 3,null
-150,150,Територія 150,null
+name,number,type
+Територія 3,3,null
+Територія 150,150,null
         </pre>
         <form id="import-form" class="space-y-4">
           <div>
