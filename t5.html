@@ -1,25 +1,24 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Імпорт територій</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    console.log("[AUTH] Користувач авторизований:");
-    console.log("UID:", user.uid);
-    console.log("Email:", user.email);
-  } else {
-    console.log("[AUTH] Користувач НЕ авторизований.");
-  }
-});
-
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signInWithEmailAndPassword,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      getDocs,
+      collection
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -32,99 +31,115 @@ onAuthStateChanged(auth, (user) => {
     };
 
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
 
-    document.addEventListener("DOMContentLoaded", () => {
-      const fileInput = document.getElementById("file");
-      const logArea = document.getElementById("log");
-      const importBtn = document.getElementById("import-btn");
-      let parsedData = [];
+    const loginForm = document.getElementById("login-form");
+    const loginSection = document.getElementById("login-section");
+    const importSection = document.getElementById("import-section");
+    const logoutBtn = document.getElementById("logout-btn");
+    const fileInput = document.getElementById("file-input");
+    const statusEl = document.getElementById("status");
 
-      fileInput.addEventListener("change", handleFile);
-      importBtn.addEventListener("click", importData);
+    let currentUser = null;
 
-      function log(message, isError = false) {
-        const p = document.createElement("p");
-        p.textContent = message;
-        p.className = isError ? "text-red-600" : "text-green-700";
-        logArea.appendChild(p);
-      }
-
-      function handleFile(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: "array" });
-          const sheet = workbook.Sheets[workbook.SheetNames[0]];
-          const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-
-          parsedData = json.filter(row => row.number); // пропускати пусті рядки
-          logArea.innerHTML = "";
-          log(`Зчитано ${parsedData.length} рядків із файлу`);
-        };
-        reader.readAsArrayBuffer(file);
-      }
-
-      async function importData() {
-        if (parsedData.length === 0) {
-          log("Файл не завантажено або не містить даних", true);
-          return;
-        }
-
-        let imported = 0;
-        let skipped = 0;
-
-        for (const row of parsedData) {
-          const number = row.number?.toString().trim();
-          const type = row.type?.toString().trim() || "";
-
-          if (!number || isNaN(Number(number))) {
-            log(`❌ Пропущено: некоректний номер → "${number}"`, true);
-            skipped++;
-            continue;
-          }
-
-          const territoryId = number;
-          const docRef = doc(db, `territories/${territoryId}`);
-          const docSnap = await getDoc(docRef);
-
-          if (docSnap.exists()) {
-            log(`⚠️ Пропущено: територія №${number} вже існує`);
-            skipped++;
-            continue;
-          }
-
-          const name = `Територія ${number}`;
-          try {
-            await setDoc(docRef, {
-              number: Number(number),
-              name: name,
-              type: type
-            });
-            log(`✅ Імпортовано: №${number} → "${name}", тип: "${type}"`);
-            imported++;
-          } catch (err) {
-            log(`❌ Помилка імпорту №${number}: ${err.message}`, true);
-          }
-        }
-
-        log(`\n🏁 Імпорт завершено. Додано: ${imported}, пропущено: ${skipped}`);
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        console.log("[AUTH] Авторизований:", user.email);
+        loginSection.style.display = "none";
+        importSection.style.display = "block";
+      } else {
+        currentUser = null;
+        console.log("[AUTH] НЕ авторизований.");
+        loginSection.style.display = "block";
+        importSection.style.display = "none";
       }
     });
+
+    loginForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const email = loginForm.email.value.trim();
+      const password = loginForm.password.value.trim();
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        console.log("[LOGIN] Успішно увійшли:", email);
+      } catch (error) {
+        alert("Помилка входу: " + error.message);
+        console.error("[LOGIN ERROR]", error);
+      }
+    };
+
+    logoutBtn.onclick = () => {
+      signOut(auth);
+    };
+
+    fileInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet);
+
+        // Отримуємо існуючі номери
+        const existing = await getDocs(collection(db, "territories"));
+        const existingNumbers = existing.docs.map(d => d.id);
+
+        let added = 0;
+        for (const row of rows) {
+          const number = String(row.number).trim();
+          if (!number || isNaN(number)) continue;
+
+          if (existingNumbers.includes(number)) {
+            console.log(`Пропущено: територія ${number} вже існує`);
+            continue;
+          }
+
+          const type = (row.type || "").trim();
+          const name = `Територія ${number}`;
+          const docRef = doc(db, `territories/${number}`);
+
+          try {
+            await setDoc(docRef, {
+              number: parseInt(number),
+              name,
+              type: type || ""
+            });
+            added++;
+            console.log(`✅ Додано: ${name} (${type})`);
+          } catch (err) {
+            console.error(`❌ Помилка для території ${number}:`, err.message);
+          }
+        }
+
+        statusEl.textContent = `✅ Імпорт завершено. Додано: ${added} територій.`;
+      };
+      reader.readAsArrayBuffer(file);
+    });
   </script>
-  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen p-4">
-  <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-md p-6">
-    <h1 class="text-2xl font-bold mb-4">Імпорт територій з Excel</h1>
-    <input id="file" type="file" accept=".xlsx" class="mb-4 w-full border rounded p-2" />
-    <button id="import-btn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded w-full mb-4">
-      Імпортувати у Firebase
-    </button>
-    <div id="log" class="text-sm space-y-1 max-h-96 overflow-y-auto bg-gray-50 border p-3 rounded"></div>
-  </div>
+<body style="font-family: sans-serif; padding: 2rem;">
+  <h1>Імпорт територій з Excel</h1>
+
+  <section id="login-section" style="display: none;">
+    <h2>Авторизація</h2>
+    <form id="login-form">
+      <label>Email: <input name="email" type="email" required /></label><br><br>
+      <label>Пароль: <input name="password" type="password" required /></label><br><br>
+      <button type="submit">Увійти</button>
+    </form>
+  </section>
+
+  <section id="import-section" style="display: none;">
+    <p>Ви увійшли в систему. Завантажте Excel файл з колонками <strong>number</strong> і <strong>type</strong>.</p>
+    <input id="file-input" type="file" accept=".xlsx" />
+    <p id="status" style="margin-top: 1rem; color: green;"></p>
+    <br>
+    <button id="logout-btn">Вийти</button>
+  </section>
 </body>
 </html>
