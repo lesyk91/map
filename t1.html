@@ -158,33 +158,59 @@
             // Fetch history records for the territory
             const historyRef = collection(db, `territories/${territoryId}/history`);
             const historySnapshot = await getDocs(historyRef);
+            console.log(`Територія ${territoryId}: знайдено ${historySnapshot.size} записів історії`);
+
             let status = "вільна";
             let days = 0;
             let statusText = "Не було записів";
 
             if (!historySnapshot.empty) {
-              // Sort history records by dateReceived (assuming it exists) to get the latest
+              // Log all history records for debugging
+              historySnapshot.forEach(doc => {
+                console.log(`Запис історії для території ${territoryId}:`, {
+                  id: doc.id,
+                  data: doc.data()
+                });
+              });
+
+              // Sort history records by dateGet (descending) to get the latest
               const historyRecords = historySnapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
               })).sort((a, b) => {
-                const dateA = a.dateReceived ? new Date(a.dateReceived) : new Date(0);
-                const dateB = b.dateReceived ? new Date(b.dateReceived) : new Date(0);
+                const dateA = a.dateGet ? new Date(a.dateGet) : new Date(0);
+                const dateB = b.dateGet ? new Date(b.dateGet) : new Date(0);
                 return dateB - dateA;
               });
 
-              const latestRecord = historyRecords[0];
-              if (latestRecord.dateReceived && !latestRecord.dateProcessed) {
-                status = "на руках";
-                const receivedDate = new Date(latestRecord.dateReceived);
-                days = Math.floor((currentDate - receivedDate) / (1000 * 60 * 60 * 24));
-                statusText = `На руках ${days} дн.`;
-              } else if (latestRecord.dateReceived && latestRecord.dateProcessed) {
-                status = "вільна";
-                const processedDate = new Date(latestRecord.dateProcessed);
-                days = Math.floor((currentDate - processedDate) / (1000 * 60 * 60 * 24));
-                statusText = `Вільна ${days} дн.`;
+              if (historyRecords.length > 0) {
+                const latestRecord = historyRecords[0];
+                console.log(`Останній запис для території ${territoryId}:`, latestRecord);
+
+                if (latestRecord.dateGet && !latestRecord.dateProcess) {
+                  status = "на руках";
+                  const receivedDate = new Date(latestRecord.dateGet);
+                  if (isNaN(receivedDate)) {
+                    console.error(`Невалідна дата dateGet для території ${territoryId}:`, latestRecord.dateGet);
+                    statusText = "Помилка дати отримання";
+                  } else {
+                    days = Math.floor((currentDate - receivedDate) / (1000 * 60 * 60 * 24));
+                    statusText = `На руках ${days} дн.`;
+                  }
+                } else if (latestRecord.dateGet && latestRecord.dateProcess) {
+                  status = "вільна";
+                  const processedDate = new Date(latestRecord.dateProcess);
+                  if (isNaN(processedDate)) {
+                    console.error(`Невалідна дата dateProcess для території ${territoryId}:`, latestRecord.dateProcess);
+                    statusText = "Помилка дати опрацювання";
+                  } else {
+                    days = Math.floor((currentDate - processedDate) / (1000 * 60 * 60 * 24));
+                    statusText = `Вільна ${days} дн.`;
+                  }
+                }
               }
+            } else {
+              console.log(`Територія ${territoryId}: немає записів історії`);
             }
 
             territories.push({
@@ -204,7 +230,7 @@
           container.innerHTML = '';
           territories.forEach(territory => {
             const { id, number, name, type, status, statusText } = territory;
-            console.log(`Додаємо кнопку для території ${id}: name=${name}, type=${type}, status=${status}`);
+            console.log(`Додаємо кнопку для території ${id}: name=${name}, type=${type}, status=${status}, statusText=${statusText}`);
             const div = document.createElement("div");
             div.className = `flex items-center justify-between ${status === 'вільна' ? 'status-free' : 'status-taken'} text-white font-semibold py-3 px-6 rounded-lg w-full mb-2`;
             div.innerHTML = `
@@ -232,7 +258,7 @@
           }
         } catch (error) {
           console.error("Помилка завантаження територій:", error);
-          container.innerHTML = `<p class="text-red-600">Помилка заванта terzoій: ${error.message}</p>`;
+          container.innerHTML = `<p class="text-red-600">Помилка завантаження територій: ${error.message}</p>`;
         }
       }
 
@@ -265,8 +291,10 @@
         // Sort by days if status filter is applied
         if (selectedStatus) {
           filteredTerritories.sort((a, b) => {
-            const aDays = parseInt(a.btn.parentElement.querySelector('.text-sm.text-gray-200').textContent.match(/\d+/)?.[0] || 0);
-            const bDays = parseInt(b.btn.parentElement.querySelector('.text-sm.text-gray-200').textContent.match(/\d+/)?.[0] || 0);
+            const aText = a.btn.parentElement.querySelector('.text-sm.text-gray-200').textContent;
+            const bText = b.btn.parentElement.querySelector('.text-sm.text-gray-200').textContent;
+            const aDays = aText.includes("Не було записів") ? 0 : parseInt(aText.match(/\d+/)?.[0] || 0);
+            const bDays = bText.includes("Не було записів") ? 0 : parseInt(bText.match(/\d+/)?.[0] || 0);
             return bDays - aDays; // Descending order
           });
         }
