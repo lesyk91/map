@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Території</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .territory-btn, .action-btn {
+      transition: all 0.3s ease;
+    }
+    .territory-btn:hover, .action-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 50;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.4);
+    }
+    .modal-content {
+      background-color: white;
+      margin: 15% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    .modal.show {
+      display: block;
+    }
+    .status-free {
+      background-color: #10B981; /* Green for free */
+    }
+    .status-taken {
+      background-color: #F59E0B; /* Orange for taken */
+    }
+  </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getFirestore, collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+      authDomain: "map-illintsi.firebaseapp.com",
+      projectId: "map-illintsi",
+      storageBucket: "map-illintsi.firebasestorage.app",
+      messagingSenderId: "62267872375",
+      appId: "1:62267872375:web:10945d2d63b93bccc5e272",
+      measurementId: "G-22L16KP5Z0"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const container = document.getElementById("territories");
+      const logoutBtn = document.getElementById("logout");
+      const searchInput = document.getElementById("search");
+      const typeFilter = document.getElementById("type-filter");
+      const statusFilter = document.getElementById("status-filter");
+      const sortFilter = document.getElementById("sort-filter");
+      const territoryCount = document.getElementById("territory-count");
+      const createModal = document.getElementById("create-territory-modal");
+      const editModal = document.getElementById("edit-territory-modal");
+      const createBtn = document.getElementById("create-territory-btn");
+      const closeCreateModal = document.getElementById("close-create-modal");
+      const closeEditModal = document.getElementById("close-edit-modal");
+      const createForm = document.getElementById("create-territory-form");
+      const editForm = document.getElementById("edit-territory-form");
+      const errorMessage = document.getElementById("error-message");
+      const editErrorMessage = document.getElementById("edit-error-message");
+      const cancelCreateBtn = document.getElementById("cancel-create-btn");
+      const cancelEditBtn = document.getElementById("cancel-edit-btn");
+
+      let territoryButtons = [];
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          console.log("Користувач не авторизований, перенаправлення на index.html");
+          window.location.href = "index.html";
+        } else {
+          console.log("Користувач авторизований:", user.uid);
+          await loadTerritories();
+        }
+      });
+
+      logoutBtn.onclick = () => {
+        console.log("Вихід із системи");
+        signOut(auth);
+      };
+
+      createBtn.onclick = () => {
+        console.log("Відкриття модального вікна створення");
+        createModal.classList.add("show");
+      };
+
+      closeCreateModal.onclick = () => {
+        console.log("Закриття модального вікна створення");
+        createModal.classList.remove("show");
+        createForm.reset();
+        errorMessage.textContent = "";
+      };
+
+      closeEditModal.onclick = () => {
+        console.log("Закриття модального вікна редагування");
+        editModal.classList.remove("show");
+        editForm.reset();
+        editErrorMessage.textContent = "";
+      };
+
+      cancelCreateBtn.onclick = () => {
+        console.log("Скасування створення території");
+        createModal.classList.remove("show");
+        createForm.reset();
+        errorMessage.textContent = "";
+      };
+
+      cancelEditBtn.onclick = () => {
+        console.log("Скасування редагування території");
+        editModal.classList.remove("show");
+        editForm.reset();
+        editErrorMessage.textContent = "";
+      };
+
+      async function loadTerritories() {
+        container.innerHTML = '<p class="text-gray-600">Завантаження територій...</p>';
+        territoryButtons = [];
+        try {
+          console.log("Початок завантаження територій із Firestore");
+          const territoriesRef = collection(db, "territories");
+          const snapshot = await getDocs(territoriesRef);
+          console.log(`Знайдено ${snapshot.size} документів із даними`);
+
+          const territories = [];
+          const currentDate = new Date();
+
+          // Prepare all history queries for parallel execution
+          const historyQueries = snapshot.docs.map(async (docSnap) => {
+            const territoryId = docSnap.id;
+            const data = docSnap.data();
+            console.log(`Територія ${territoryId}:`, {
+              id: territoryId,
+              exists: docSnap.exists(),
+              data: data
+            });
+
+            // Fetch only the latest history record, ordered by dateGet
+            const historyRef = collection(db, `territories/${territoryId}/history`);
+            const historyQuery = query(historyRef, orderBy("dateGet", "desc"), limit(1));
+            const historySnapshot = await getDocs(historyQuery);
+            console.log(`Територія ${territoryId}: знайдено ${historySnapshot.size} записів історії`);
+
+            let status = "вільна";
+            let days = 0;
+            let statusText = "Не було записів";
+
+            if (!historySnapshot.empty) {
+              const latestRecord = historySnapshot.docs[0].data();
+              console.log(`Останній запис для території ${territoryId}:`, {
+                id: historySnapshot.docs[0].id,
+                data: latestRecord
+              });
+
+              if (latestRecord.dateGet && !latestRecord.dateProcess) {
+                status = "на руках";
+                const receivedDate = new Date(latestRecord.dateGet);
+                if (isNaN(receivedDate)) {
+                  console.error(`Невалідна дата dateGet для території ${territoryId}:`, latestRecord.dateGet);
+                  statusText = "Помилка дати отримання";
+                } else {
+                  days = Math.floor((currentDate - receivedDate) / (1000 * 60 * 60 * 24));
+                  statusText = `На руках ${days} дн.`;
+                }
+              } else if (latestRecord.dateGet && latestRecord.dateProcess) {
+                status = "вільна";
+                const processedDate = new Date(latestRecord.dateProcess);
+                if (isNaN(processedDate)) {
+                  console.error(`Невалідна дата dateProcess для території ${territoryId}:`, latestRecord.dateProcess);
+                  statusText = "Помилка дати опрацювання";
+                } else {
+                  days = Math.floor((currentDate - processedDate) / (1000 * 60 * 60 * 24));
+                  statusText = `Вільна ${days} дн.`;
+                }
+              }
+            } else {
+              console.log(`Територія ${territoryId}: немає записів історії`);
+            }
+
+            return {
+              id: territoryId,
+              number: data.number || parseInt(territoryId) || 0,
+              name: data.name || `Територія ${territoryId}`,
+              type: data.type || "Не призначено",
+              status,
+              days,
+              statusText
+            };
+          });
+
+          // Execute all history queries in parallel
+          const territoriesData = await Promise.all(historyQueries);
+
+          // Sort territories by number initially
+          territories.push(...territoriesData.sort((a, b) => a.number - b.number));
+
+          container.innerHTML = '';
+          territories.forEach(territory => {
+            const { id, number, name, type, status, statusText } = territory;
+            console.log(`Додаємо кнопку для території ${id}: name=${name}, type=${type}, status=${status}, statusText=${statusText}`);
+            const div = document.createElement("div");
+            div.className = `flex items-center justify-between ${status === 'вільна' ? 'status-free' : 'status-taken'} text-white font-semibold py-3 px-6 rounded-lg w-full mb-2`;
+            div.innerHTML = `
+              <button class="territory-btn flex-grow text-left" data-number="${number}" data-type="${type}" data-status="${status}" data-days="${territory.days}">
+                ${name} <span class="text-sm text-gray-300">(${type})</span> <span class="text-sm text-gray-200 ml-2">[${statusText}]</span>
+              </button>
+              <div class="flex space-x-2">
+                <button class="action-btn bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-lg" onclick="editTerritory('${id}', '${name.replace(/'/g, "\\'")}', '${type.replace(/'/g, "\\'")}')">Редагувати</button>
+                <button class="action-btn bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-lg" onclick="deleteTerritory('${id}')">Видалити</button>
+              </div>
+            `;
+            div.querySelector(".territory-btn").onclick = () => {
+              console.log(`Перехід до деталей території ${id}`);
+              window.location.href = `territory-detail.html?number=${id}`;
+            };
+            container.appendChild(div);
+            territoryButtons.push(div.querySelector(".territory-btn"));
+          });
+
+          // Update territory count
+          territoryCount.textContent = `Завантажено: ${territoryButtons.length} територій`;
+
+          if (territoryButtons.length === 0) {
+            console.log("Не знайдено жодної території");
+            container.innerHTML = '<p class="text-gray-600">Території відсутні. Створіть нову територію.</p>';
+            territoryCount.textContent = "Завантажено: 0 територій";
+          } else {
+            console.log(`Відображено ${territoryButtons.length} територій`);
+          }
+        } catch (error) {
+          console.error("Помилка завантаження територій:", error);
+          container.innerHTML = `<p class="text-red-600">Помилка завантаження територій: ${error.message}</p>`;
+          territoryCount.textContent = "Завантажено: 0 територій";
+        }
+      }
+
+      searchInput.addEventListener("input", filterTerritories);
+      typeFilter.addEventListener("change", filterTerritories);
+      statusFilter.addEventListener("change", filterTerritories);
+      sortFilter.addEventListener("change", filterTerritories);
+
+      function filterTerritories() {
+        const searchTerm = searchInput.value.trim().toLowerCase();
+        const selectedType = typeFilter.value;
+        const selectedStatus = statusFilter.value;
+        const selectedSort = sortFilter.value;
+        console.log(`Фільтрація: пошук="${searchTerm}", тип="${selectedType}", статус="${selectedStatus}", сортування="${selectedSort}"`);
+
+        // Create a copy of territories for filtering and sorting
+        let filteredTerritories = Array.from(territoryButtons).map(btn => ({
+          btn,
+          number: parseInt(btn.dataset.number),
+          type: btn.dataset.type,
+          status: btn.dataset.status,
+          days: parseInt(btn.dataset.days) || 0
+        }));
+
+        // Filter territories
+        filteredTerritories = filteredTerritories.filter(({ number, type, status }) => {
+          const matchesSearch = searchTerm === '' || `територія ${number}`.toLowerCase().includes(searchTerm);
+          const matchesType = selectedType === '' || selectedType === type;
+          const matchesStatus = selectedStatus === '' || selectedStatus === status;
+          return matchesSearch && matchesType && matchesStatus;
+        });
+
+        // Sort territories
+        if (selectedSort === "days") {
+          filteredTerritories.sort((a, b) => {
+            // Sort by status first ("вільна" before "на руках"), then by days descending
+            if (a.status !== b.status) {
+              return a.status === "вільна" ? -1 : 1;
+            }
+            return b.days - a.days;
+          });
+        } else {
+          // Sort by number ascending
+          filteredTerritories.sort((a, b) => a.number - b.number);
+        }
+
+        // Update display
+        territoryButtons.forEach(btn => {
+          btn.parentElement.style.display = 'none';
+        });
+        filteredTerritories.forEach(({ btn }) => {
+          btn.parentElement.style.display = 'flex';
+        });
+
+        // Update territory count
+        territoryCount.textContent = `Завантажено: ${filteredTerritories.length} територій`;
+      }
+
+      createForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(createForm);
+        const number = formData.get("number").trim();
+        const label = formData.get("label").trim();
+        const type = formData.get("type") === "Не призначено" ? null : formData.get("type");
+
+        if (!number || isNaN(number) || parseInt(number) <= 0) {
+          errorMessage.textContent = "Введіть дійсний номер території (ціле число більше 0)";
+          console.log("Помилка валідації номера території:", number);
+          return;
+        }
+
+        const territoryId = number;
+        const territoryRef = doc(db, `territories/${territoryId}`);
+        const territoriesSnapshot = await getDocs(collection(db, "territories"));
+        const existingNumbers = territoriesSnapshot.docs.map(doc => doc.id);
+
+        if (existingNumbers.includes(territoryId)) {
+          errorMessage.textContent = `Територія з номером ${number} вже існує`;
+          console.log(`Територія ${number} вже існує`);
+          return;
+        }
+
+        try {
+          const territoryName = `Територія ${number}${label ? ' ' + label : ''}`;
+          console.log(`Створення території ${territoryId}:`, { number: parseInt(number), name: territoryName, type });
+          await setDoc(territoryRef, {
+            number: parseInt(number),
+            name: territoryName,
+            type: type
+          });
+          errorMessage.textContent = "";
+          createForm.reset();
+          createModal.classList.remove("show");
+          await loadTerritories();
+        } catch (error) {
+          console.error("Помилка створення території:", error);
+          errorMessage.textContent = "Помилка при створенні території: " + error.message;
+        }
+      };
+
+      window.editTerritory = async (territoryId, currentName, currentType) => {
+        console.log(`Відкриття редагування території ${territoryId}: name=${currentName}, type=${currentType}`);
+        const currentLabel = currentName.replace(`Територія ${territoryId}`, '').trim();
+        editForm.querySelector("input[name='label']").value = currentLabel;
+        editForm.querySelector(`select[name='type'] option[value='${currentType === "Не призначено" ? "Не призначено" : currentType}']`).selected = true;
+        editForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const formData = new FormData(editForm);
+          const label = formData.get("label").trim();
+          const type = formData.get("type") === "Не призначено" ? null : formData.get("type");
+
+          try {
+            const territoryName = `Територія ${territoryId}${label ? ' ' + label : ''}`;
+            console.log(`Оновлення території ${territoryId}:`, { name: territoryName, type });
+            await updateDoc(doc(db, `territories/${territoryId}`), {
+              name: territoryName,
+              type: type
+            });
+            editErrorMessage.textContent = "";
+            editModal.classList.remove("show");
+            await loadTerritories();
+          } catch (error) {
+            console.error("Помилка редагування території:", error);
+            editErrorMessage.textContent = "Помилка при редагуванні території: " + error.message;
+          }
+        };
+        editModal.classList.add("show");
+      };
+
+      window.deleteTerritory = async (territoryId) => {
+        console.log(`Спроба видалення території ${territoryId}`);
+        const historyRef = collection(db, `territories/${territoryId}/history`);
+        const historySnapshot = await getDocs(historyRef);
+        if (!historySnapshot.empty) {
+          console.log(`Територія ${territoryId} має ${historySnapshot.size} записів в історії, видалення заборонено`);
+          alert("Територію не можна видалити, оскільки вона має записи в історії.");
+          return;
+        }
+
+        if (confirm(`Ви впевнені, що хочете видалити територію ${territoryId}?`)) {
+          try {
+            console.log(`Видалення території ${territoryId}`);
+            await deleteDoc(doc(db, `territories/${territoryId}`));
+            await loadTerritories();
+          } catch (error) {
+            console.error("Помилка видалення території:", error);
+            errorMessage.textContent = "Помилка при видаленні території: " + error.message;
+          }
+        }
+      };
+    });
+  </script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+  <header class="bg-white shadow-md p-4 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+      <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
+        <h1 class="text-2xl font-bold text-gray-800">Список територій</h1>
+        <p id="territory-count" class="text-gray-600">Завантажено: 0 територій</p>
+      </div>
+      <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+          <input 
+            id="search" 
+            type="text" 
+            placeholder="Пошук території (напр. 42)" 
+            class="w-full sm:w-64 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+          <select id="type-filter" class="w-full sm:w-48 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Всі типи</option>
+            <option value="Не призначено">Не призначено</option>
+            <option value="Приватна">Приватна</option>
+            <option value="Поверхівки">Поверхівки</option>
+            <option value="Ділова">Ділова</option>
+          </select>
+          <select id="status-filter" class="w-full sm:w-48 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Всі статуси</option>
+            <option value="вільна">Вільна</option>
+            <option value="на руках">На руках</option>
+          </select>
+          <select id="sort-filter" class="w-full sm:w-48 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="number">Сортувати за номером</option>
+            <option value="days">Сортувати за днями</option>
+          </select>
+          <button 
+            id="create-territory-btn" 
+            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg"
+          >
+            Створити територію
+          </button>
+        </div>
+        <nav class="flex space-x-2">
+          <a href="index.html">
+            <button class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              Карта
+            </button>
+          </a>
+          <a href="user.html">
+            <button class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              Користувачі
+            </button>
+          </a>
+          <a href="zvit.html">
+            <button class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              Звіти
+            </button>
+          </a>
+          <button id="logout" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+            Вийти
+          </button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow p-4">
+    <div class="max-w-7xl mx-auto">
+      <div id="territories" class="grid grid-cols-1 gap-4"></div>
+    </div>
+  </main>
+
+  <!-- Modal for creating territory -->
+  <div id="create-territory-modal" class="modal">
+    <div class="modal-content">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Створити нову територію</h3>
+        <button id="close-create-modal" class="text-gray-600 hover:text-gray-800">×</button>
+      </div>
+      <form id="create-territory-form" class="space-y-4">
+        <div>
+          <input 
+            name="number" 
+            type="number" 
+            placeholder="Номер території" 
+            required 
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+        </div>
+        <div>
+          <input 
+            name="label" 
+            type="text" 
+            placeholder="Додаткова мітка (необов’язково)" 
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+        </div>
+        <div>
+          <select 
+            name="type" 
+            required 
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="Не призначено">Не призначено</option>
+            <option value="Приватна">Приватна</option>
+            <option value="Поверхівки">Поверхівки</option>
+            <option value="Ділова">Ділова</option>
+          </select>
+        </div>
+        <div class="flex space-x-2">
+          <button 
+            type="submit" 
+            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg"
+          >
+            Створити
+          </button>
+          <button 
+            id="cancel-create-btn" 
+            type="button" 
+            class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg"
+          >
+            Скасувати
+          </button>
+        </div>
+      </form>
+      <p id="error-message" class="text-red-600 mt-2"></p>
+    </div>
+  </div>
+
+  <!-- Modal for editing territory -->
+  <div id="edit-territory-modal" class="modal">
+    <div class="modal-content">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Редагувати територію</h3>
+        <button id="close-edit-modal" class="text-gray-600 hover:text-gray-800">×</button>
+      </div>
+      <form id="edit-territory-form" class="space-y-4">
+        <div>
+          <input 
+            name="label" 
+            type="text" 
+            placeholder="Додаткова мітка (необов’язково)" 
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+        </div>
+        <div>
+          <select 
+            name="type" 
+            required 
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="Не призначено">Не призначено</option>
+            <option value="Приватна">Приватна</option>
+            <option value="Поверхівки">Поверхівки</option>
+            <option value="Ділова">Ділова</option>
+          </select>
+        </div>
+        <div class="flex space-x-2">
+          <button 
+            type="submit" 
+            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg"
+          >
+            Зберегти
+          </button>
+          <button 
+            id="cancel-edit-btn" 
+            type="button" 
+            class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg"
+          >
+            Скасувати
+          </button>
+        </div>
+      </form>
+      <p id="edit-error-message" class="text-red-600 mt-2"></p>
+    </div>
+  </div>
+
+  <footer class="bg-white shadow-inner p-4 mt-auto">
+    <div class="max-w-7xl mx-auto text-center text-gray-600">
+      © 2025 Території. Всі права захищено.
+    </div>
+  </footer>
+</body>
+</html>
