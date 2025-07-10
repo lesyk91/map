@@ -72,7 +72,6 @@
       const searchInput = document.getElementById("search");
       const typeFilter = document.getElementById("type-filter");
       const statusFilter = document.getElementById("status-filter");
-      const sortFilter = document.getElementById("sort-filter");
       const territoryCount = document.getElementById("territory-count");
       const createModal = document.getElementById("create-territory-modal");
       const editModal = document.getElementById("edit-territory-modal");
@@ -214,7 +213,7 @@
           // Execute all history queries in parallel
           const territoriesData = await Promise.all(historyQueries);
 
-          // Sort territories by number initially
+          // Sort territories by number
           territories.push(...territoriesData.sort((a, b) => a.number - b.number));
 
           container.innerHTML = '';
@@ -260,22 +259,19 @@
       searchInput.addEventListener("input", filterTerritories);
       typeFilter.addEventListener("change", filterTerritories);
       statusFilter.addEventListener("change", filterTerritories);
-      sortFilter.addEventListener("change", filterTerritories);
 
       function filterTerritories() {
         const searchTerm = searchInput.value.trim().toLowerCase();
         const selectedType = typeFilter.value;
         const selectedStatus = statusFilter.value;
-        const selectedSort = sortFilter.value;
-        console.log(`Фільтрація: пошук="${searchTerm}", тип="${selectedType}", статус="${selectedStatus}", сортування="${selectedSort}"`);
+        console.log(`Фільтрація: пошук="${searchTerm}", тип="${selectedType}", статус="${selectedStatus}"`);
 
-        // Create a copy of territories for filtering and sorting
+        // Create a copy of territories for filtering
         let filteredTerritories = Array.from(territoryButtons).map(btn => ({
           btn,
           number: parseInt(btn.dataset.number),
           type: btn.dataset.type,
-          status: btn.dataset.status,
-          days: parseInt(btn.dataset.days) || 0
+          status: btn.dataset.status
         }));
 
         // Filter territories
@@ -286,22 +282,8 @@
           return matchesSearch && matchesType && matchesStatus;
         });
 
-        // Sort territories
-        if (selectedSort === "days" && selectedStatus) {
-          // Sort by days descending for the selected status
-          filteredTerritories.sort((a, b) => b.days - a.days);
-        } else if (selectedSort === "days" && !selectedStatus) {
-          // Sort by days descending, grouping by status (вільна first)
-          filteredTerritories.sort((a, b) => {
-            if (a.status !== b.status) {
-              return a.status === "вільна" ? -1 : 1;
-            }
-            return b.days - a.days;
-          });
-        } else {
-          // Sort by number ascending (default)
-          filteredTerritories.sort((a, b) => a.number - b.number);
-        }
+        // Sort by number ascending (default)
+        filteredTerritories.sort((a, b) => a.number - b.number);
 
         // Update display
         territoryButtons.forEach(btn => {
@@ -436,10 +418,6 @@
             <option value="">Всі статуси</option>
             <option value="вільна">Вільна</option>
             <option value="на руках">На руках</option>
-          </select>
-          <select id="sort-filter" class="w-full sm:w-48 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="number">Сортувати за номером</option>
-            <option value="days">Сортувати за днями</option>
           </select>
           <button 
             id="create-territory-btn" 
