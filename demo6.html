@@ -174,35 +174,25 @@
     const takenControl = document.getElementById('taken-control');
     const freeControl = document.getElementById('free-control');
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const targetId = urlParams.get("territory");
-
-onAuthStateChanged(auth, user => {
-  currentUser = user;
-
-  if (targetId) {
-    // Якщо відкрили конкретну територію - не чіпаємо кнопки і не підписуємось
-    return;
-  }
-
-  if (user) {
-    loginBtn.style.display = 'none';
-    logoutBtn.style.display = 'inline-block';
-    territoriesBtn.style.display = 'inline-block';
-    takenControl.style.display = 'block';
-    freeControl.style.display = 'block';
-    updateTerritoryStatuses();
-  } else {
-    loginBtn.style.display = 'inline-block';
-    logoutBtn.style.display = 'none';
-    territoriesBtn.style.display = 'none';
-    takenControl.style.display = 'block';
-    freeControl.style.display = 'block';
-    Object.keys(territoryStatuses).forEach(id => territoryStatuses[id] = "вільно");
-    updateTerritoriesDisplay();
-  }
-});
-
+    onAuthStateChanged(auth, user => {
+      currentUser = user;
+      if (user) {
+        loginBtn.style.display = 'none';
+        logoutBtn.style.display = 'inline-block';
+        territoriesBtn.style.display = 'inline-block';
+        takenControl.style.display = 'block';
+        freeControl.style.display = 'block';
+        updateTerritoryStatuses();
+      } else {
+        loginBtn.style.display = 'inline-block';
+        logoutBtn.style.display = 'none';
+        territoriesBtn.style.display = 'none';
+        takenControl.style.display = 'block';
+        freeControl.style.display = 'block';
+        Object.keys(territoryStatuses).forEach(id => territoryStatuses[id] = "вільно");
+        updateTerritoriesDisplay();
+      }
+    });
 
     logoutBtn?.addEventListener("click", async () => {
       await signOut(auth);
@@ -453,7 +443,24 @@ const targetId = urlParams.get("territory");
       overlayMaps[d.name] = layer;
 	  if (!targetId || d.id === targetId) {
   map.addLayer(layer);
+
+  // Якщо це потрібна територія — відкриваємо її одразу
+  if (targetId && d.id === targetId) {
+    const bounds = geoJsonLayer.getBounds();
+    map.fitBounds(bounds);
+
+    // Завантажуємо статус і показуємо попап
+    getTerritoryStatusPopup(d.id.replace("district", ""), d.name)
+      .then(popupContent => {
+        geoJsonLayer.eachLayer(subLayer => {
+          subLayer.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`)
+                   .openPopup();
+        });
+      });
+  }
 }
+
+		
 
       const coordinates = [];
       const geometries = feature.geometry.type === "GeometryCollection" ? feature.geometry.geometries : [feature.geometry];
