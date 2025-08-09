@@ -428,26 +428,27 @@ const totalDistricts = districts.length;
 
       const layer = L.featureGroup();
       const geoJsonLayer = L.geoJSON(feature, {
-    onEachFeature: (feat, layer) => {
-  const territoryId = d.id.replace("district", "");
+onEachFeature: (feat, layer) => {
+  const territoryNumber = d.id.replace("district", ""); // номер території
   const center = layer.getBounds().getCenter();
   districtCenters.push({ name: feat.properties?.name || d.name, latlng: center });
 
-  // Одна функція для відкриття popup
-  async function openTerritoryPopup() {
-    const popupContent = await getTerritoryStatusPopup(territoryId, d.name);
+  // Подія кліку
+  layer.on("click", async () => {
+    const popupContent = await getTerritoryStatusPopup(territoryNumber, d.name);
     layer.bindPopup(
       popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">Редагувати</button>`
     ).openPopup();
-    map.fitBounds(layer.getBounds());
-  }
+  });
 
-  // При кліку користувача
-  layer.on("click", openTerritoryPopup);
-
-  // Автовідкриття, якщо ця територія співпадає з targetId
-  if (targetId && territoryId === targetId) {
-    openTerritoryPopup();
+  // Автовідкриття при завантаженні, якщо номер збігається з targetId
+  if (targetId && territoryNumber === targetId) {
+    getTerritoryStatusPopup(territoryNumber, d.name).then((popupContent) => {
+      layer.bindPopup(
+        popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">Редагувати</button>`
+      ).openPopup();
+      map.fitBounds(layer.getBounds());
+    });
   }
 }
 
