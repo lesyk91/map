@@ -135,7 +135,7 @@
   <div id="loader" class="bg-white border border-gray-300 rounded shadow-sm"></div>
   <div class="controls bg-white border border-gray-300 rounded shadow-sm p-2 sm:p-3">
     <input type="checkbox" id="toggleAll" checked>
-    <label for="toggleAll" id="toggleAllLabel" class="text-sm sm:text-base">Показати всі22</label><br>
+    <label for="toggleAll" id="toggleAllLabel" class="text-sm sm:text-base">Показати всі</label><br>
     <div id="taken-control" style="display: none">
       <input type="checkbox" id="showTaken">
       <label for="showTaken" class="text-sm sm:text-base">На руках</label><br>
@@ -404,15 +404,15 @@ async function updateTerritoryStatuses() {
 }
 	
 
-    (async () => {
+(async () => {
   showLoading(true);
   updateProgress(0);
   let loadedCount = 0;
- const urlParams = new URLSearchParams(window.location.search);
-const rawTarget = urlParams.get("territory");
-const targetId = rawTarget ? (rawTarget.startsWith('district') ? rawTarget : `district${rawTarget}`) : null;
-console.log('targetId normalized:', targetId, 'rawTarget:', rawTarget);
-const totalDistricts = districts.length;
+  const urlParams = new URLSearchParams(window.location.search);
+  const rawTarget = urlParams.get("territory");
+  const targetId = rawTarget ? (rawTarget.startsWith('district') ? rawTarget : `district${rawTarget}`) : null;
+  console.log('targetId normalized:', targetId, 'rawTarget:', rawTarget);
+  const totalDistricts = districts.length;
 
   try {
     const res = await fetch('all_districts.json');
@@ -427,55 +427,39 @@ const totalDistricts = districts.length;
       }
 
       const layer = L.featureGroup();
-     const geoJsonLayer = L.geoJSON(feature, {
-  onEachFeature: (feat, layer) => {
-    const center = layer.getBounds().getCenter();
-    districtCenters.push({ name: feat.properties?.name || d.name, latlng: center });
+      const geoJsonLayer = L.geoJSON(feature, {
+        onEachFeature: (feat, layer) => {
+          const center = layer.getBounds().getCenter();
+          districtCenters.push({ name: feat.properties?.name || d.name, latlng: center });
 
-    const territoryId = d.id.replace("district", "");
-    const territoryName = d.name;
+          const territoryId = d.id.replace("district", "");
+          const territoryName = d.name;
 
-    layer.on("click", async () => {
-      const popupContent = await getTerritoryStatusPopup(territoryId, territoryName);
-      layer.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${territoryName}')">Редагувати</button>`).openPopup();
-    });
-
-    if (targetId && territoryId === targetId) {
-      getTerritoryStatusPopup(territoryId, territoryName).then((popupContent) => {
-        layer.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${territoryName}')">Редагувати</button>`).openPopup();
-        map.fitBounds(layer.getBounds());
-      });
-    }
-  }, // Added comma here
-  style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
-}).addTo(layer);
-
-
-
+          layer.on("click", async () => {
+            const popupContent = await getTerritoryStatusPopup(territoryId, territoryName);
+            layer.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${territoryName}')">📌 Прокласти маршрут сюди</button>`).openPopup();
+          });
+        },
+        style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
+      }).addTo(layer);
 
       territoryStatuses[d.id] = "вільно";
-      loadedLayers.push({ name: d.name, layer: layer }); // зберігаємо саме layerGroup
+      loadedLayers.push({ name: d.name, layer: layer });
       overlayMaps[d.name] = layer;
-	  if (!targetId || d.id === targetId) {
-  map.addLayer(layer);
 
-  // Якщо це потрібна територія — відкриваємо її одразу
-  if (targetId && d.id === targetId) {
-    const bounds = geoJsonLayer.getBounds();
-    map.fitBounds(bounds);
-
-    // Завантажуємо статус і показуємо попап
-    getTerritoryStatusPopup(d.id.replace("district", ""), d.name)
-      .then(popupContent => {
-        geoJsonLayer.eachLayer(subLayer => {
-          subLayer.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`)
-                   .openPopup();
+      // Додаємо шар лише якщо це цільова територія (targetId)
+      if (targetId && d.id === targetId) {
+        map.addLayer(layer);
+        const bounds = geoJsonLayer.getBounds();
+        if (bounds && bounds.isValid && bounds.isValid()) {
+          map.fitBounds(bounds.pad(0.15));
+        }
+        getTerritoryStatusPopup(territoryId, d.name).then(popupContent => {
+          geoJsonLayer.eachLayer(subLayer => {
+            subLayer.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
+          });
         });
-      });
-  }
-}
-
-		
+      }
 
       const coordinates = [];
       const geometries = feature.geometry.type === "GeometryCollection" ? feature.geometry.geometries : [feature.geometry];
@@ -495,12 +479,17 @@ const totalDistricts = districts.length;
   }
 
   showLoading(false);
-  
- 
- // Завжди підключаємо оновлення статусів і контрол шарів.
-// tryAddLayersControl приймає targetId, щоб не перезаписувати початкові стани чекбоксів.
-updateTerritoryStatuses();
-tryAddLayersControl(targetId);
+
+  // Завжди підключаємо оновлення статусів і контрол шарів
+  updateTerritoryStatuses();
+  tryAddLayersControl(targetId);
+
+  // Якщо targetId не вказано, додаємо всі шари
+  if (!targetId) {
+    loadedLayers.forEach(({ layer }) => map.addLayer(layer));
+  }
+})();
+
 
 // Якщо відкрито через ?territory=districtN — показуємо ТІЛЬКИ цю територію
 if (targetId) {
@@ -648,37 +637,47 @@ const title = `Карта: Територія №${number}`;
 };
 
 
-    function updateTerritoriesDisplay() {
-      const toggleAllCheckbox = document.getElementById('toggleAll');
-      const showTakenCheckbox = document.getElementById('showTaken');
-      const showFreeCheckbox = document.getElementById('showFree');
+function updateTerritoriesDisplay(targetId) {
+  const toggleAllCheckbox = document.getElementById('toggleAll');
+  const showTakenCheckbox = document.getElementById('showTaken');
+  const showFreeCheckbox = document.getElementById('showFree');
 
-      const toggleAll = toggleAllCheckbox.checked;
-      const showTaken = showTakenCheckbox && showTakenCheckbox.parentElement.style.display !== 'none' ? showTakenCheckbox.checked : false;
-      const showFree = showFreeCheckbox && showFreeCheckbox.parentElement.style.display !== 'none' ? showFreeCheckbox.checked : false;
+  const toggleAll = toggleAllCheckbox.checked;
+  const showTaken = showTakenCheckbox && showTakenCheckbox.parentElement.style.display !== 'none' ? showTakenCheckbox.checked : false;
+  const showFree = showFreeCheckbox && showFreeCheckbox.parentElement.style.display !== 'none' ? showFreeCheckbox.checked : false;
 
-      loadedLayers.forEach(({ name, layer }) => {
-        const districtId = districts.find(d => d.name === name).id;
-        const status = territoryStatuses[districtId] || "вільно";
+  loadedLayers.forEach(({ name, layer }) => {
+    const districtId = districts.find(d => d.name === name).id;
+    const status = territoryStatuses[districtId] || "вільно";
 
-        if (toggleAll) {
+    // Якщо вказано targetId, показуємо лише відповідний шар
+    if (targetId) {
+      if (districtId === targetId) {
+        map.addLayer(layer);
+      } else {
+        map.removeLayer(layer);
+      }
+    } else {
+      // Інакше застосовуємо стандартну логіку фільтрації
+      if (toggleAll) {
+        map.addLayer(layer);
+      } else if (showTaken || showFree) {
+        const shouldShow =
+          (showFree && status === "вільно") ||
+          (showTaken && status === "на руках");
+        if (shouldShow) {
           map.addLayer(layer);
-        } else if (showTaken || showFree) {
-          const shouldShow = 
-            (showFree && status === "вільно") ||
-            (showTaken && status === "на руках");
-          if (shouldShow) {
-            map.addLayer(layer);
-          } else {
-            map.removeLayer(layer);
-          }
         } else {
           map.removeLayer(layer);
         }
-      });
+      } else {
+        map.removeLayer(layer);
+      }
     }
+  });
+}
 
-    function tryAddLayersControl(targetId) {
+function tryAddLayersControl(targetId) {
   if (!layersControl) {
     const sortedOverlayMaps = {};
     loadedLayers.forEach(({ name, layer }) => {
@@ -696,9 +695,7 @@ const title = `Карта: Територія №${number}`;
     const showTakenCheckbox = document.getElementById('showTaken');
     const showFreeCheckbox = document.getElementById('showFree');
 
-    // Ініціалізація стану чекбоксів:
-    // якщо відкрито конкретну територію — залишаємо toggleAll unchecked (щоб не показувати всі),
-    // інакше за замовчуванням показуємо всі.
+    // Ініціалізація стану чекбоксів
     if (!targetId) {
       toggleAllCheckbox.checked = true;
       if (showTakenCheckbox) showTakenCheckbox.checked = false;
@@ -719,7 +716,7 @@ const title = `Карта: Територія №${number}`;
       } else {
         toggleAllLabel.innerText = 'Приховати всіх';
       }
-      updateTerritoriesDisplay();
+      updateTerritoriesDisplay(targetId);
     });
 
     if (showTakenCheckbox) {
@@ -728,7 +725,7 @@ const title = `Карта: Територія №${number}`;
           toggleAllCheckbox.checked = false;
           toggleAllLabel.innerText = 'Приховати всіх';
         }
-        updateTerritoriesDisplay();
+        updateTerritoriesDisplay(targetId);
       });
     }
 
@@ -738,12 +735,12 @@ const title = `Карта: Територія №${number}`;
           toggleAllCheckbox.checked = false;
           toggleAllLabel.innerText = 'Приховати всіх';
         }
-        updateTerritoriesDisplay();
+        updateTerritoriesDisplay(targetId);
       });
     }
 
-    // Початково застосувати фільтри (вони вже встановлені в залежності від targetId)
-    updateTerritoriesDisplay();
+    // Початково застосувати фільтри
+    updateTerritoriesDisplay(targetId);
   }
 }
 
