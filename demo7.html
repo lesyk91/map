@@ -408,9 +408,11 @@ async function updateTerritoryStatuses() {
   showLoading(true);
   updateProgress(0);
   let loadedCount = 0;
-  const urlParams = new URLSearchParams(window.location.search);
-const targetId = urlParams.get("territory");
-  const totalDistricts = districts.length;
+ const urlParams = new URLSearchParams(window.location.search);
+const rawTarget = urlParams.get("territory");
+const targetId = rawTarget ? (rawTarget.startsWith('district') ? rawTarget : `district${rawTarget}`) : null;
+console.log('targetId normalized:', targetId, 'rawTarget:', rawTarget);
+const totalDistricts = districts.length;
 
   try {
     const res = await fetch('all_districts.json');
@@ -424,32 +426,31 @@ const targetId = urlParams.get("territory");
         return;
       }
 
-      const layer = L.layerGroup();
+      const layer = L.featureGroup();
       const geoJsonLayer = L.geoJSON(feature, {
-       onEachFeature: (feat, layer) => {
+    onEachFeature: (feat, layer) => {
+  const territoryId = d.id.replace("district", "");
   const center = layer.getBounds().getCenter();
   districtCenters.push({ name: feat.properties?.name || d.name, latlng: center });
 
-  // Автоматичне відкриття popup, якщо territoryId збігається
-  if (targetId && d.id.replace("district", "") === targetId) {
-    getTerritoryStatusPopup(targetId, d.name).then((popupContent) => {
-      layer.bindPopup(
-        popupContent +
-          `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">Редагувати</button>`
-      ).openPopup();
-      map.fitBounds(layer.getBounds());
-    });
+  // Одна функція для відкриття popup
+  async function openTerritoryPopup() {
+    const popupContent = await getTerritoryStatusPopup(territoryId, d.name);
+    layer.bindPopup(
+      popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">Редагувати</button>`
+    ).openPopup();
+    map.fitBounds(layer.getBounds());
   }
 
-  // Подія при кліку на територію
-  layer.on("click", async () => {
-    const popupContent = await getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-    layer.bindPopup(
-      popupContent +
-        `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">Редагувати</button>`
-    ).openPopup();
-  });
+  // При кліку користувача
+  layer.on("click", openTerritoryPopup);
+
+  // Автовідкриття, якщо ця територія співпадає з targetId
+  if (targetId && territoryId === targetId) {
+    openTerritoryPopup();
+  }
 }
+
 
 
         style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
