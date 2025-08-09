@@ -426,24 +426,31 @@ const targetId = urlParams.get("territory");
 
       const layer = L.layerGroup();
       const geoJsonLayer = L.geoJSON(feature, {
-        onEachFeature: (feat, layer) => {
+       onEachFeature: (feat, layer) => {
   const center = layer.getBounds().getCenter();
   districtCenters.push({ name: feat.properties?.name || d.name, latlng: center });
 
-  // Автовідкриття, якщо в URL задана territory
+  // Автоматичне відкриття popup, якщо territoryId збігається
   if (targetId && d.id.replace("district", "") === targetId) {
     getTerritoryStatusPopup(targetId, d.name).then((popupContent) => {
-      layer.bindPopup(popupContent).openPopup();
+      layer.bindPopup(
+        popupContent +
+          `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">Редагувати</button>`
+      ).openPopup();
       map.fitBounds(layer.getBounds());
     });
   }
 
-  // Звичайна обробка кліку
+  // Подія при кліку на територію
   layer.on("click", async () => {
     const popupContent = await getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-    layer.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">Редагувати</button>`).openPopup();
+    layer.bindPopup(
+      popupContent +
+        `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">Редагувати</button>`
+    ).openPopup();
   });
 }
+
 
         style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
       }).addTo(layer);
