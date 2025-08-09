@@ -135,7 +135,7 @@
   <div id="loader" class="bg-white border border-gray-300 rounded shadow-sm"></div>
   <div class="controls bg-white border border-gray-300 rounded shadow-sm p-2 sm:p-3">
     <input type="checkbox" id="toggleAll" checked>
-    <label for="toggleAll" id="toggleAllLabel" class="text-sm sm:text-base">Показати всі</label><br>
+    <label for="toggleAll" id="toggleAllLabel" class="text-sm sm:text-base">Показати всі1</label><br>
     <div id="taken-control" style="display: none">
       <input type="checkbox" id="showTaken">
       <label for="showTaken" class="text-sm sm:text-base">На руках</label><br>
@@ -427,14 +427,24 @@ const targetId = urlParams.get("territory");
       const layer = L.layerGroup();
       const geoJsonLayer = L.geoJSON(feature, {
         onEachFeature: (feat, layer) => {
-          const center = layer.getBounds().getCenter();
-          districtCenters.push({ name: feat.properties?.name || d.name, latlng: center });
+  const center = layer.getBounds().getCenter();
+  districtCenters.push({ name: feat.properties?.name || d.name, latlng: center });
 
-          layer.on("click", async () => {
-            const popupContent = await getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
-            layer.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
-          });
-        },
+  // Автовідкриття, якщо в URL задана territory
+  if (targetId && d.id.replace("district", "") === targetId) {
+    getTerritoryStatusPopup(targetId, d.name).then((popupContent) => {
+      layer.bindPopup(popupContent).openPopup();
+      map.fitBounds(layer.getBounds());
+    });
+  }
+
+  // Звичайна обробка кліку
+  layer.on("click", async () => {
+    const popupContent = await getTerritoryStatusPopup(d.id.replace("district", ""), d.name);
+    layer.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">Редагувати</button>`).openPopup();
+  });
+}
+
         style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 }
       }).addTo(layer);
 
