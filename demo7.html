@@ -135,7 +135,7 @@
   <div id="loader" class="bg-white border border-gray-300 rounded shadow-sm"></div>
   <div class="controls bg-white border border-gray-300 rounded shadow-sm p-2 sm:p-3">
     <input type="checkbox" id="toggleAll" checked>
-    <label for="toggleAll" id="toggleAllLabel" class="text-sm sm:text-base">Показати всі2</label><br>
+    <label for="toggleAll" id="toggleAllLabel" class="text-sm sm:text-base">Показати всі22</label><br>
     <div id="taken-control" style="display: none">
       <input type="checkbox" id="showTaken">
       <label for="showTaken" class="text-sm sm:text-base">На руках</label><br>
@@ -427,8 +427,7 @@ const totalDistricts = districts.length;
       }
 
       const layer = L.featureGroup();
-      const geoJsonLayer = L.geoJSON(feature, {
-const geoJsonLayer = L.geoJSON(feature, {
+     const geoJsonLayer = L.geoJSON(feature, {
   onEachFeature: (feat, layer) => {
     const center = layer.getBounds().getCenter();
     districtCenters.push({ name: feat.properties?.name || d.name, latlng: center });
