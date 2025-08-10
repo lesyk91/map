@@ -27,9 +27,6 @@
     button.layer-toggle { top: 50px; }
     button.login-btn, button.logout-btn { top: 46px; }
     button.territories-btn { top: 200px; }
-    #taken-control, #free-control, #private-control, #multistory-control, #business-control {
-      margin: 5px 0;
-    }
     .controls {
       position: absolute;
       top: 90px;
@@ -42,6 +39,8 @@
     }
     .controls label { margin-left: 5px; cursor: pointer; }
     .controls input[type="checkbox"] { margin: 5px 0; }
+    .subgroup { margin-left: 20px; } /* Відступ для підгруп */
+    #taken-control, #free-control { margin: 5px 0; }
     #loader {
       position: absolute;
       top: 10px;
@@ -79,6 +78,7 @@
         left: 10px; padding: 5px 10px; font-size: 14px;
       }
       .controls { left: 10px; top: 80px; padding: 6px; width: 160px; }
+      .subgroup { margin-left: 15px; }
       #loader { left: 180px; padding: 6px; }
       button.territories-btn { top: 195px; }
     }
@@ -108,22 +108,26 @@
     <div id="taken-control" style="display: none">
       <input type="checkbox" id="showTaken">
       <label for="showTaken" class="text-sm sm:text-base">На руках <span id="taken-count" class="text-xs text-gray-500">(0)</span></label><br>
+      <div class="subgroup">
+        <input type="checkbox" id="showTakenPrivate">
+        <label for="showTakenPrivate" class="text-sm sm:text-base">Приватна <span id="taken-private-count" class="text-xs text-gray-500">(0)</span></label><br>
+        <input type="checkbox" id="showTakenMultistory">
+        <label for="showTakenMultistory" class="text-sm sm:text-base">Поверхівки <span id="taken-multistory-count" class="text-xs text-gray-500">(0)</span></label><br>
+        <input type="checkbox" id="showTakenBusiness">
+        <label for="showTakenBusiness" class="text-sm sm:text-base">Ділова <span id="taken-business-count" class="text-xs text-gray-500">(0)</span></label><br>
+      </div>
     </div>
     <div id="free-control" style="display: none">
       <input type="checkbox" id="showFree">
       <label for="showFree" class="text-sm sm:text-base">Вільно <span id="free-count" class="text-xs text-gray-500">(0)</span></label><br>
-    </div>
-    <div id="private-control" style="display: none">
-      <input type="checkbox" id="showPrivate">
-      <label for="showPrivate" class="text-sm sm:text-base">Приватна <span id="private-count" class="text-xs text-gray-500">(0)</span></label><br>
-    </div>
-    <div id="multistory-control" style="display: none">
-      <input type="checkbox" id="showMultistory">
-      <label for="showMultistory" class="text-sm sm:text-base">Поверхівки <span id="multistory-count" class="text-xs text-gray-500">(0)</span></label><br>
-    </div>
-    <div id="business-control" style="display: none">
-      <input type="checkbox" id="showBusiness">
-      <label for="showBusiness" class="text-sm sm:text-base">Ділова <span id="business-count" class="text-xs text-gray-500">(0)</span></label><br>
+      <div class="subgroup">
+        <input type="checkbox" id="showFreePrivate">
+        <label for="showFreePrivate" class="text-sm sm:text-base">Приватна <span id="free-private-count" class="text-xs text-gray-500">(0)</span></label><br>
+        <input type="checkbox" id="showFreeMultistory">
+        <label for="showFreeMultistory" class="text-sm sm:text-base">Поверхівки <span id="free-multistory-count" class="text-xs text-gray-500">(0)</span></label><br>
+        <input type="checkbox" id="showFreeBusiness">
+        <label for="showFreeBusiness" class="text-sm sm:text-base">Ділова <span id="free-business-count" class="text-xs text-gray-500">(0)</span></label><br>
+      </div>
     </div>
   </div>
 
@@ -156,9 +160,6 @@
     const territoriesBtn = document.querySelector('.territories-btn');
     const takenControl = document.getElementById('taken-control');
     const freeControl = document.getElementById('free-control');
-    const privateControl = document.getElementById('private-control');
-    const multistoryControl = document.getElementById('multistory-control');
-    const businessControl = document.getElementById('business-control');
 
     const map = L.map('map', { zoomControl: false }).setView([49.1029, 29.2074], 13);
 
@@ -278,7 +279,7 @@
     const districtGeometries = [];
     const overlayMaps = {};
     const territoryStatuses = {};
-    const territoryTypes = {}; // districtId -> "Приватна" | "Поверхівки" | "Ділова"
+    const territoryTypes = {};
     let layersControl = null;
     const loadedLayers = [];
 
@@ -320,9 +321,6 @@
         territoriesBtn.style.display = 'inline-block';
         takenControl.style.display = 'block';
         freeControl.style.display = 'block';
-        privateControl.style.display = 'block';
-        multistoryControl.style.display = 'block';
-        businessControl.style.display = 'block';
         updateTerritoryStatuses();
       } else {
         loginBtn.style.display = 'inline-block';
@@ -330,9 +328,6 @@
         territoriesBtn.style.display = 'none';
         takenControl.style.display = 'block';
         freeControl.style.display = 'block';
-        privateControl.style.display = 'block';
-        multistoryControl.style.display = 'block';
-        businessControl.style.display = 'block';
         Object.keys(territoryStatuses).forEach(id => territoryStatuses[id] = "вільно");
         updateTerritoriesDisplay();
       }
@@ -545,36 +540,51 @@
       const toggleAllCheckbox = document.getElementById('toggleAll');
       const showTakenCheckbox = document.getElementById('showTaken');
       const showFreeCheckbox = document.getElementById('showFree');
-      const showPrivateCheckbox = document.getElementById('showPrivate');
-      const showMultistoryCheckbox = document.getElementById('showMultistory');
-      const showBusinessCheckbox = document.getElementById('showBusiness');
+      const showTakenPrivateCheckbox = document.getElementById('showTakenPrivate');
+      const showTakenMultistoryCheckbox = document.getElementById('showTakenMultistory');
+      const showTakenBusinessCheckbox = document.getElementById('showTakenBusiness');
+      const showFreePrivateCheckbox = document.getElementById('showFreePrivate');
+      const showFreeMultistoryCheckbox = document.getElementById('showFreeMultistory');
+      const showFreeBusinessCheckbox = document.getElementById('showFreeBusiness');
       const totalCountSpan = document.getElementById('total-count');
       const takenCountSpan = document.getElementById('taken-count');
       const freeCountSpan = document.getElementById('free-count');
-      const privateCountSpan = document.getElementById('private-count');
-      const multistoryCountSpan = document.getElementById('multistory-count');
-      const businessCountSpan = document.getElementById('business-count');
+      const takenPrivateCountSpan = document.getElementById('taken-private-count');
+      const takenMultistoryCountSpan = document.getElementById('taken-multistory-count');
+      const takenBusinessCountSpan = document.getElementById('taken-business-count');
+      const freePrivateCountSpan = document.getElementById('free-private-count');
+      const freeMultistoryCountSpan = document.getElementById('free-multistory-count');
+      const freeBusinessCountSpan = document.getElementById('free-business-count');
 
       const toggleAll = toggleAllCheckbox?.checked ?? true;
       const showTaken = showTakenCheckbox?.checked ?? false;
       const showFree = showFreeCheckbox?.checked ?? false;
-      const showPrivate = showPrivateCheckbox?.checked ?? false;
-      const showMultistory = showMultistoryCheckbox?.checked ?? false;
-      const showBusiness = showBusinessCheckbox?.checked ?? false;
+      const showTakenPrivate = showTakenPrivateCheckbox?.checked ?? false;
+      const showTakenMultistory = showTakenMultistoryCheckbox?.checked ?? false;
+      const showTakenBusiness = showTakenBusinessCheckbox?.checked ?? false;
+      const showFreePrivate = showFreePrivateCheckbox?.checked ?? false;
+      const showFreeMultistory = showFreeMultistoryCheckbox?.checked ?? false;
+      const showFreeBusiness = showFreeBusinessCheckbox?.checked ?? false;
 
       const totalCount = districts.length;
       const takenCount = Object.values(territoryStatuses).filter(status => status === "на руках").length;
       const freeCount = Object.values(territoryStatuses).filter(status => status === "вільно").length;
-      const privateCount = Object.values(territoryTypes).filter(type => type === "Приватна").length;
-      const multistoryCount = Object.values(territoryTypes).filter(type => type === "Поверхівки").length;
-      const businessCount = Object.values(territoryTypes).filter(type => type === "Ділова").length;
+      const takenPrivateCount = Object.keys(territoryStatuses).filter(id => territoryStatuses[id] === "на руках" && territoryTypes[id] === "Приватна").length;
+      const takenMultistoryCount = Object.keys(territoryStatuses).filter(id => territoryStatuses[id] === "на руках" && territoryTypes[id] === "Поверхівки").length;
+      const takenBusinessCount = Object.keys(territoryStatuses).filter(id => territoryStatuses[id] === "на руках" && territoryTypes[id] === "Ділова").length;
+      const freePrivateCount = Object.keys(territoryStatuses).filter(id => territoryStatuses[id] === "вільно" && territoryTypes[id] === "Приватна").length;
+      const freeMultistoryCount = Object.keys(territoryStatuses).filter(id => territoryStatuses[id] === "вільно" && territoryTypes[id] === "Поверхівки").length;
+      const freeBusinessCount = Object.keys(territoryStatuses).filter(id => territoryStatuses[id] === "вільно" && territoryTypes[id] === "Ділова").length;
 
       if (totalCountSpan) totalCountSpan.textContent = `(${totalCount})`;
       if (takenCountSpan) takenCountSpan.textContent = `(${takenCount})`;
       if (freeCountSpan) freeCountSpan.textContent = `(${freeCount})`;
-      if (privateCountSpan) privateCountSpan.textContent = `(${privateCount})`;
-      if (multistoryCountSpan) multistoryCountSpan.textContent = `(${multistoryCount})`;
-      if (businessCountSpan) businessCountSpan.textContent = `(${businessCount})`;
+      if (takenPrivateCountSpan) takenPrivateCountSpan.textContent = `(${takenPrivateCount})`;
+      if (takenMultistoryCountSpan) takenMultistoryCountSpan.textContent = `(${takenMultistoryCount})`;
+      if (takenBusinessCountSpan) takenBusinessCountSpan.textContent = `(${takenBusinessCount})`;
+      if (freePrivateCountSpan) freePrivateCountSpan.textContent = `(${freePrivateCount})`;
+      if (freeMultistoryCountSpan) freeMultistoryCountSpan.textContent = `(${freeMultistoryCount})`;
+      if (freeBusinessCountSpan) freeBusinessCountSpan.textContent = `(${freeBusinessCount})`;
 
       if (targetId) {
         loadedLayers.forEach(item => {
@@ -592,16 +602,30 @@
         const type = territoryTypes[id] || "невідомо";
         if (toggleAll) {
           if (!map.hasLayer(layerGroup)) map.addLayer(layerGroup);
-        } else if (showTaken || showFree || showPrivate || showMultistory || showBusiness) {
-          const shouldShowStatus = (showFree && status === "вільно") || (showTaken && status === "на руках");
-          const shouldShowType = (showPrivate && type === "Приватна") || 
-                                (showMultistory && type === "Поверхівки") || 
-                                (showBusiness && type === "Ділова");
-          const shouldShow = shouldShowStatus || shouldShowType;
+        } else if (showTaken || showFree) {
+          let shouldShow = false;
+          if (showTaken && status === "на руках") {
+            if (!showTakenPrivate && !showTakenMultistory && !showTakenBusiness) {
+              shouldShow = true; // Показуємо всі "на руках", якщо не вибрано жодного типу
+            } else {
+              shouldShow = (showTakenPrivate && type === "Приватна") ||
+                           (showTakenMultistory && type === "Поверхівки") ||
+                           (showTakenBusiness && type === "Ділова");
+            }
+          }
+          if (showFree && status === "вільно") {
+            if (!showFreePrivate && !showFreeMultistory && !showFreeBusiness) {
+              shouldShow = true; // Показуємо всі "вільно", якщо не вибрано жодного типу
+            } else {
+              shouldShow = (showFreePrivate && type === "Приватна") ||
+                           (showFreeMultistory && type === "Поверхівки") ||
+                           (showFreeBusiness && type === "Ділова");
+            }
+          }
           if (shouldShow) {
             if (!map.hasLayer(layerGroup)) map.addLayer(layerGroup);
           } else {
-            if (map.hasLayer(layerGroup)) map.removeLayer(item.layerGroup);
+            if (map.hasLayer(layerGroup)) map.removeLayer(layerGroup);
           }
         } else {
           if (map.hasLayer(layerGroup)) map.removeLayer(layerGroup);
@@ -620,25 +644,34 @@
       const toggleAllLabel = document.getElementById('toggleAllLabel');
       const showTakenCheckbox = document.getElementById('showTaken');
       const showFreeCheckbox = document.getElementById('showFree');
-      const showPrivateCheckbox = document.getElementById('showPrivate');
-      const showMultistoryCheckbox = document.getElementById('showMultistory');
-      const showBusinessCheckbox = document.getElementById('showBusiness');
+      const showTakenPrivateCheckbox = document.getElementById('showTakenPrivate');
+      const showTakenMultistoryCheckbox = document.getElementById('showTakenMultistory');
+      const showTakenBusinessCheckbox = document.getElementById('showTakenBusiness');
+      const showFreePrivateCheckbox = document.getElementById('showFreePrivate');
+      const showFreeMultistoryCheckbox = document.getElementById('showFreeMultistory');
+      const showFreeBusinessCheckbox = document.getElementById('showFreeBusiness');
 
       toggleAllCheckbox.checked = !targetId;
       if (showTakenCheckbox) showTakenCheckbox.checked = false;
       if (showFreeCheckbox) showFreeCheckbox.checked = false;
-      if (showPrivateCheckbox) showPrivateCheckbox.checked = false;
-      if (showMultistoryCheckbox) showMultistoryCheckbox.checked = false;
-      if (showBusinessCheckbox) showBusinessCheckbox.checked = false;
+      if (showTakenPrivateCheckbox) showTakenPrivateCheckbox.checked = false;
+      if (showTakenMultistoryCheckbox) showTakenMultistoryCheckbox.checked = false;
+      if (showTakenBusinessCheckbox) showTakenBusinessCheckbox.checked = false;
+      if (showFreePrivateCheckbox) showFreePrivateCheckbox.checked = false;
+      if (showFreeMultistoryCheckbox) showFreeMultistoryCheckbox.checked = false;
+      if (showFreeBusinessCheckbox) showFreeBusinessCheckbox.checked = false;
       toggleAllLabel.innerText = 'Показати всіх';
 
       toggleAllCheckbox.addEventListener('change', () => {
         if (toggleAllCheckbox.checked) {
           if (showTakenCheckbox) showTakenCheckbox.checked = false;
           if (showFreeCheckbox) showFreeCheckbox.checked = false;
-          if (showPrivateCheckbox) showPrivateCheckbox.checked = false;
-          if (showMultistoryCheckbox) showMultistoryCheckbox.checked = false;
-          if (showBusinessCheckbox) showBusinessCheckbox.checked = false;
+          if (showTakenPrivateCheckbox) showTakenPrivateCheckbox.checked = false;
+          if (showTakenMultistoryCheckbox) showTakenMultistoryCheckbox.checked = false;
+          if (showTakenBusinessCheckbox) showTakenBusinessCheckbox.checked = false;
+          if (showFreePrivateCheckbox) showFreePrivateCheckbox.checked = false;
+          if (showFreeMultistoryCheckbox) showFreeMultistoryCheckbox.checked = false;
+          if (showFreeBusinessCheckbox) showFreeBusinessCheckbox.checked = false;
           toggleAllLabel.innerText = 'Показати всіх';
         } else {
           toggleAllLabel.innerText = 'Приховати всіх';
@@ -649,7 +682,13 @@
 
       if (showTakenCheckbox) {
         showTakenCheckbox.addEventListener('change', () => {
-          if (showTakenCheckbox.checked) { toggleAllCheckbox.checked = false; toggleAllLabel.innerText = 'Приховати всіх'; }
+          if (showTakenCheckbox.checked) {
+            toggleAllCheckbox.checked = false;
+            toggleAllLabel.innerText = 'Приховати всіх';
+            showTakenPrivateCheckbox.checked = false;
+            showTakenMultistoryCheckbox.checked = false;
+            showTakenBusinessCheckbox.checked = false;
+          }
           if (targetId) targetId = null;
           updateTerritoriesDisplay();
         });
@@ -657,31 +696,85 @@
 
       if (showFreeCheckbox) {
         showFreeCheckbox.addEventListener('change', () => {
-          if (showFreeCheckbox.checked) { toggleAllCheckbox.checked = false; toggleAllLabel.innerText = 'Приховати всіх'; }
+          if (showFreeCheckbox.checked) {
+            toggleAllCheckbox.checked = false;
+            toggleAllLabel.innerText = 'Приховати всіх';
+            showFreePrivateCheckbox.checked = false;
+            showFreeMultistoryCheckbox.checked = false;
+            showFreeBusinessCheckbox.checked = false;
+          }
           if (targetId) targetId = null;
           updateTerritoriesDisplay();
         });
       }
 
-      if (showPrivateCheckbox) {
-        showPrivateCheckbox.addEventListener('change', () => {
-          if (showPrivateCheckbox.checked) { toggleAllCheckbox.checked = false; toggleAllLabel.innerText = 'Приховати всіх'; }
+      if (showTakenPrivateCheckbox) {
+        showTakenPrivateCheckbox.addEventListener('change', () => {
+          if (showTakenPrivateCheckbox.checked) {
+            showTakenCheckbox.checked = true;
+            toggleAllCheckbox.checked = false;
+            toggleAllLabel.innerText = 'Приховати всіх';
+          }
           if (targetId) targetId = null;
           updateTerritoriesDisplay();
         });
       }
 
-      if (showMultistoryCheckbox) {
-        showMultistoryCheckbox.addEventListener('change', () => {
-          if (showMultistoryCheckbox.checked) { toggleAllCheckbox.checked = false; toggleAllLabel.innerText = 'Приховати всіх'; }
+      if (showTakenMultistoryCheckbox) {
+        showTakenMultistoryCheckbox.addEventListener('change', () => {
+          if (showTakenMultistoryCheckbox.checked) {
+            showTakenCheckbox.checked = true;
+            toggleAllCheckbox.checked = false;
+            toggleAllLabel.innerText = 'Приховати всіх';
+          }
           if (targetId) targetId = null;
           updateTerritoriesDisplay();
         });
       }
 
-      if (showBusinessCheckbox) {
-        showBusinessCheckbox.addEventListener('change', () => {
-          if (showBusinessCheckbox.checked) { toggleAllCheckbox.checked = false; toggleAllLabel.innerText = 'Приховати всіх'; }
+      if (showTakenBusinessCheckbox) {
+        showTakenBusinessCheckbox.addEventListener('change', () => {
+          if (showTakenBusinessCheckbox.checked) {
+            showTakenCheckbox.checked = true;
+            toggleAllCheckbox.checked = false;
+            toggleAllLabel.innerText = 'Приховати всіх';
+          }
+          if (targetId) targetId = null;
+          updateTerritoriesDisplay();
+        });
+      }
+
+      if (showFreePrivateCheckbox) {
+        showFreePrivateCheckbox.addEventListener('change', () => {
+          if (showFreePrivateCheckbox.checked) {
+            showFreeCheckbox.checked = true;
+            toggleAllCheckbox.checked = false;
+            toggleAllLabel.innerText = 'Приховати всіх';
+          }
+          if (targetId) targetId = null;
+          updateTerritoriesDisplay();
+        });
+      }
+
+      if (showFreeMultistoryCheckbox) {
+        showFreeMultistoryCheckbox.addEventListener('change', () => {
+          if (showFreeMultistoryCheckbox.checked) {
+            showFreeCheckbox.checked = true;
+            toggleAllCheckbox.checked = false;
+            toggleAllLabel.innerText = 'Приховати всіх';
+          }
+          if (targetId) targetId = null;
+          updateTerritoriesDisplay();
+        });
+      }
+
+      if (showFreeBusinessCheckbox) {
+        showFreeBusinessCheckbox.addEventListener('change', () => {
+          if (showFreeBusinessCheckbox.checked) {
+            showFreeCheckbox.checked = true;
+            toggleAllCheckbox.checked = false;
+            toggleAllLabel.innerText = 'Приховати всіх';
+          }
           if (targetId) targetId = null;
           updateTerritoriesDisplay();
         });
