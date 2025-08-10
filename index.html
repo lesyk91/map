@@ -534,7 +534,7 @@
       const url = `${window.location.origin}${window.location.pathname}?territory=${number}`;
       const title = `Карта: Територія №${number}`;
       if (navigator.share) {
-        navigator.share({ title, text: `Переглянь цю територію: №${number}`, url }).catch(err => {
+        navigator.share({ title, text: `Територія: №${number}`, url }).catch(err => {
           console.warn('share failed', err);
           try { navigator.clipboard.writeText(url); alert('Посилання скопійовано в буфер'); } catch(e){ prompt('Посилання на територію:', url); }
         });
@@ -657,3 +657,4 @@ function updateTerritoriesDisplay() {
   </script>
 </body>
 </html>
+
