@@ -27,7 +27,7 @@
     button.layer-toggle { top: 50px; }
     button.login-btn, button.logout-btn { top: 46px; }
     button.territories-btn { top: 200px; }
-    #taken-control, #free-control {
+    #taken-control, #free-control, #private-control, #multistory-control, #business-control {
       margin: 5px 0;
     }
     .controls {
@@ -52,7 +52,6 @@
       border: 1px solid #ccc;
       border-radius: 10px;
     }
-    /* Progress Overlay */
     #progress-overlay {
       position: fixed;
       top: 0;
@@ -104,17 +103,29 @@
   <div id="loader" class="bg-white border border-gray-300 rounded shadow-sm"></div>
 
   <div class="controls bg-white border border-gray-300 rounded shadow-sm p-2 sm:p-3">
-  <input type="checkbox" id="toggleAll" checked>
-  <label for="toggleAll" id="toggleAllLabel" class="text-sm sm:text-base">Показати всі <span id="total-count" class="text-xs text-gray-500">(0)</span></label><br>
-  <div id="taken-control" style="display: none">
-    <input type="checkbox" id="showTaken">
-    <label for="showTaken" class="text-sm sm:text-base">На руках <span id="taken-count" class="text-xs text-gray-500">(0)</span></label><br>
+    <input type="checkbox" id="toggleAll" checked>
+    <label for="toggleAll" id="toggleAllLabel" class="text-sm sm:text-base">Показати всі <span id="total-count" class="text-xs text-gray-500">(0)</span></label><br>
+    <div id="taken-control" style="display: none">
+      <input type="checkbox" id="showTaken">
+      <label for="showTaken" class="text-sm sm:text-base">На руках <span id="taken-count" class="text-xs text-gray-500">(0)</span></label><br>
+    </div>
+    <div id="free-control" style="display: none">
+      <input type="checkbox" id="showFree">
+      <label for="showFree" class="text-sm sm:text-base">Вільно <span id="free-count" class="text-xs text-gray-500">(0)</span></label><br>
+    </div>
+    <div id="private-control" style="display: none">
+      <input type="checkbox" id="showPrivate">
+      <label for="showPrivate" class="text-sm sm:text-base">Приватна <span id="private-count" class="text-xs text-gray-500">(0)</span></label><br>
+    </div>
+    <div id="multistory-control" style="display: none">
+      <input type="checkbox" id="showMultistory">
+      <label for="showMultistory" class="text-sm sm:text-base">Поверхівки <span id="multistory-count" class="text-xs text-gray-500">(0)</span></label><br>
+    </div>
+    <div id="business-control" style="display: none">
+      <input type="checkbox" id="showBusiness">
+      <label for="showBusiness" class="text-sm sm:text-base">Ділова <span id="business-count" class="text-xs text-gray-500">(0)</span></label><br>
+    </div>
   </div>
-  <div id="free-control" style="display: none">
-    <input type="checkbox" id="showFree">
-    <label for="showFree" class="text-sm sm:text-base">Вільно <span id="free-count" class="text-xs text-gray-500">(0)</span></label>
-  </div>
-</div>
 
   <div id="map"></div>
 
@@ -122,10 +133,9 @@
   <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
 
   <script type="module">
-    // Firebase модулі (як і раніше)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, collection, query, orderBy, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getFirestore, collection, query, orderBy, getDocs, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -141,14 +151,15 @@
     const db = getFirestore(app);
     let currentUser = null;
 
-    // DOM refs
     const loginBtn = document.querySelector('.login-btn');
     const logoutBtn = document.querySelector('.logout-btn');
     const territoriesBtn = document.querySelector('.territories-btn');
     const takenControl = document.getElementById('taken-control');
     const freeControl = document.getElementById('free-control');
+    const privateControl = document.getElementById('private-control');
+    const multistoryControl = document.getElementById('multistory-control');
+    const businessControl = document.getElementById('business-control');
 
-    // Map
     const map = L.map('map', { zoomControl: false }).setView([49.1029, 29.2074], 13);
 
     const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
@@ -159,7 +170,6 @@
       attribution: '© Esri', maxZoom: 20
     });
 
-    // districts list (ваш)
     const districts = [ 
       { id: 'district1', name: 'Територія 1', color: 'blue', fillColor: '#add8e6' },
       { id: 'district2', name: 'Територія 2', color: 'green', fillColor: '#90ee90' },
@@ -264,32 +274,28 @@
       { id: 'district102', name: 'Територія 102', color: 'green', fillColor: '#90ee90' }
     ];
 
-    // Робочі структури
     const districtCenters = [];
-    const districtGeometries = []; // {id, name, coordinates[]}
-    const overlayMaps = {}; // name -> layerGroup
-    const territoryStatuses = {}; // districtId -> "вільно"|"на руках"
+    const districtGeometries = [];
+    const overlayMaps = {};
+    const territoryStatuses = {};
+    const territoryTypes = {}; // districtId -> "Приватна" | "Поверхівки" | "Ділова"
     let layersControl = null;
-    const loadedLayers = []; // {id, name, layerGroup, geoJsonLayer}
+    const loadedLayers = [];
 
-    // для логіки виділення через параметр ?territory=
     const urlParams = new URLSearchParams(window.location.search);
-    let rawTarget = urlParams.get("territory"); // може бути "district5" або "5"
-    let targetId = null; // у форматі 'district5'
+    let rawTarget = urlParams.get("territory");
+    let targetId = null;
     if (rawTarget) {
       if (rawTarget.startsWith('district')) targetId = rawTarget;
       else targetId = `district${rawTarget}`;
-      // додатково, у випадку коли user передав просто число '5', також в targetId
     }
 
-    // НОРМАЛІЗАЦІЯ districts (sort)
     districts.sort((a,b) => {
       const na = parseInt(a.id.replace('district',''),10);
       const nb = parseInt(b.id.replace('district',''),10);
       return na - nb;
     });
 
-    // UI helper
     function showLoadingText(txt){ document.getElementById('loader').innerText = txt || ''; }
     function updateProgress(percentage){
       const progressOverlay = document.getElementById('progress-overlay');
@@ -306,7 +312,6 @@
       }
     }
 
-    // АВТОРИЗАЦІЯ
     onAuthStateChanged(auth, user => {
       currentUser = user;
       if (user) {
@@ -315,14 +320,19 @@
         territoriesBtn.style.display = 'inline-block';
         takenControl.style.display = 'block';
         freeControl.style.display = 'block';
-        updateTerritoryStatuses(); // починаємо слідкувати
+        privateControl.style.display = 'block';
+        multistoryControl.style.display = 'block';
+        businessControl.style.display = 'block';
+        updateTerritoryStatuses();
       } else {
         loginBtn.style.display = 'inline-block';
         logoutBtn.style.display = 'none';
         territoriesBtn.style.display = 'none';
         takenControl.style.display = 'block';
         freeControl.style.display = 'block';
-        // якщо вийшли — всі статуси "вільно" локально
+        privateControl.style.display = 'block';
+        multistoryControl.style.display = 'block';
+        businessControl.style.display = 'block';
         Object.keys(territoryStatuses).forEach(id => territoryStatuses[id] = "вільно");
         updateTerritoriesDisplay();
       }
@@ -330,7 +340,6 @@
 
     logoutBtn?.addEventListener("click", async () => { await signOut(auth); layersControl = null; location.reload(); });
 
-    // Отримати popup контент зі статусом
     async function getTerritoryStatusPopup(number, name){
       try {
         const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp","desc"));
@@ -347,7 +356,9 @@
             popup += `<br><b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
           }
         }
-        // Поділитись і редагувати (як у вас)
+        const territoryDoc = await getDoc(doc(db, `territories/${number}`));
+        const territoryType = territoryDoc.exists() ? territoryDoc.data().type || "невідомо" : "невідомо";
+        popup += `<br><b>Тип:</b> ${territoryType}`;
         popup += `<br><button onclick="shareTerritory('${number}')" style="background-color: green; color: white;">🔗 Поділитися</button>`;
         if (currentUser) {
           popup += `<br><a href="territory-detail.html?number=${number}"><button style="background-color: orange; color: white;">✏️ Редагувати</button></a>`;
@@ -355,16 +366,17 @@
         return popup;
       } catch(err) {
         console.warn('getTerritoryStatusPopup error', err);
-        return `<b>${name}</b><br><b>Статус:</b> невідомий`;
+        return `<b>${name}</b><br><b>Статус:</b> невідомий<br><b>Тип:</b> невідомий`;
       }
     }
 
-    // Слухаємо статуси всіх територій у Firestore одночасно (оновлення в реальному часі)
-    function updateTerritoryStatuses(){
-      districts.forEach(d => {
+    async function updateTerritoryStatuses(){
+      for (const d of districts) {
         try {
           const idNum = d.id.replace('district','');
           const q = query(collection(db, `territories/${idNum}/history`), orderBy("timestamp","desc"));
+          const territoryDoc = await getDoc(doc(db, `territories/${idNum}`));
+          territoryTypes[d.id] = territoryDoc.exists() ? territoryDoc.data().type || "невідомо" : "невідомо";
           onSnapshot(q, snap => {
             if (!snap || snap.empty) territoryStatuses[d.id] = "вільно";
             else {
@@ -379,11 +391,11 @@
           });
         } catch(e) {
           console.warn('updateTerritoryStatuses catch', e);
+          territoryTypes[d.id] = "невідомо";
         }
-      });
+      }
     }
 
-    // Завантаження all_districts.json і створення шарів
     (async () => {
       showLoadingText('Завантаження територій...');
       updateProgress(0);
@@ -404,15 +416,12 @@
             return;
           }
 
-          // Створюємо layerGroup для кожної території (щоб можна було легко вмикати/вимикати)
           const layerGroup = L.layerGroup();
-          // geoJson додаємо в окремий об'єкт, але додаємо до layerGroup
           const geoJsonLayer = L.geoJSON(feature, {
             style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 },
             onEachFeature: (feat, lyr) => {
               const center = lyr.getBounds().getCenter();
               districtCenters.push({ id: d.id, name: feat.properties?.name || d.name, latlng: center });
-              // клік на полігон
               lyr.on('click', async () => {
                 const idNum = d.id.replace('district','');
                 const popupContent = await getTerritoryStatusPopup(idNum, d.name);
@@ -421,35 +430,27 @@
             }
           });
 
-          // додаємо geoJsonLayer в layerGroup та в map (за умовою нижче)
           geoJsonLayer.addTo(layerGroup);
-
-          // запам'ятовуємо структуру (зручніше для контролу)
           loadedLayers.push({ id: d.id, name: d.name, layerGroup, geoJsonLayer });
           overlayMaps[d.name] = layerGroup;
-          territoryStatuses[d.id] = "вільно"; // значення за замовчуванням
+          territoryStatuses[d.id] = "вільно";
+          territoryTypes[d.id] = "невідомо";
 
-          // Якщо targetId відсутній — додаємо всі шари. Якщо targetId заданий, додаємо лише потрібний.
           if (!targetId) {
             map.addLayer(layerGroup);
           } else {
             if (d.id === targetId) {
               map.addLayer(layerGroup);
-              // підганяємо bounds і відкриваємо попап для цієї території
               const bounds = geoJsonLayer.getBounds();
               if (bounds && bounds.isValid && bounds.isValid()) map.fitBounds(bounds.pad(0.15));
-              // показуємо попап з інформацією
               (async () => {
                 const idNum = d.id.replace('district','');
                 const popupContent = await getTerritoryStatusPopup(idNum, d.name);
                 geoJsonLayer.eachLayer(sub => sub.bindPopup(popupContent + `<br><button style="background-color: blue; color: white;" onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup());
               })();
-            } else {
-              // явно не додаємо інші шари
             }
           }
 
-          // витягаємо координати для маршруту (список точок по межі)
           const coordinates = [];
           const geometries = feature.geometry.type === "GeometryCollection" ? feature.geometry.geometries : [feature.geometry];
           geometries.forEach(geom => {
@@ -468,16 +469,11 @@
       }
 
       showLoadingText('');
-      // Завжди додаємо контрол шарів (щоб бачити базові карти та список територій)
       tryAddLayersControl();
-
-      // Якщо параметр targetId є, потрібно ще оновити відображення (бо чекбокси тощо)
       updateTerritoriesDisplay();
-      // Завжди починаємо підписки на оновлення статусів (щоб лічильники були правильними)
       updateTerritoryStatuses();
     })();
 
-    // Навігація / геолокація
     let currentMarker = null, currentCircle = null, routeControl = null, currentLocation = null;
     function findLocation() {
       if (!navigator.geolocation) { alert('⚠ Ваш браузер не підтримує геолокацію.'); return; }
@@ -524,17 +520,14 @@
       }).addTo(map);
     }
 
-    // export для popup-кнопок
     window.findLocation = findLocation;
     window.routeToDistrict = routeToDistrict;
 
-    // Поділитися територією — приймає number (наприклад '5') або рядок-число
     window.shareTerritory = function(number) {
-      // number може бути '5' (ви передавали d.id.replace('district',''))
       const url = `${window.location.origin}${window.location.pathname}?territory=${number}`;
       const title = `Карта: Територія №${number}`;
       if (navigator.share) {
-        navigator.share({ title, text: `Переглянь цю територію: №${number}`, url }).catch(err => {
+        navigator.share({ title, text: `Територія: №${number}`, url }).catch(err => {
           console.warn('share failed', err);
           try { navigator.clipboard.writeText(url); alert('Посилання скопійовано в буфер'); } catch(e){ prompt('Посилання на територію:', url); }
         });
@@ -548,61 +541,74 @@
       }
     };
 
-    // Фільтрування / відображення шарів
-function updateTerritoriesDisplay() {
-  const toggleAllCheckbox = document.getElementById('toggleAll');
-  const showTakenCheckbox = document.getElementById('showTaken');
-  const showFreeCheckbox = document.getElementById('showFree');
-  const totalCountSpan = document.getElementById('total-count');
-  const takenCountSpan = document.getElementById('taken-count');
-  const freeCountSpan = document.getElementById('free-count');
+    function updateTerritoriesDisplay() {
+      const toggleAllCheckbox = document.getElementById('toggleAll');
+      const showTakenCheckbox = document.getElementById('showTaken');
+      const showFreeCheckbox = document.getElementById('showFree');
+      const showPrivateCheckbox = document.getElementById('showPrivate');
+      const showMultistoryCheckbox = document.getElementById('showMultistory');
+      const showBusinessCheckbox = document.getElementById('showBusiness');
+      const totalCountSpan = document.getElementById('total-count');
+      const takenCountSpan = document.getElementById('taken-count');
+      const freeCountSpan = document.getElementById('free-count');
+      const privateCountSpan = document.getElementById('private-count');
+      const multistoryCountSpan = document.getElementById('multistory-count');
+      const businessCountSpan = document.getElementById('business-count');
 
-  const toggleAll = toggleAllCheckbox?.checked ?? true;
-  const showTaken = showTakenCheckbox?.checked ?? false;
-  const showFree = showFreeCheckbox?.checked ?? false;
+      const toggleAll = toggleAllCheckbox?.checked ?? true;
+      const showTaken = showTakenCheckbox?.checked ?? false;
+      const showFree = showFreeCheckbox?.checked ?? false;
+      const showPrivate = showPrivateCheckbox?.checked ?? false;
+      const showMultistory = showMultistoryCheckbox?.checked ?? false;
+      const showBusiness = showBusinessCheckbox?.checked ?? false;
 
-  // Підрахунок кількості територій
-  const totalCount = districts.length;
-  const takenCount = Object.values(territoryStatuses).filter(status => status === "на руках").length;
-  const freeCount = Object.values(territoryStatuses).filter(status => status === "вільно").length;
+      const totalCount = districts.length;
+      const takenCount = Object.values(territoryStatuses).filter(status => status === "на руках").length;
+      const freeCount = Object.values(territoryStatuses).filter(status => status === "вільно").length;
+      const privateCount = Object.values(territoryTypes).filter(type => type === "Приватна").length;
+      const multistoryCount = Object.values(territoryTypes).filter(type => type === "Поверхівки").length;
+      const businessCount = Object.values(territoryTypes).filter(type => type === "Ділова").length;
 
-  // Оновлення тексту в span
-  if (totalCountSpan) totalCountSpan.textContent = `(${totalCount})`;
-  if (takenCountSpan) takenCountSpan.textContent = `(${takenCount})`;
-  if (freeCountSpan) freeCountSpan.textContent = `(${freeCount})`;
+      if (totalCountSpan) totalCountSpan.textContent = `(${totalCount})`;
+      if (takenCountSpan) takenCountSpan.textContent = `(${takenCount})`;
+      if (freeCountSpan) freeCountSpan.textContent = `(${freeCount})`;
+      if (privateCountSpan) privateCountSpan.textContent = `(${privateCount})`;
+      if (multistoryCountSpan) multistoryCountSpan.textContent = `(${multistoryCount})`;
+      if (businessCountSpan) businessCountSpan.textContent = `(${businessCount})`;
 
-  // Якщо є параметр targetId (highlight) => показуємо лише його (незалежно від чекбоксів),
-  // але даємо змогу скинути highlight, якщо користувач перемикає чекбокси (можна розширити)
-  if (targetId) {
-    loadedLayers.forEach(item => {
-      if (item.id === targetId) {
-        if (!map.hasLayer(item.layerGroup)) map.addLayer(item.layerGroup);
-      } else {
-        if (map.hasLayer(item.layerGroup)) map.removeLayer(item.layerGroup);
+      if (targetId) {
+        loadedLayers.forEach(item => {
+          if (item.id === targetId) {
+            if (!map.hasLayer(item.layerGroup)) map.addLayer(item.layerGroup);
+          } else {
+            if (map.hasLayer(item.layerGroup)) map.removeLayer(item.layerGroup);
+          }
+        });
+        return;
       }
-    });
-    return;
-  }
 
-  // Інший режим: показ за чекбоксами
-  loadedLayers.forEach(({ id, layerGroup }) => {
-    const status = territoryStatuses[id] || "вільно";
-    if (toggleAll) {
-      if (!map.hasLayer(layerGroup)) map.addLayer(layerGroup);
-    } else if (showTaken || showFree) {
-      const shouldShow = (showFree && status === "вільно") || (showTaken && status === "на руках");
-      if (shouldShow) {
-        if (!map.hasLayer(layerGroup)) map.addLayer(layerGroup);
-      } else {
-        if (map.hasLayer(layerGroup)) map.removeLayer(layerGroup);
-      }
-    } else {
-      if (map.hasLayer(layerGroup)) map.removeLayer(layerGroup);
+      loadedLayers.forEach(({ id, layerGroup }) => {
+        const status = territoryStatuses[id] || "вільно";
+        const type = territoryTypes[id] || "невідомо";
+        if (toggleAll) {
+          if (!map.hasLayer(layerGroup)) map.addLayer(layerGroup);
+        } else if (showTaken || showFree || showPrivate || showMultistory || showBusiness) {
+          const shouldShowStatus = (showFree && status === "вільно") || (showTaken && status === "на руках");
+          const shouldShowType = (showPrivate && type === "Приватна") || 
+                                (showMultistory && type === "Поверхівки") || 
+                                (showBusiness && type === "Ділова");
+          const shouldShow = shouldShowStatus || shouldShowType;
+          if (shouldShow) {
+            if (!map.hasLayer(layerGroup)) map.addLayer(layerGroup);
+          } else {
+            if (map.hasLayer(layerGroup)) map.removeLayer(item.layerGroup);
+          }
+        } else {
+          if (map.hasLayer(layerGroup)) map.removeLayer(layerGroup);
+        }
+      });
     }
-  });
-}
 
-    // Додаємо контрол шарів (базові + overlayMaps)
     function tryAddLayersControl(){
       if (layersControl) return;
       const sortedOverlayMaps = {};
@@ -610,27 +616,33 @@ function updateTerritoriesDisplay() {
 
       layersControl = L.control.layers({ "Стандартна карта": googleStreets, "Супутникова карта": satellite }, sortedOverlayMaps, { collapsed: true }).addTo(map);
 
-      // Налаштування чекбоксів і подій
       const toggleAllCheckbox = document.getElementById('toggleAll');
       const toggleAllLabel = document.getElementById('toggleAllLabel');
       const showTakenCheckbox = document.getElementById('showTaken');
       const showFreeCheckbox = document.getElementById('showFree');
+      const showPrivateCheckbox = document.getElementById('showPrivate');
+      const showMultistoryCheckbox = document.getElementById('showMultistory');
+      const showBusinessCheckbox = document.getElementById('showBusiness');
 
-      // Ініціалізація
       toggleAllCheckbox.checked = !targetId;
       if (showTakenCheckbox) showTakenCheckbox.checked = false;
       if (showFreeCheckbox) showFreeCheckbox.checked = false;
+      if (showPrivateCheckbox) showPrivateCheckbox.checked = false;
+      if (showMultistoryCheckbox) showMultistoryCheckbox.checked = false;
+      if (showBusinessCheckbox) showBusinessCheckbox.checked = false;
       toggleAllLabel.innerText = 'Показати всіх';
 
       toggleAllCheckbox.addEventListener('change', () => {
         if (toggleAllCheckbox.checked) {
           if (showTakenCheckbox) showTakenCheckbox.checked = false;
           if (showFreeCheckbox) showFreeCheckbox.checked = false;
+          if (showPrivateCheckbox) showPrivateCheckbox.checked = false;
+          if (showMultistoryCheckbox) showMultistoryCheckbox.checked = false;
+          if (showBusinessCheckbox) showBusinessCheckbox.checked = false;
           toggleAllLabel.innerText = 'Показати всіх';
         } else {
           toggleAllLabel.innerText = 'Приховати всіх';
         }
-        // якщо був highlight (targetId) — знімаємо його при зміні чекбоксів
         if (targetId) targetId = null;
         updateTerritoriesDisplay();
       });
@@ -651,9 +663,32 @@ function updateTerritoriesDisplay() {
         });
       }
 
+      if (showPrivateCheckbox) {
+        showPrivateCheckbox.addEventListener('change', () => {
+          if (showPrivateCheckbox.checked) { toggleAllCheckbox.checked = false; toggleAllLabel.innerText = 'Приховати всіх'; }
+          if (targetId) targetId = null;
+          updateTerritoriesDisplay();
+        });
+      }
+
+      if (showMultistoryCheckbox) {
+        showMultistoryCheckbox.addEventListener('change', () => {
+          if (showMultistoryCheckbox.checked) { toggleAllCheckbox.checked = false; toggleAllLabel.innerText = 'Приховати всіх'; }
+          if (targetId) targetId = null;
+          updateTerritoriesDisplay();
+        });
+      }
+
+      if (showBusinessCheckbox) {
+        showBusinessCheckbox.addEventListener('change', () => {
+          if (showBusinessCheckbox.checked) { toggleAllCheckbox.checked = false; toggleAllLabel.innerText = 'Приховати всіх'; }
+          if (targetId) targetId = null;
+          updateTerritoriesDisplay();
+        });
+      }
+
       updateTerritoriesDisplay();
     }
-
   </script>
 </body>
 </html>
