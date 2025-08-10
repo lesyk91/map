@@ -1,0 +1,127 @@
+
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Карта Територій</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<style>
+    body {
+        margin: 0;
+        font-family: 'Roboto', sans-serif;
+        background: #f4f6f8;
+    }
+    header {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        padding: 10px 15px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+    }
+    header label {
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    #map {
+        width: 100%;
+        height: calc(100vh - 60px);
+        transition: opacity 0.4s ease-in-out;
+    }
+    .counter {
+        font-size: 14px;
+        background: #e9f5ff;
+        border-radius: 6px;
+        padding: 3px 8px;
+        font-weight: 500;
+    }
+</style>
+</head>
+<body>
+
+<header id="controls">
+    <label><input type="checkbox" id="showTaken"> На руках</label>
+    <label><input type="checkbox" id="showFree"> Вільно</label>
+    <span class="counter" id="counterTaken">На руках: 0</span>
+    <span class="counter" id="counterFree">Вільно: 0</span>
+</header>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+const baseColors = [
+  { color: 'blue', fillColor: '#add8e6' },
+  { color: 'green', fillColor: '#90ee90' },
+  { color: 'Yellow', fillColor: '#ffffe0' },
+  { color: 'Orange', fillColor: '#ffdab9' },
+  { color: 'Pink', fillColor: '#ffb6c1' },
+  { color: 'Brown', fillColor: '#d2b48c' },
+  { color: 'Purple', fillColor: '#e6e6fa' },
+  { color: 'teal', fillColor: '#008080' },
+  { color: 'Cyan', fillColor: '#e0ffff' },
+  { color: 'Magenta', fillColor: '#ff80ff' },
+  { color: 'red', fillColor: '#b6fcb6' }
+];
+
+const districts = Array.from({length: 150}, (_, i) => {
+  const idx = i + 1;
+  const palette = baseColors[(idx - 1) % baseColors.length];
+  return { id: `district${idx}`, name: `Територія ${idx}`, ...palette, status: Math.random()>0.5?'на руках':'вільно' };
+});
+
+const districtMap = Object.fromEntries(districts.map(d => [d.id, d]));
+
+const map = L.map('map').setView([49.0, 28.6], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+}).addTo(map);
+
+const layers = {};
+districts.forEach(d => {
+    const poly = L.circle([49 + Math.random()*0.05, 28.6 + Math.random()*0.05], {
+        color: d.color,
+        fillColor: d.fillColor,
+        fillOpacity: 0.5,
+        radius: 300
+    }).bindPopup(`<b>${d.name}</b><br>Статус: ${d.status}`);
+    layers[d.id] = poly;
+    poly.addTo(map);
+});
+
+function updateDisplay() {
+    const showTaken = document.getElementById('showTaken').checked;
+    const showFree = document.getElementById('showFree').checked;
+    let countTaken = 0, countFree = 0;
+
+    Object.values(layers).forEach(layer => {
+        const d = districtMap[layer._leaflet_id ? Object.keys(layers).find(k => layers[k]===layer) : null];
+        if (!d) return;
+        const visible = (d.status === 'на руках' && showTaken) || (d.status === 'вільно' && showFree);
+        if (visible) {
+            layer.addTo(map);
+            if (d.status === 'на руках') countTaken++;
+            else countFree++;
+        } else {
+            map.removeLayer(layer);
+        }
+    });
+
+    document.getElementById('counterTaken').textContent = `На руках: ${countTaken}`;
+    document.getElementById('counterFree').textContent = `Вільно: ${countFree}`;
+}
+
+document.getElementById('controls').addEventListener('change', updateDisplay);
+updateDisplay();
+</script>
+
+</body>
+</html>
