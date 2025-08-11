@@ -51,6 +51,12 @@
       color: white;
       border: none;
     }
+.leaflet-popup-content-wrapper {
+  border-radius: 8px; /* Зменшено з 12px */
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2); /* Менша тінь */
+  max-width: 220px; /* Зменшено з 288px (приблизно) */
+}
+    
     /* Controls panel - hidden by default, slide in from left */
     .controls {
       position: absolute;
@@ -152,7 +158,7 @@
     #progress-fill { height: 100%; background: #10b981; width: 0; transition: width 0.3s ease; }
     #progress-text { margin-top: 8px; font-size: 16px; color: #374151; }
     /* Leaflet Popup Styles */
-    .leaflet-popup-content-wrapper {
+    -wrapper {
       border-radius: 12px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.2);
       padding: 0;
