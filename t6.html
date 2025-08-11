@@ -34,7 +34,9 @@
       background-color: white;
       margin: 10% auto;
       padding: 20px;
-      border-radius: 8px;
+      border-radius: 
+
+8px;
       width: 95%;
       max-width: 500px;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -123,14 +125,8 @@
       const editErrorMessage = document.getElementById("edit-error-message");
       const cancelCreateBtn = document.getElementById("cancel-create-btn");
       const cancelEditBtn = document.getElementById("cancel-edit-btn");
-      const hamburgerMenu = document.getElementById("hamburger-menu");
-      const navMenu = document.getElementById("nav-menu");
 
       let territoryButtons = [];
-
-      hamburgerMenu.onclick = () => {
-        navMenu.classList.toggle("active");
-      };
 
       onAuthStateChanged(auth, async (user) => {
         if (!user) {
@@ -192,6 +188,7 @@
           const territories = [];
           const currentDate = new Date();
 
+          // Prepare all history queries for parallel execution
           const historyQueries = snapshot.docs.map(async (docSnap) => {
             const territoryId = docSnap.id;
             const data = docSnap.data();
@@ -201,6 +198,7 @@
               data: data
             });
 
+            // Fetch only the latest history record, ordered by dateGet
             const historyRef = collection(db, `territories/${territoryId}/history`);
             const historyQuery = query(historyRef, orderBy("dateGet", "desc"), limit(1));
             const historySnapshot = await getDocs(historyQuery);
@@ -229,7 +227,7 @@
                 }
               } else if (latestRecord.dateGet && latestRecord.dateProcess) {
                 status = "вільна";
-                const-processedDate = new Date(latestRecord.dateProcess);
+                const processedDate = new Date(latestRecord.dateProcess);
                 if (isNaN(processedDate)) {
                   console.error(`Невалідна дата dateProcess для території ${territoryId}:`, latestRecord.dateProcess);
                   statusText = "Помилка дати опрацювання";
@@ -253,7 +251,10 @@
             };
           });
 
+          // Execute all history queries in parallel
           const territoriesData = await Promise.all(historyQueries);
+
+          // Sort territories by number
           territories.push(...territoriesData.sort((a, b) => a.number - b.number));
 
           container.innerHTML = '';
@@ -263,7 +264,7 @@
             const div = document.createElement("div");
             div.className = `flex flex-col sm:flex-row items-start sm:items-center justify-between ${status === 'вільна' ? 'status-free' : 'status-taken'} text-white font-semibold py-3 px-4 rounded-lg w-full mb-3`;
             div.innerHTML = `
-              <button class="territory-btn flex-grow text-left text-lg sm:text-base" data-number="${number}" data-type="${type}" data-status="${status}" data-days="${territory.days}">
+              <button class="territory-btn flex-grow text-left text-lg sm:text-base" data-number="${numberNumber}" data-type="${type}" data-status="${status}" data-days="${territory.days}">
                 ${name} <span class="text-sm text-gray-300">(${type})</span> <span class="text-sm text-gray-200 ml-2">[${statusText}]</span>
               </button>
               <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-2 sm:mt-0 w-full sm:w-auto">
@@ -285,6 +286,7 @@
             territoryButtons.push(div.querySelector(".territory-btn"));
           });
 
+          // Update territory count
           territoryCount.textContent = `Завантажено: ${territoryButtons.length} територій`;
 
           if (territoryButtons.length === 0) {
@@ -311,6 +313,7 @@
         const selectedStatus = statusFilter.value;
         console.log(`Фільтрація: пошук="${searchTerm}", тип="${selectedType}", статус="${selectedStatus}"`);
 
+        // Create a copy of territories for filtering
         let filteredTerritories = Array.from(territoryButtons).map(btn => ({
           btn,
           number: parseInt(btn.dataset.number),
@@ -318,6 +321,7 @@
           status: btn.dataset.status
         }));
 
+        // Filter territories
         filteredTerritories = filteredTerritories.filter(({ number, type, status }) => {
           const matchesSearch = searchTerm === '' || `територія ${number}`.toLowerCase().includes(searchTerm);
           const matchesType = selectedType === '' || selectedType === type;
@@ -325,8 +329,10 @@
           return matchesSearch && matchesType && matchesStatus;
         });
 
+        // Sort by number ascending (default)
         filteredTerritories.sort((a, b) => a.number - b.number);
 
+        // Update display
         territoryButtons.forEach(btn => {
           btn.parentElement.style.display = 'none';
         });
@@ -334,6 +340,7 @@
           btn.parentElement.style.display = 'flex';
         });
 
+        // Update territory count
         territoryCount.textContent = `Завантажено: ${filteredTerritories.length} територій`;
       }
 
@@ -581,8 +588,6 @@
             <option value="Не призначено">Не призначено</option>
             <option value="Приватна">Приватна</option>
             <option value="Поверхівки">Поверхівки</option>
-            <option value="Ділова">放下
-
             <option value="Ділова">Ділова</option>
           </select>
         </div>
