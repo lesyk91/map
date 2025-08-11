@@ -3,161 +3,301 @@
 <head>
   <meta name="robots" content="noindex, nofollow">
   <meta charset="utf-8" />
-  <title>Карта Територій — Іллінці (оновлений інтерфейс)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Карта Територій "Іллінці"</title>
   <link rel="icon" href="favicon.png" type="image/png">
-  <!-- Leaflet CSS -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
-  <!-- Tailwind (for quick modern layout) -->
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-
   <style>
-    /* full-screen map */
     html, body, #map { height: 100%; margin: 0; padding: 0; }
-
-    /* Floating top bar */
-    .topbar {
-      position: absolute; top: 12px; left: 12px; right: 12px; z-index: 1200;
-      display: flex; gap: 8px; align-items: center; justify-content: space-between;
-      pointer-events: none; /* allow only children to receive clicks */
+    /* Button Group */
+    .button-group {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
-    .topbar .group { pointer-events: auto; display:flex; gap:8px; align-items:center; }
-
-    /* Buttons common */
-    .btn { background: rgba(255,255,255,0.98); border: 1px solid #e5e7eb; padding: 8px 12px; border-radius: 10px; box-shadow: 0 4px 14px rgba(16,24,40,0.06); display:inline-flex; gap:8px; align-items:center; font-weight:600; }
-    .btn:active{ transform: translateY(1px) }
-    .btn.small { padding:6px 8px; border-radius:8px; font-weight:600; }
-
-    /* Side filter panel (slide-over) */
-    #filters-panel { position: absolute; top: 72px; right: 12px; z-index: 1300; width: 320px; max-width: calc(100% - 48px); background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(2,6,23,0.2); padding: 12px; transform: translateX(8px); transition: transform .25s ease, opacity .2s ease; opacity: 1 }
-    #filters-panel.hidden { transform: translateX(110%); opacity: 0; pointer-events: none; }
-
-    /* Compact mobile placement */
-    @media (max-width:640px){
-      #filters-panel { width: 92%; right: 4%; top: 84px; }
-      .topbar { top: 8px; left: 8px; right: 8px; }
-      .btn { padding: 6px 10px; border-radius: 10px }
+    .action-btn {
+      background: linear-gradient(to right, #3b82f6, #2563eb);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s, background 0.3s;
     }
-
-    /* Filter group */
-    .filter-section { border-top: 1px dashed #eef2f7; padding-top: 10px; margin-top: 8px; }
-    .filter-title { font-weight:700; font-size:14px; margin-bottom:8px }
-
-    /* Fancy checkbox */
-    .fancy-checkbox { display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none }
-    .fancy-checkbox input { display:none }
-    .fancy-checkbox .box { width:20px; height:20px; border-radius:6px; border:1px solid #cbd5e1; display:inline-flex; align-items:center; justify-content:center; background:white }
-    .fancy-checkbox .box svg { width:14px; height:14px; opacity:0; }
-    .fancy-checkbox input:checked + .box { background: linear-gradient(135deg,#34d399 0%,#10b981 100%); border-color:transparent }
-    .fancy-checkbox input:checked + .box svg { opacity:1; fill: white }
-    .fancy-checkbox .label { font-size:14px }
-    .subgroup { margin-left: 28px; margin-top:6px }
-
-    /* Custom loader */
-    #loader { position:absolute; left:50%; top:12px; transform:translateX(-50%); z-index:1400; background: rgba(255,255,255,0.95); padding:6px 12px; border-radius:999px; border:1px solid #e5e7eb; display:flex; gap:8px; align-items:center; box-shadow: 0 6px 20px rgba(2,6,23,0.08) }
-
-    /* Progress overlay reuse */
-    #progress-overlay{ position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.45); display:none; z-index: 2000; justify-content:center; align-items:center }
-    #progress-container{ background:white; padding:18px; border-radius:12px; width:320px; text-align:center }
-
-    /* Beautiful Leaflet popup (use custom class) */
-    .leaflet-popup-content-wrapper.custom-popup { border-radius:12px; box-shadow: 0 8px 30px rgba(2,6,23,0.2); padding:10px }
-    .leaflet-popup-content.custom-popup { font-size:14px }
-    .leaflet-popup-content.custom-popup h3 { margin:0 0 6px 0; font-weight:800; font-size:15px }
-    .popup-actions { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap }
-    .popup-actions .popup-btn { padding:6px 10px; border-radius:8px; border:none; cursor:pointer; font-weight:700 }
-    .popup-btn.share { background: linear-gradient(90deg,#06b6d4,#3b82f6); color:white }
-    .popup-btn.edit { background: linear-gradient(90deg,#f97316,#fb923c); color:white }
-    .popup-btn.route { background: linear-gradient(90deg,#10b981,#059669); color:white }
-
-    /* small helper for bottom mobile bar */
-    .bottombar { position: absolute; bottom: 12px; left: 12px; right: 12px; z-index: 1200; display:flex; justify-content:center; pointer-events:none }
-    .bottombar .group { pointer-events:auto }
+    .action-btn:hover {
+      background: linear-gradient(to right, #2563eb, #1e40af);
+      transform: scale(1.05);
+    }
+    /* Sidebar for Checkboxes */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -300px;
+      width: 300px;
+      height: 100%;
+      background: white;
+      z-index: 2000;
+      transition: left 0.3s ease;
+      padding: 16px;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
+      overflow-y: auto;
+    }
+    .sidebar.open { left: 0; }
+    .sidebar-toggle {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1001;
+      background: linear-gradient(to right, #10b981, #059669);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s, background 0.3s;
+    }
+    .sidebar-toggle:hover {
+      background: linear-gradient(to right, #059669, #047857);
+      transform: scale(1.05);
+    }
+    .controls label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1f2937;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .controls input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #3b82f6;
+    }
+    .subgroup { margin-left: 16px; }
+    /* Loader */
+    #loader {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      font-size: 14px;
+      color: #1f2937;
+    }
+    /* Progress Overlay */
+    #progress-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+    #progress-container {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      text-align: center;
+      width: 80%;
+      max-width: 300px;
+    }
+    #progress-bar {
+      width: 100%;
+      height: 20px;
+      background: #e5e7eb;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    #progress-fill {
+      height: 100%;
+      background: linear-gradient(to right, #3b82f6, #2563eb);
+      width: 0;
+      transition: width 0.3s ease;
+    }
+    #progress-text {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #1f2937;
+    }
+    /* Popup Styling */
+    .leaflet-popup-content-wrapper {
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    .leaflet-popup-content {
+      font-size: 14px;
+      color: #1f2937;
+      padding: 12px;
+    }
+    .leaflet-popup-content b {
+      color: #3b82f6;
+    }
+    .leaflet-popup-content button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      margin-top: 8px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .leaflet-popup-content button.share-btn {
+      background: linear-gradient(to right, #10b981, #059669);
+    }
+    .leaflet-popup-content button.share-btn:hover {
+      background: linear-gradient(to right, #059669, #047857);
+    }
+    .leaflet-popup-content button.edit-btn {
+      background: linear-gradient(to right, #f59e0b, #d97706);
+    }
+    .leaflet-popup-content button.edit-btn:hover {
+      background: linear-gradient(to right, #d97706, #b45309);
+    }
+    .leaflet-popup-content button.route-btn {
+      background: linear-gradient(to right, #3b82f6, #2563eb);
+    }
+    .leaflet-popup-content button.route-btn:hover {
+      background: linear-gradient(to right, #2563eb, #1e40af);
+    }
+    /* Mobile Adjustments */
+    @media (max-width: 640px) {
+      .button-group { gap: 6px; }
+      .action-btn, .sidebar-toggle {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+      .sidebar { width: 250px; padding: 12px; }
+      .controls label { font-size: 12px; }
+      #loader { font-size: 12px; padding: 6px 12px; }
+      #progress-container { padding: 16px; }
+    }
   </style>
 </head>
 <body>
-
-  <!-- Progress overlay -->
-  <div id="progress-overlay" class="flex"><div id="progress-container"><h2 class="text-lg font-semibold mb-2">Завантаження територій...</h2><div style="height:8px;background:#eef2f7;border-radius:999px;overflow:hidden"><div id="progress-fill" style="height:8px;background:#10b981;width:0"></div></div><p id="progress-text" class="mt-2 text-sm">0%</p></div></div>
-
-  <!-- Topbar: grouped controls -->
-  <div class="topbar">
-    <div class="group">
-      <button id="locateBtn" class="btn small" title="Показати моє місце">📍 Моє місцезнаходження</button>
-    </div>
-
-    <div class="group">
-      <a href="enter.html"><button id="loginBtn" class="btn small" style="display:none">🔐 Увійти</button></a>
-      <button id="logoutBtn" class="btn small" style="display:none">🚪 Вийти</button>
-      <a href="territories.html"><button id="territoriesBtn" class="btn small" style="display:none">🏞 Території</button></a>
-    </div>
-
-    <div class="group">
-      <button id="toggleFilters" class="btn small">⚙️ Фільтри</button>
-      <button id="shareModeBtn" class="btn small" title="Поділитися виділеною">🔗 Поділити</button>
+  <!-- Progress Overlay -->
+  <div id="progress-overlay" class="flex">
+    <div id="progress-container">
+      <h2 class="text-lg font-semibold mb-2">Завантаження територій...</h2>
+      <div id="progress-bar"><div id="progress-fill"></div></div>
+      <p id="progress-text" class="mt-2 text-sm">0%</p>
     </div>
   </div>
 
-  <!-- slide-over filters panel -->
-  <aside id="filters-panel" class="hidden">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div>
-        <div class="text-sm font-extrabold">Фільтри територій</div>
-        <div class="text-xs text-gray-500">Показати/сховати групи</div>
-      </div>
-      <button id="closeFilters" class="btn small">✖</button>
+  <!-- Button Group -->
+  <div class="button-group">
+    <button onclick="findLocation()" class="action-btn locate-btn">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+      Моє місцезнаходження
+    </button>
+    <div id="auth-buttons">
+      <a href="enter.html"><button class="action-btn login-btn" style="display:none">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+        Увійти
+      </button></a>
+      <button class="action-btn logout-btn" style="display:none">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+        Вийти
+      </button>
+      <a href="territories.html"><button class="action-btn territories-btn" style="display:none">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+        Території
+      </button></a>
     </div>
+  </div>
 
-    <div class="filter-section">
-      <label class="fancy-checkbox" style="margin-bottom:8px">
-        <input id="toggleAll" type="checkbox" checked>
-        <span class="box"><svg viewBox="0 0 24 24"><path d="M20.285 6.708l-11.025 11.025-5.545-5.545 1.414-1.414 4.131 4.131 9.611-9.611z"/></svg></span>
-        <span class="label">Показати всі <span id="total-count" class="text-xs text-gray-500">(0)</span></span>
-      </label>
+  <!-- Sidebar Toggle Button -->
+  <button class="sidebar-toggle" onclick="toggleSidebar()">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+    Фільтри
+  </button>
 
-      <div style="display:flex;gap:10px;margin-top:6px">
-        <label class="fancy-checkbox">
-          <input id="showTaken" type="checkbox">
-          <span class="box"><svg viewBox="0 0 24 24"><path d="M20.285 6.708l-11.025 11.025-5.545-5.545 1.414-1.414 4.131 4.131 9.611-9.611z"/></svg></span>
-          <span class="label">На руках <span id="taken-count" class="text-xs text-gray-500">(0)</span></span>
-        </label>
-        <label class="fancy-checkbox">
-          <input id="showFree" type="checkbox">
-          <span class="box"><svg viewBox="0 0 24 24"><path d="M20.285 6.708l-11.025 11.025-5.545-5.545 1.414-1.414 4.131 4.131 9.611-9.611z"/></svg></span>
-          <span class="label">Вільно <span id="free-count" class="text-xs text-gray-500">(0)</span></span>
-        </label>
+  <!-- Sidebar for Checkboxes -->
+  <div class="sidebar" id="sidebar">
+    <h2 class="text-lg font-semibold mb-4">Фільтри територій</h2>
+    <div class="controls">
+      <label for="toggleAll" class="mb-2">
+        <input type="checkbox" id="toggleAll" checked>
+        <span id="toggleAllLabel">Показати всі</span> <span id="total-count" class="text-xs text-gray-500">(0)</span>
+      </label><br>
+      <div id="taken-control" style="display: none">
+        <label for="showTaken" class="mb-2">
+          <input type="checkbox" id="showTaken">
+          На руках <span id="taken-count" class="text-xs text-gray-500">(0)</span>
+        </label><br>
+        <div class="subgroup">
+          <label for="taken_Poverkhivky" class="mb-1">
+            <input type="checkbox" id="taken_Poverkhivky" checked>
+            Поверхівки <span id="taken_Poverkhivky-count" class="text-xs text-gray-500">(0)</span>
+          </label><br>
+          <label for="taken_Pryvatni" class="mb-1">
+            <input type="checkbox" id="taken_Pryvatni" checked>
+            Приватні <span id="taken_Pryvatni-count" class="text-xs text-gray-500">(0)</span>
+          </label><br>
+          <label for="taken_Dilovi" class="mb-1">
+            <input type="checkbox" id="taken_Dilovi" checked>
+            Ділові <span id="taken_Dilovi-count" class="text-xs text-gray-500">(0)</span>
+          </label><br>
+        </div>
       </div>
-
-      <div class="subgroup" style="margin-top:8px">
-        <div class="text-xs font-semibold">Підгрупи</div>
-        <label class="fancy-checkbox"><input id="taken_Poverkhivky" type="checkbox" checked><span class="box"><svg viewBox="0 0 24 24"><path d="M20.285 6.708l-11.025 11.025-5.545-5.545 1.414-1.414 4.131 4.131 9.611-9.611z"/></svg></span><span class="label">Поверхівки <span id="taken_Poverkhivky-count" class="text-xs text-gray-500">(0)</span></span></label>
-        <label class="fancy-checkbox"><input id="taken_Pryvatni" type="checkbox" checked><span class="box"><svg viewBox="0 0 24 24"><path d="M20.285 6.708l-11.025 11.025-5.545-5.545 1.414-1.414 4.131 4.131 9.611-9.611z"/></svg></span><span class="label">Приватні <span id="taken_Pryvatni-count" class="text-xs text-gray-500">(0)</span></span></label>
-        <label class="fancy-checkbox"><input id="taken_Dilovi" type="checkbox" checked><span class="box"><svg viewBox="0 0 24 24"><path d="M20.285 6.708l-11.025 11.025-5.545-5.545 1.414-1.414 4.131 4.131 9.611-9.611z"/></svg></span><span class="label">Ділові <span id="taken_Dilovi-count" class="text-xs text-gray-500">(0)</span></span></label>
-
-        <div style="height:8px"></div>
-        <label class="fancy-checkbox"><input id="free_Poverkhivky" type="checkbox" checked><span class="box"><svg viewBox="0 0 24 24"><path d="M20.285 6.708l-11.025 11.025-5.545-5.545 1.414-1.414 4.131 4.131 9.611-9.611z"/></svg></span><span class="label">Поверхівки <span id="free_Poverkhivky-count" class="text-xs text-gray-500">(0)</span></span></label>
-        <label class="fancy-checkbox"><input id="free_Pryvatni" type="checkbox" checked><span class="box"><svg viewBox="0 0 24 24"><path d="M20.285 6.708l-11.025 11.025-5.545-5.545 1.414-1.414 4.131 4.131 9.611-9.611z"/></svg></span><span class="label">Приватні <span id="free_Pryvatni-count" class="text-xs text-gray-500">(0)</span></span></label>
-        <label class="fancy-checkbox"><input id="free_Dilovi" type="checkbox" checked><span class="box"><svg viewBox="0 0 24 24"><path d="M20.285 6.708l-11.025 11.025-5.545-5.545 1.414-1.414 4.131 4.131 9.611-9.611z"/></svg></span><span class="label">Ділові <span id="free_Dilovi-count" class="text-xs text-gray-500">(0)</span></span></label>
+      <div id="free-control" style="display: none">
+        <label for="showFree" class="mb-2">
+          <input type="checkbox" id="showFree">
+          Вільно <span id="free-count" class="text-xs text-gray-500">(0)</span>
+        </label><br>
+        <div class="subgroup">
+          <label for="free_Poverkhivky" class="mb-1">
+            <input type="checkbox" id="free_Poverkhivky" checked>
+            Поверхівки <span id="free_Poverkhivky-count" class="text-xs text-gray-500">(0)</span>
+          </label><br>
+          <label for="free_Pryvatni" class="mb-1">
+            <input type="checkbox" id="free_Pryvatni" checked>
+            Приватні <span id="free_Pryvatni-count" class="text-xs text-gray-500">(0)</span>
+          </label><br>
+          <label for="free_Dilovi" class="mb-1">
+            <input type="checkbox" id="free_Dilovi" checked>
+            Ділові <span id="free_Dilovi-count" class="text-xs text-gray-500">(0)</span>
+          </label><br>
+        </div>
       </div>
     </div>
+  </div>
 
-    <div style="display:flex;gap:8px;margin-top:12px;justify-content:space-between">
-      <button id="resetFilters" class="btn small">🔄 Скинути</button>
-      <button id="applyFilters" class="btn small" style="background:linear-gradient(90deg,#4f46e5,#06b6d4);color:white">Застосувати</button>
-    </div>
-  </aside>
-
-  <!-- Loader badge center -->
-  <div id="loader" style="display:none">Завантаження…</div>
+  <!-- Loader -->
+  <div id="loader"></div>
 
   <!-- Map -->
   <div id="map"></div>
 
-  <!-- Bottom bar for mobile quick actions -->
-  <div class="bottombar"><div class="group"><button id="mobileFilters" class="btn small">⚙️ Фільтри</button></div></div>
-
-  <!-- Leaflet + Routing scripts -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
 
@@ -182,148 +322,520 @@
     let currentUser = null;
 
     // DOM refs
-    const loginBtn = document.getElementById('loginBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const territoriesBtn = document.getElementById('territoriesBtn');
-    const locateBtn = document.getElementById('locateBtn');
-    const toggleFilters = document.getElementById('toggleFilters');
-    const filtersPanel = document.getElementById('filters-panel');
-    const closeFilters = document.getElementById('closeFilters');
-    const mobileFilters = document.getElementById('mobileFilters');
-    const loader = document.getElementById('loader');
+    const loginBtn = document.querySelector('.login-btn');
+    const logoutBtn = document.querySelector('.logout-btn');
+    const territoriesBtn = document.querySelector('.territories-btn');
+    const takenControl = document.getElementById('taken-control');
+    const freeControl = document.getElementById('free-control');
+    const sidebar = document.getElementById('sidebar');
 
-    // Map init
+    // Sidebar toggle function
+    window.toggleSidebar = function() {
+      sidebar.classList.toggle('open');
+    };
+
+    // Map
     const map = L.map('map', { zoomControl: false }).setView([49.1029, 29.2074], 13);
-    const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom:20, subdomains:['mt0','mt1','mt2','mt3'], attribution:'© Google Maps' }).addTo(map);
-    const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution:'© Esri', maxZoom:20 });
 
-    // Districts (same data as before; omitted for brevity — keep your district list here)
-    const districts = [ /* ... перенесено: список district1..district102 ... */ ];
+    const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3'], attribution: '© Google Maps'
+    }).addTo(map);
 
-    // For brevity and safety in this preview file: we'll fetch all_districts.json and use existing logic
-    const districtCenters = []; const districtGeometries = []; const overlayMaps = {}; const territoryStatuses = {}; const territoryTypes = {}; let layersControl = null; const loadedLayers = [];
-    const subTypes = ['Poverkhivky','Pryvatni','Dilovi'];
-    const typeMap = {'Поверхівка':'Poverkhivky','Поверхівки':'Poverkhivky','Приватна':'Pryvatni','Приватні':'Pryvatni','Ділова':'Dilovi','Ділові':'Dilovi'};
+    const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: '© Esri', maxZoom: 20
+    });
 
-    // target param handling (as previous)
-    const urlParams = new URLSearchParams(window.location.search); let rawTarget = urlParams.get("territory"); let targetId = null; if (rawTarget) { if (rawTarget.startsWith('district')) targetId = rawTarget; else targetId = `district${rawTarget}`; }
+    // Districts list
+    const districts = [
+      { id: 'district1', name: 'Територія 1', color: 'blue', fillColor: '#add8e6' },
+      { id: 'district2', name: 'Територія 2', color: 'green', fillColor: '#90ee90' },
+      // ... (rest of the districts list remains unchanged)
+      { id: 'district102', name: 'Територія 102', color: 'green', fillColor: '#90ee90' }
+    ];
+
+    // Working structures
+    const districtCenters = [];
+    const districtGeometries = [];
+    const overlayMaps = {};
+    const territoryStatuses = {};
+    const territoryTypes = {};
+    let layersControl = null;
+    const loadedLayers = [];
+    const subTypes = ['Poverkhivky', 'Pryvatni', 'Dilovi'];
+    const typeMap = {
+      'Поверхівка': 'Poverkhivky',
+      'Поверхівки': 'Poverkhivky',
+      'Приватна': 'Pryvatni',
+      'Приватні': 'Pryvatni',
+      'Ділова': 'Dilovi',
+      'Ділові': 'Dilovi'
+    };
+
+    // URL parameter handling
+    const urlParams = new URLSearchParams(window.location.search);
+    let rawTarget = urlParams.get("territory");
+    let targetId = null;
+    if (rawTarget) {
+      if (rawTarget.startsWith('district')) targetId = rawTarget;
+      else targetId = `district${rawTarget}`;
+    }
+
+    // Normalize districts
+    districts.sort((a, b) => {
+      const na = parseInt(a.id.replace('district', ''), 10);
+      const nb = parseInt(b.id.replace('district', ''), 10);
+      return na - nb;
+    });
 
     // UI helpers
-    function showLoader(txt){ loader.style.display = txt ? 'flex' : 'none'; loader.innerText = txt || ''; }
-    function updateProgress(p){ const overlay = document.getElementById('progress-overlay'); const fill = document.getElementById('progress-fill'); const text = document.getElementById('progress-text'); if (p<100) { overlay.style.display='flex'; fill.style.width = p + '%'; text.innerText = Math.round(p)+'%'; } else { overlay.style.display='none'; fill.style.width='100%'; text.innerText='100%'; } }
+    function showLoadingText(txt) { document.getElementById('loader').innerText = txt || ''; }
+    function updateProgress(percentage) {
+      const progressOverlay = document.getElementById('progress-overlay');
+      const progressFill = document.getElementById('progress-fill');
+      const progressText = document.getElementById('progress-text');
+      if (percentage < 100) {
+        progressOverlay.style.display = 'flex';
+        progressFill.style.width = `${percentage}%`;
+        progressText.innerText = `${Math.round(percentage)}%`;
+      } else {
+        progressOverlay.style.display = 'none';
+        progressFill.style.width = `100%`;
+        progressText.innerText = `100%`;
+      }
+    }
 
-    // Auth state
+    // Authentication
     onAuthStateChanged(auth, user => {
       currentUser = user;
       if (user) {
-        loginBtn.style.display='none'; logoutBtn.style.display='inline-block'; territoriesBtn.style.display='inline-block';
-      } else { loginBtn.style.display='inline-block'; logoutBtn.style.display='none'; territoriesBtn.style.display='none'; }
+        loginBtn.style.display = 'none';
+        logoutBtn.style.display = 'flex';
+        territoriesBtn.style.display = 'flex';
+        takenControl.style.display = 'block';
+        freeControl.style.display = 'block';
+        updateTerritoryStatuses();
+      } else {
+        loginBtn.style.display = 'flex';
+        logoutBtn.style.display = 'none';
+        territoriesBtn.style.display = 'none';
+        takenControl.style.display = 'block';
+        freeControl.style.display = 'block';
+        Object.keys(territoryStatuses).forEach(id => territoryStatuses[id] = "вільно");
+        updateTerritoriesDisplay();
+      }
     });
 
-    logoutBtn?.addEventListener('click', async ()=>{ await signOut(auth); location.reload(); });
+    logoutBtn?.addEventListener("click", async () => {
+      await signOut(auth);
+      layersControl = null;
+      location.reload();
+    });
 
-    // Improved popup creation: returns nicely formatted HTML + custom class
-    async function getTerritoryStatusPopup(number, name){
+    // Get popup content
+    async function getTerritoryStatusPopup(number, name) {
       try {
-        const q = query(collection(db, `territories/${number}/history`), orderBy('timestamp','desc'));
+        const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
         const snap = await getDocs(q);
-        let html = `<div class=\"custom-popup\"><h3>${name}</h3>`;
-        if (snap.empty) { html += `<div>Статус: <b>вільно</b></div>`; }
-        else { const latest = snap.docs[0].data(); const status = latest.status === 'на руках' ? 'на руках' : 'вільно'; html += `<div>Статус: <b>${status}</b></div>`; if (currentUser && status==='на руках') { html += `<div>ПІБ: ${latest.pib||'невідомо'}</div><div>Дата: ${latest.dateGet? new Date(latest.dateGet).toLocaleDateString('uk-UA') : 'невідомо'}</div>`; } }
-        html += `<div class=\"popup-actions\">`;
-        html += `<button class=\"popup-btn share\" onclick=\"(function(){ try{ navigator.clipboard.writeText(location.origin+location.pathname+'?territory=${number}'); alert('Посилання скопійовано'); }catch(e){ prompt('Посилання:', location.origin+location.pathname+'?territory=${number}'); } })()\">🔗 Поділитися</button>`;
-        if (currentUser) html += `<a href=\"territory-detail.html?number=${number}\"><button class=\"popup-btn edit\">✏️ Редагувати</button></a>`;
-        html += `<button class=\"popup-btn route\" onclick=\"routeToDistrictByName('${name.replace(/'/g,'\'')}')\">📌 Прокласти маршрут</button>`;
-        html += `</div></div>`;
-        return { html, options: { className: 'custom-popup' } };
-      } catch(e){ console.warn('popup err', e); return { html:`<div class=\"custom-popup\">${name}<div>Статус: невідомий</div></div>`, options: { className: 'custom-popup' } }; }
+        let popup = `<b>${name}</b><br>`;
+        if (snap.empty) {
+          popup += `<b>Статус:</b> вільно`;
+        } else {
+          const latest = snap.docs[0].data();
+          const status = latest.status === "на руках" ? "на руках" : "вільно";
+          popup += `<b>Статус:</b> ${status}`;
+          if (currentUser && status === "на руках") {
+            popup += `<br><b>ПІБ:</b> ${latest.pib || "невідомо"}`;
+            popup += `<br><b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
+          }
+        }
+        popup += `<br><button class="share-btn" onclick="shareTerritory('${number}')"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>Поділитися</button>`;
+        if (currentUser) {
+          popup += `<br><a href="territory-detail.html?number=${number}"><button class="edit-btn"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>Редагувати</button></a>`;
+        }
+        return popup;
+      } catch (err) {
+        console.warn('getTerritoryStatusPopup error', err);
+        return `<b>${name}</b><br><b>Статус:</b> невідомий`;
+      }
     }
 
-    // Loading districts & building layers (keeps previous logic but adapted to new popup function)
-    (async ()=>{
-      showLoader('Завантаження територій...'); updateProgress(0);
-      let loadedCount=0; const totalDistricts = districts.length;
-      try{
-        const res = await fetch('all_districts.json'); if(!res.ok) throw new Error('all_districts.json not found'); const data = await res.json();
-        data.features.forEach(async feature => {
-          const d = districts.find(x=>x.id===feature.id);
-          loadedCount++;
-          updateProgress((loadedCount/totalDistricts)*100);
-          if(!d) return;
+    // Update territory statuses
+    function updateTerritoryStatuses() {
+      districts.forEach(d => {
+        try {
+          const idNum = d.id.replace('district', '');
+          const q = query(collection(db, `territories/${idNum}/history`), orderBy("timestamp", "desc"));
+          onSnapshot(q, snap => {
+            if (!snap || snap.empty) territoryStatuses[d.id] = "вільно";
+            else {
+              const latest = snap.docs[0].data();
+              territoryStatuses[d.id] = latest.status === "на руках" ? "на руках" : "вільно";
+            }
+            updateTerritoriesDisplay();
+          }, err => {
+            console.warn(`Помилка onSnapshot для ${d.id}:`, err);
+            territoryStatuses[d.id] = "вільно";
+            updateTerritoriesDisplay();
+          });
+        } catch (e) {
+          console.warn('updateTerritoryStatuses catch', e);
+        }
+      });
+    }
+
+    // Load districts and create layers
+    (async () => {
+      showLoadingText('Завантаження територій...');
+      updateProgress(0);
+      let loadedCount = 0;
+      const totalDistricts = districts.length;
+
+      try {
+        const res = await fetch('all_districts.json');
+        if (!res.ok) throw new Error(`Не вдалося завантажити all_districts.json: ${res.status}`);
+        const data = await res.json();
+
+        data.features.forEach((feature) => {
+          const d = districts.find(x => x.id === feature.id);
+          if (!d) {
+            console.warn(`Не знайдено опису для feature.id=${feature.id}`);
+            loadedCount++;
+            updateProgress((loadedCount/totalDistricts)*100);
+            return;
+          }
+
           const layerGroup = L.layerGroup();
-          const geoJsonLayer = L.geoJSON(feature, { style:{ color:d.color, fillColor:d.fillColor, fillOpacity:0.42 }, onEachFeature: (feat, lyr)=>{
-            const center = lyr.getBounds().getCenter(); districtCenters.push({ id:d.id, name:feat.properties?.name || d.name, latlng:center });
-            lyr.on('click', async ()=>{
-              const idNum = d.id.replace('district','');
-              const popup = await getTerritoryStatusPopup(idNum, d.name);
-              lyr.bindPopup(popup.html, popup.options).openPopup();
-            });
-          }}).addTo(layerGroup);
+          const geoJsonLayer = L.geoJSON(feature, {
+            style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 },
+            onEachFeature: (feat, lyr) => {
+              const center = lyr.getBounds().getCenter();
+              districtCenters.push({ id: d.id, name: feat.properties?.name || d.name, latlng: center });
+              lyr.on('click', async () => {
+                const idNum = d.id.replace('district', '');
+                const popupContent = await getTerritoryStatusPopup(idNum, d.name);
+                lyr.bindPopup(popupContent + `<br><button class="route-btn" onclick="routeToDistrict('${d.name}')"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>Прокласти маршрут</button>`).openPopup();
+              });
+            }
+          });
 
-          loadedLayers.push({ id:d.id, name:d.name, layerGroup, geoJsonLayer }); overlayMaps[d.name] = layerGroup; territoryStatuses[d.id] = 'вільно';
+          geoJsonLayer.addTo(layerGroup);
+          loadedLayers.push({ id: d.id, name: d.name, layerGroup, geoJsonLayer });
+          overlayMaps[d.name] = layerGroup;
+          territoryStatuses[d.id] = "вільно";
 
-          // geometry coords
-          const coordinates = []; const geometries = feature.geometry.type==='GeometryCollection'? feature.geometry.geometries : [feature.geometry];
-          geometries.forEach(geom=>{ const coords = geom.coordinates; const pushCoords = ring=> ring.forEach(c=>coordinates.push(L.latLng(c[1], c[0]))); if(geom.type==='Polygon') coords.forEach(pushCoords); if(geom.type==='MultiPolygon') coords.forEach(polygon=> polygon.forEach(pushCoords)); });
-          districtGeometries.push({ id:d.id, name:d.name, coordinates });
+          if (!targetId) {
+            map.addLayer(layerGroup);
+          } else {
+            if (d.id === targetId) {
+              map.addLayer(layerGroup);
+              const bounds = geoJsonLayer.getBounds();
+              if (bounds && bounds.isValid && bounds.isValid()) map.fitBounds(bounds.pad(0.15));
+              (async () => {
+                const idNum = d.id.replace('district', '');
+                const popupContent = await getTerritoryStatusPopup(idNum, d.name);
+                geoJsonLayer.eachLayer(sub => sub.bindPopup(popupContent + `<br><button class="route-btn" onclick="routeToDistrict('${d.name}')"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>Прокласти маршрут</button>`).openPopup());
+              })();
+            }
+          }
 
-          if(!targetId) map.addLayer(layerGroup); else if(d.id===targetId){ map.addLayer(layerGroup); const bounds = geoJsonLayer.getBounds(); if(bounds && bounds.isValid && bounds.isValid()) map.fitBounds(bounds.pad(0.15)); const idNum=d.id.replace('district',''); const popup = await getTerritoryStatusPopup(idNum,d.name); geoJsonLayer.eachLayer(sub=> sub.bindPopup(popup.html, popup.options).openPopup()); }
+          const coordinates = [];
+          const geometries = feature.geometry.type === "GeometryCollection" ? feature.geometry.geometries : [feature.geometry];
+          geometries.forEach(geom => {
+            const coords = geom.coordinates;
+            const pushCoords = ring => ring.forEach(c => coordinates.push(L.latLng(c[1], c[0])));
+            if (geom.type === "Polygon") coords.forEach(pushCoords);
+            if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
+          });
+          districtGeometries.push({ id: d.id, name: d.name, coordinates });
+
+          loadedCount++;
+          updateProgress((loadedCount / totalDistricts) * 100);
         });
 
-        // fetch types
-        const tpPromises = districts.map(async d=>{ const idNum = d.id.replace('district',''); const docRef = doc(db,'territories',idNum); const snap = await getDoc(docRef); if(snap.exists()){ const dbType = snap.data().type || 'невідомо'; territoryTypes[d.id] = typeMap[dbType] || 'невідомо'; } else territoryTypes[d.id] = 'невідомо'; });
-        await Promise.all(tpPromises);
+        const typePromises = districts.map(async (d) => {
+          const idNum = d.id.replace('district', '');
+          const docRef = doc(db, 'territories', idNum);
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const dbType = snap.data().type || 'невідомо';
+            territoryTypes[d.id] = typeMap[dbType] || 'невідомо';
+          } else {
+            territoryTypes[d.id] = 'невідомо';
+          }
+        });
+        await Promise.all(typePromises);
 
-      } catch(err){ console.warn('load error', err); }
-      showLoader(''); tryAddLayersControl(); updateTerritoriesDisplay(); updateTerritoryStatuses(); updateProgress(100);
+      } catch (err) {
+        console.warn('Помилка при завантаженні all_districts.json:', err);
+      }
+
+      showLoadingText('');
+      tryAddLayersControl();
+      updateTerritoriesDisplay();
+      updateTerritoryStatuses();
     })();
 
-    // Geolocation & routing helpers (slightly adapted)
-    let currentMarker=null, currentCircle=null, routeControl=null, currentLocation=null;
-    locateBtn.addEventListener('click', findLocation);
-    function findLocation(){ if (!navigator.geolocation){ alert('Ваш браузер не підтримує геолокацію'); return; } showLoader('Визначення місцезнаходження...'); navigator.geolocation.getCurrentPosition(pos=>{ const latlng = L.latLng(pos.coords.latitude,pos.coords.longitude); currentLocation = latlng; showLoader(''); if(currentMarker) map.removeLayer(currentMarker); if(currentCircle) map.removeLayer(currentCircle); currentCircle = L.circle(latlng,{ radius: pos.coords.accuracy, color:'#3b82f6', fillColor:'#bfdbfe', fillOpacity:0.25 }).addTo(map); currentMarker = L.marker(latlng).addTo(map).bindPopup(`Ваше місце (точність ${Math.round(pos.coords.accuracy)} м)`).openPopup(); map.setView(latlng, 16); }, err=>{ showLoader(''); alert('Не вдалося визначити місцезнаходження: '+err.message); }, { enableHighAccuracy:true, timeout:20000, maximumAge:0 }); }
-
-    function routeToDistrictByName(districtName){ if(!currentLocation){ alert('Спочатку натисніть "Моє місце"'); return; } const district = districtGeometries.find(d=>d.name===districtName); if(!district || !district.coordinates.length){ alert('Немає координат'); return; } let nearest = district.coordinates.reduce((near, c)=> currentLocation.distanceTo(c) < currentLocation.distanceTo(near) ? c : near, district.coordinates[0]); if(routeControl) map.removeControl(routeControl); routeControl = L.Routing.control({ waypoints:[currentLocation, nearest], routeWhileDragging:false, addWaypoints:false, createMarker:()=>null, router: L.Routing.osrmv1({ serviceUrl:'https://router.project-osrm.org/route/v1' }) }).on('routesfound', e=>{ const dist = e.routes[0].summary.totalDistance; const distText = dist>1000 ? (dist/1000).toFixed(2)+' км' : Math.round(dist)+' м'; currentMarker?.bindPopup(`Ваше місце<br>Маршрут до <b>${districtName}</b><br>Відстань: ${distText}`).openPopup(); }).addTo(map);
+    // Navigation / Geolocation
+    let currentMarker = null, currentCircle = null, routeControl = null, currentLocation = null;
+    function findLocation() {
+      if (!navigator.geolocation) { alert('⚠ Ваш браузер не підтримує геолокацію.'); return; }
+      showLoadingText('Визначення місцезнаходження...');
+      navigator.geolocation.getCurrentPosition(position => {
+        const latlng = L.latLng(position.coords.latitude, position.coords.longitude);
+        currentLocation = latlng;
+        showLoadingText('');
+        if (currentMarker) map.removeLayer(currentMarker);
+        if (currentCircle) map.removeLayer(currentCircle);
+        currentCircle = L.circle(latlng, { radius: position.coords.accuracy, color: 'blue', fillColor: '#30f', fillOpacity: 0.2 }).addTo(map);
+        currentMarker = L.marker(latlng).addTo(map).bindPopup(`Ваше місцерозташування (точність ${Math.round(position.coords.accuracy)} м)`).openPopup();
+        map.setView(latlng, 16);
+      }, error => {
+        showLoadingText('');
+        console.error("Geolocation error:", error.message);
+        alert(`⚠ Не вдалося визначити місцерозташування: ${error.message}`);
+      }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
     }
-    window.routeToDistrictByName = routeToDistrictByName;
 
-    // share helper (uses native share or clipboard)
-    document.getElementById('shareModeBtn').addEventListener('click', ()=>{ const url = location.origin + location.pathname + (targetId? '?territory='+ targetId.replace('district','') : ''); try{ navigator.clipboard.writeText(url); alert('Посилання скопійовано в буфер'); }catch(e){ prompt('Посилання:', url); } });
+    function routeToDistrict(districtName) {
+      if (!currentLocation) { alert("⛔ Спочатку натисніть «Моє місцезнаходження»"); return; }
+      const district = districtGeometries.find(d => d.name === districtName);
+      if (!district || !district.coordinates.length) { alert(`⚠ Немає координат для ${districtName}`); return; }
+      let nearestPoint = district.coordinates.reduce((nearest, coord) => {
+        const distance = currentLocation.distanceTo(coord);
+        return distance < currentLocation.distanceTo(nearest) ? coord : nearest;
+      }, district.coordinates[0]);
+      if (routeControl) map.removeControl(routeControl);
+      routeControl = L.Routing.control({
+        waypoints: [currentLocation, nearestPoint],
+        routeWhileDragging: false,
+        addWaypoints: false,
+        show: true,
+        createMarker: () => null,
+        router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1' })
+      }).on('routesfound', function(e) {
+        const dist = e.routes[0].summary.totalDistance;
+        const distText = dist > 1000 ? (dist/1000).toFixed(2) + " км" : Math.round(dist) + " м";
+        currentMarker?.bindPopup(`Ваше місцерозташування<br>Маршрут до <b>${districtName}</b><br>Відстань: ${distText}`).openPopup();
+      }).on('routingerror', function(e) {
+        console.error("Routing error:", e.error);
+        alert(`⚠ Не вдалося прокласти маршрут: ${e.error?.message || 'помилка'}`);
+      }).addTo(map);
+    }
 
-    // Firestore realtime statuses
-    function updateTerritoryStatuses(){ districts.forEach(d=>{ try{ const idNum = d.id.replace('district',''); const q = query(collection(db, `territories/${idNum}/history`), orderBy('timestamp','desc')); onSnapshot(q, snap=>{ if(!snap || snap.empty) territoryStatuses[d.id] = 'вільно'; else { const latest = snap.docs[0].data(); territoryStatuses[d.id] = latest.status === 'на руках' ? 'на руках' : 'вільно'; } updateTerritoriesDisplay(); }, err=>{ territoryStatuses[d.id] = 'вільно'; updateTerritoriesDisplay(); }); }catch(e){ console.warn('status listen err', e); } }); }
+    window.findLocation = findLocation;
+    window.routeToDistrict = routeToDistrict;
 
-    // Filtering & display (keeps previous logic but adapted to new control markup)
-    function updateTerritoriesDisplay(){ const toggleAllCheckbox = document.getElementById('toggleAll'); const totalCountSpan = document.getElementById('total-count'); const takenCountSpan = document.getElementById('taken-count'); const freeCountSpan = document.getElementById('free-count'); const toggleAll = toggleAllCheckbox?.checked ?? true; const totalCount = districts.length; let takenCount=0, freeCount=0; const takenSubCounts = {}; const freeSubCounts = {}; subTypes.forEach(t=>{ takenSubCounts[t]=0; freeSubCounts[t]=0; }); Object.keys(territoryStatuses).forEach(id=>{ const status = territoryStatuses[id]; const typeKey = territoryTypes[id]; if(status === 'на руках'){ takenCount++; if(subTypes.includes(typeKey)) takenSubCounts[typeKey]++; } else { freeCount++; if(subTypes.includes(typeKey)) freeSubCounts[typeKey]++; } }); if(totalCountSpan) totalCountSpan.textContent = `(${totalCount})`; if(takenCountSpan) takenCountSpan.textContent = `(${takenCount})`; if(freeCountSpan) freeCountSpan.textContent = `(${freeCount})`; subTypes.forEach(t=>{ const takenSubSpan = document.getElementById(`taken_${t}-count`); const freeSubSpan = document.getElementById(`free_${t}-count`); if(takenSubSpan) takenSubSpan.textContent = `(${takenSubCounts[t]})`; if(freeSubSpan) freeSubSpan.textContent = `(${freeSubCounts[t]})`; }); if(targetId){ loadedLayers.forEach(item=>{ if(item.id === targetId){ if(!map.hasLayer(item.layerGroup)) map.addLayer(item.layerGroup); } else { if(map.hasLayer(item.layerGroup)) map.removeLayer(item.layerGroup); } }); return; } loadedLayers.forEach(({ id, layerGroup })=>{ const status = territoryStatuses[id] || 'вільно'; const typeKey = territoryTypes[id]; let shouldShow=false; if(toggleAll) shouldShow=true; else { if(status==='на руках' && subTypes.includes(typeKey) && document.getElementById(`taken_${typeKey}`)?.checked) shouldShow=true; else if(status==='вільно' && subTypes.includes(typeKey) && document.getElementById(`free_${typeKey}`)?.checked) shouldShow=true; } if(shouldShow){ if(!map.hasLayer(layerGroup)) map.addLayer(layerGroup); } else { if(map.hasLayer(layerGroup)) map.removeLayer(layerGroup); } }); }
+    window.shareTerritory = function(number) {
+      const url = `${window.location.origin}${window.location.pathname}?territory=${number}`;
+      const title = `Карта: Територія №${number}`;
+      if (navigator.share) {
+        navigator.share({ title, text: `Територія: №${number}`, url }).catch(err => {
+          console.warn('share failed', err);
+          try { navigator.clipboard.writeText(url); alert('Посилання скопійовано в буфер'); } catch(e) { prompt('Посилання на територію:', url); }
+        });
+      } else {
+        try {
+          navigator.clipboard.writeText(url);
+          alert('Посилання скопійовано в буфер обміну');
+        } catch(e) {
+          prompt('Посилання на територію:', url);
+        }
+      }
+    };
 
-    // Parent state helpers + event wiring for controls
-    function updateParentState(statusPrefix){ const parentCheckbox = document.getElementById(`show${statusPrefix.charAt(0).toUpperCase() + statusPrefix.slice(1)}`); const subCheckboxes = subTypes.map(t=> document.getElementById(`${statusPrefix}_${t}`)); if(!parentCheckbox) return; const checkedSubs = subCheckboxes.filter(cb=>cb && cb.checked).length; if(checkedSubs === subTypes.length){ parentCheckbox.checked = true; parentCheckbox.indeterminate = false; } else if(checkedSubs === 0){ parentCheckbox.checked = false; parentCheckbox.indeterminate = false; } else { parentCheckbox.checked = false; parentCheckbox.indeterminate = true; } }
+    function updateTerritoriesDisplay() {
+      const toggleAllCheckbox = document.getElementById('toggleAll');
+      const totalCountSpan = document.getElementById('total-count');
+      const takenCountSpan = document.getElementById('taken-count');
+      const freeCountSpan = document.getElementById('free-count');
 
-    function tryAddLayersControl(){ if(layersControl) return; const sortedOverlayMaps = {}; loadedLayers.forEach(({ name, layerGroup })=> sortedOverlayMaps[name] = layerGroup ); layersControl = L.control.layers({ 'Стандартна карта': googleStreets, 'Супутникова карта': satellite }, sortedOverlayMaps, { collapsed:true }).addTo(map);
+      const toggleAll = toggleAllCheckbox?.checked ?? true;
 
-      // setup interactions
-      const toggleAllCheckbox = document.getElementById('toggleAll'); const toggleAllLabel = document.getElementById('total-count'); const showTakenCheckbox = document.getElementById('showTaken'); const showFreeCheckbox = document.getElementById('showFree');
-      toggleAllCheckbox.checked = !targetId; if(showTakenCheckbox) showTakenCheckbox.checked = false; if(showFreeCheckbox) showFreeCheckbox.checked = false; subTypes.forEach(t=>{ const t1 = document.getElementById(`taken_${t}`); const t2 = document.getElementById(`free_${t}`); if(t1) t1.checked = false; if(t2) t2.checked = false; });
+      const totalCount = districts.length;
+      let takenCount = 0;
+      let freeCount = 0;
+      const takenSubCounts = {};
+      const freeSubCounts = {};
+      subTypes.forEach(t => { takenSubCounts[t] = 0; freeSubCounts[t] = 0; });
 
-      toggleAllCheckbox.addEventListener('change', function(){ if(targetId) targetId = null; if(this.checked){ document.getElementById('showTaken').checked=false; document.getElementById('showFree').checked=false; subTypes.forEach(t=>{ document.getElementById(`taken_${t}`).checked = false; document.getElementById(`free_${t}`).checked = false; }); } updateTerritoriesDisplay(); });
+      Object.keys(territoryStatuses).forEach(id => {
+        const status = territoryStatuses[id];
+        const typeKey = territoryTypes[id];
+        if (status === "на руках") {
+          takenCount++;
+          if (subTypes.includes(typeKey)) takenSubCounts[typeKey]++;
+        } else {
+          freeCount++;
+          if (subTypes.includes(typeKey)) freeSubCounts[typeKey]++;
+        }
+      });
 
-      if(showTakenCheckbox) showTakenCheckbox.addEventListener('change', ()=>{ document.getElementById('toggleAll').checked = false; subTypes.forEach(t=>{ const cb = document.getElementById(`taken_${t}`); if(cb) cb.checked = showTakenCheckbox.checked; }); if(targetId) targetId = null; updateTerritoriesDisplay(); });
-      if(showFreeCheckbox) showFreeCheckbox.addEventListener('change', ()=>{ document.getElementById('toggleAll').checked = false; subTypes.forEach(t=>{ const cb = document.getElementById(`free_${t}`); if(cb) cb.checked = showFreeCheckbox.checked; }); if(targetId) targetId = null; updateTerritoriesDisplay(); });
+      if (totalCountSpan) totalCountSpan.textContent = `(${totalCount})`;
+      if (takenCountSpan) takenCountSpan.textContent = `(${takenCount})`;
+      if (freeCountSpan) freeCountSpan.textContent = `(${freeCount})`;
 
-      subTypes.forEach(t=>{ const ts = document.getElementById(`taken_${t}`); const fs = document.getElementById(`free_${t}`); if(ts) ts.addEventListener('change', ()=>{ document.getElementById('toggleAll').checked = false; if(targetId) targetId=null; updateTerritoriesDisplay(); }); if(fs) fs.addEventListener('change', ()=>{ document.getElementById('toggleAll').checked=false; if(targetId) targetId=null; updateTerritoriesDisplay(); }); });
+      subTypes.forEach(t => {
+        const takenSubSpan = document.getElementById(`taken_${t}-count`);
+        const freeSubSpan = document.getElementById(`free_${t}-count`);
+        if (takenSubSpan) takenSubSpan.textContent = `(${takenSubCounts[t]})`;
+        if (freeSubSpan) freeSubSpan.textContent = `(${freeSubCounts[t]})`;
+      });
 
+      if (targetId) {
+        loadedLayers.forEach(item => {
+          if (item.id === targetId) {
+            if (!map.hasLayer(item.layerGroup)) map.addLayer(item.layerGroup);
+          } else {
+            if (map.hasLayer(item.layerGroup)) map.removeLayer(item.layerGroup);
+          }
+        });
+        return;
+      }
+
+      loadedLayers.forEach(({ id, layerGroup }) => {
+        const status = territoryStatuses[id] || "вільно";
+        const typeKey = territoryTypes[id];
+        let shouldShow = false;
+
+        if (toggleAll) {
+          shouldShow = true;
+        } else {
+          if (status === "на руках" && subTypes.includes(typeKey) && document.getElementById(`taken_${typeKey}`).checked) {
+            shouldShow = true;
+          } else if (status === "вільно" && subTypes.includes(typeKey) && document.getElementById(`free_${typeKey}`).checked) {
+            shouldShow = true;
+          }
+        }
+
+        if (shouldShow) {
+          if (!map.hasLayer(layerGroup)) map.addLayer(layerGroup);
+        } else {
+          if (map.hasLayer(layerGroup)) map.removeLayer(layerGroup);
+        }
+      });
+    }
+
+    function updateParentState(statusPrefix) {
+      const parentCheckbox = document.getElementById(`show${statusPrefix.charAt(0).toUpperCase() + statusPrefix.slice(1)}`);
+      const subCheckboxes = subTypes.map(t => document.getElementById(`${statusPrefix}_${t}`));
+      const checkedSubs = subCheckboxes.filter(cb => cb.checked).length;
+
+      if (checkedSubs === subTypes.length) {
+        parentCheckbox.checked = true;
+        parentCheckbox.indeterminate = false;
+      } else if (checkedSubs === 0) {
+        parentCheckbox.checked = false;
+        parentCheckbox.indeterminate = false;
+      } else {
+        parentCheckbox.checked = false;
+        parentCheckbox.indeterminate = true;
+      }
+    }
+
+    function tryAddLayersControl() {
+      if (layersControl) return;
+      const sortedOverlayMaps = {};
+      loadedLayers.forEach(({ name, layerGroup }) => { sortedOverlayMaps[name] = layerGroup; });
+
+      layersControl = L.control.layers({ "Стандартна карта": googleStreets, "Супутникова карта": satellite }, sortedOverlayMaps, { collapsed: true }).addTo(map);
+
+      const toggleAllCheckbox = document.getElementById('toggleAll');
+      const toggleAllLabel = document.getElementById('toggleAllLabel');
+      const showTakenCheckbox = document.getElementById('showTaken');
+      const showFreeCheckbox = document.getElementById('showFree');
+
+      toggleAllCheckbox.checked = !targetId;
+      toggleAllLabel.innerText = toggleAllCheckbox.checked ? 'Приховати всіх' : 'Показати всіх';
+
+      if (showTakenCheckbox) showTakenCheckbox.checked = false;
+      if (showFreeCheckbox) showFreeCheckbox.checked = false;
+      subTypes.forEach(t => {
+        const takenSub = document.getElementById(`taken_${t}`);
+        const freeSub = document.getElementById(`free_${t}`);
+        if (takenSub) takenSub.checked = false;
+        if (freeSub) freeSub.checked = false;
+      });
+
+      toggleAllCheckbox.addEventListener('change', function() {
+        toggleAllLabel.innerText = this.checked ? 'Приховати всіх' : 'Показати всіх';
+        if (targetId) targetId = null;
+        if (this.checked) {
+          showTakenCheckbox.checked = false;
+          showFreeCheckbox.checked = false;
+          subTypes.forEach(t => {
+            document.getElementById(`taken_${t}`).checked = false;
+            document.getElementById(`free_${t}`).checked = false;
+          });
+          updateParentState('taken');
+          updateParentState('free');
+        } else {
+          showTakenCheckbox.checked = false;
+          showFreeCheckbox.checked = false;
+          subTypes.forEach(t => {
+            document.getElementById(`taken_${t}`).checked = false;
+            document.getElementById(`free_${t}`).checked = false;
+          });
+          updateParentState('taken');
+          updateParentState('free');
+        }
+        updateTerritoriesDisplay();
+      });
+
+      if (showTakenCheckbox) {
+        showTakenCheckbox.addEventListener('change', () => {
+          toggleAllCheckbox.checked = false;
+          toggleAllLabel.innerText = 'Показати всіх';
+          subTypes.forEach(t => {
+            const subCheckbox = document.getElementById(`taken_${t}`);
+            if (subCheckbox) subCheckbox.checked = showTakenCheckbox.checked;
+          });
+          if (targetId) targetId = null;
+          updateTerritoriesDisplay();
+          updateParentState('taken');
+        });
+      }
+
+      if (showFreeCheckbox) {
+        showFreeCheckbox.addEventListener('change', () => {
+          toggleAllCheckbox.checked = false;
+          toggleAllLabel.innerText = 'Показати всіх';
+          subTypes.forEach(t => {
+            const subCheckbox = document.getElementById(`free_${t}`);
+            if (subCheckbox) subCheckbox.checked = showFreeCheckbox.checked;
+          });
+          if (targetId) targetId = null;
+          updateTerritoriesDisplay();
+          updateParentState('free');
+        });
+      }
+
+      subTypes.forEach(t => {
+        const takenSub = document.getElementById(`taken_${t}`);
+        const freeSub = document.getElementById(`free_${t}`);
+        if (takenSub) {
+          takenSub.addEventListener('change', () => {
+            toggleAllCheckbox.checked = false;
+            toggleAllLabel.innerText = 'Показати всіх';
+            if (targetId) targetId = null;
+            updateTerritoriesDisplay();
+            updateParentState('taken');
+          });
+        }
+        if (freeSub) {
+          freeSub.addEventListener('change', () => {
+            toggleAllCheckbox.checked = false;
+            toggleAllLabel.innerText = 'Показати всіх';
+            if (targetId) targetId = null;
+            updateTerritoriesDisplay();
+            updateParentState('free');
+          });
+        }
+      });
+
+      updateParentState('taken');
+      updateParentState('free');
       updateTerritoriesDisplay();
     }
-
-    // show/hide filters panel
-    toggleFilters.addEventListener('click', ()=> filtersPanel.classList.remove('hidden'));
-    closeFilters.addEventListener('click', ()=> filtersPanel.classList.add('hidden'));
-    mobileFilters.addEventListener('click', ()=> filtersPanel.classList.remove('hidden'));
-    document.getElementById('resetFilters').addEventListener('click', ()=>{ document.getElementById('toggleAll').checked = true; ['showTaken','showFree'].forEach(id=>{ const el=document.getElementById(id); if(el) el.checked=false; }); subTypes.forEach(t=>{ const a=document.getElementById(`taken_${t}`); const b=document.getElementById(`free_${t}`); if(a) a.checked=false; if(b) b.checked=false; }); updateTerritoriesDisplay(); });
-
-    document.getElementById('applyFilters').addEventListener('click', ()=>{ filtersPanel.classList.add('hidden'); updateTerritoriesDisplay(); });
-
   </script>
-
 </body>
 </html>
