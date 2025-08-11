@@ -6,11 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Території</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     .territory-btn, .action-btn {
       transition: all 0.3s ease;
-      min-height: 48px; /* Minimum touch target size */
     }
     .territory-btn:hover, .action-btn:hover {
       transform: translateY(-2px);
@@ -32,16 +30,12 @@
     }
     .modal-content {
       background-color: white;
-      margin: 10% auto;
+      margin: 15% auto;
       padding: 20px;
-      border-radius: 
-
-8px;
-      width: 95%;
+      border-radius: 8px;
+      width: 90%;
       max-width: 500px;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-      max-height: 80vh;
-      overflow-y: auto;
     }
     .modal.show {
       display: block;
@@ -52,39 +46,26 @@
     .status-taken {
       background-color: #F59E0B; /* Orange for taken */
     }
-    .tooltip {
-      position: relative;
+    .territory-card {
+      border-radius: 8px;
+      overflow: hidden;
     }
-    .tooltip .tooltip-text {
-      visibility: hidden;
-      width: 120px;
-      background-color: #555;
-      color: #fff;
-      text-align: center;
-      border-radius: 6px;
-      padding: 5px;
-      position: absolute;
-      z-index: 1;
-      bottom: 125%;
-      left: 50%;
-      margin-left: -60px;
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-    .tooltip:hover .tooltip-text {
-      visibility: visible;
-      opacity: 1;
+    .action-buttons {
+      display: flex;
+      justify-content: flex-end;
+      padding: 8px;
+      background-color: rgba(255, 255, 255, 0.1);
     }
     @media (max-width: 640px) {
       .action-btn {
-        width: 100%;
-        text-align: center;
+        font-size: 0.75rem;
+        padding: 0.5rem 0.75rem;
       }
-      .nav-menu {
-        display: none;
+      .territory-btn {
+        padding: 1rem;
       }
-      .nav-menu.active {
-        display: flex;
+      .action-buttons {
+        justify-content: space-between;
       }
     }
   </style>
@@ -262,20 +243,14 @@
             const { id, number, name, type, status, statusText } = territory;
             console.log(`Додаємо кнопку для території ${id}: name=${name}, type=${type}, status=${status}, statusText=${statusText}`);
             const div = document.createElement("div");
-            div.className = `flex flex-col sm:flex-row items-start sm:items-center justify-between ${status === 'вільна' ? 'status-free' : 'status-taken'} text-white font-semibold py-3 px-4 rounded-lg w-full mb-3`;
+            div.className = `territory-card mb-4 shadow-md ${status === 'вільна' ? 'status-free' : 'status-taken'}`;
             div.innerHTML = `
-              <button class="territory-btn flex-grow text-left text-lg sm:text-base" data-number="${numberNumber}" data-type="${type}" data-status="${status}" data-days="${territory.days}">
+              <button class="territory-btn w-full text-white font-semibold py-3 px-6 text-left" data-number="${number}" data-type="${type}" data-status="${status}" data-days="${territory.days}">
                 ${name} <span class="text-sm text-gray-300">(${type})</span> <span class="text-sm text-gray-200 ml-2">[${statusText}]</span>
               </button>
-              <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-2 sm:mt-0 w-full sm:w-auto">
-                <button class="action-btn tooltip bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center justify-center" onclick="editTerritory('${id}', '${name.replace(/'/g, "\\'")}', '${type.replace(/'/g, "\\'")}')">
-                  <i class="fas fa-edit mr-2"></i> Редагувати тип
-                  <span class="tooltip-text">Змінити тип або мітку</span>
-                </button>
-                <button class="action-btn tooltip bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg flex items-center justify-center" onclick="deleteTerritory('${id}')">
-                  <i class="fas fa-trash-alt mr-2"></i> Видалити
-                  <span class="tooltip-text">Видалити територію</span>
-                </button>
+              <div class="action-buttons flex space-x-2">
+                <button class="action-btn bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded" onclick="editTerritory('${id}', '${name.replace(/'/g, "\\'")}', '${type.replace(/'/g, "\\'")}')">Змінити мітку/тип</button>
+                <button class="action-btn bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded" onclick="deleteTerritory('${id}')">Видалити</button>
               </div>
             `;
             div.querySelector(".territory-btn").onclick = () => {
@@ -337,7 +312,7 @@
           btn.parentElement.style.display = 'none';
         });
         filteredTerritories.forEach(({ btn }) => {
-          btn.parentElement.style.display = 'flex';
+          btn.parentElement.style.display = 'block';
         });
 
         // Update territory count
@@ -442,60 +417,55 @@
 <body class="bg-gray-100 min-h-screen flex flex-col">
   <header class="bg-white shadow-md p-4 sticky top-0 z-10">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
-      <div class="flex items-center justify-between w-full sm:w-auto">
-        <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
-          <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Список територій</h1>
-          <p id="territory-count" class="text-gray-600 text-sm sm:text-base">Завантажено: 0 територій</p>
-        </div>
-        <button id="hamburger-menu" class="sm:hidden text-gray-600 hover:text-gray-800 focus:outline-none">
-          <i class="fas fa-bars fa-lg"></i>
-        </button>
+      <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
+        <h1 class="text-2xl font-bold text-gray-800">Список територій</h1>
+        <p id="territory-count" class="text-gray-600">Завантажено: 0 територій</p>
       </div>
-      <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+      <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
         <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
           <input 
             id="search" 
             type="text" 
-            placeholder="Пошук (напр. 42)" 
-            class="w-full sm:w-48 px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            placeholder="Пошук території (напр. 42)" 
+            class="w-full sm:w-64 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-          <select id="type-filter" class="w-full sm:w-36 px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+          <select id="type-filter" class="w-full sm:w-48 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">Всі типи</option>
             <option value="Не призначено">Не призначено</option>
             <option value="Приватна">Приватна</option>
             <option value="Поверхівки">Поверхівки</option>
             <option value="Ділова">Ділова</option>
           </select>
-          <select id="status-filter" class="w-full sm:w-36 px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+          <select id="status-filter" class="w-full sm:w-48 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">Всі статуси</option>
             <option value="вільна">Вільна</option>
             <option value="на руках">На руках</option>
           </select>
           <button 
             id="create-territory-btn" 
-            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center"
+            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg"
           >
-            <i class="fas fa-plus mr-2"></i> Створити
+            Створити територію
           </button>
         </div>
-        <nav id="nav-menu" class="nav-menu flex-col sm:flex-row flex space-y-2 sm:space-y-0 sm:space-x-2">
+        <nav class="flex space-x-2">
           <a href="index.html">
-            <button class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 w-full sm:w-auto flex items-center justify-center">
-              <i class="fas fa-map mr-2"></i> Карта
+            <button class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              Карта
             </button>
           </a>
           <a href="user.html">
-            <button class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 w-full sm:w-auto flex items-center justify-center">
-              <i class="fas fa-users mr-2"></i> Користувачі
+            <button class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              Користувачі
             </button>
           </a>
           <a href="zvit.html">
-            <button class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 w-full sm:w-auto flex items-center justify-center">
-              <i class="fas fa-file-alt mr-2"></i> Звіти
+            <button class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              Звіти
             </button>
           </a>
-          <button id="logout" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 w-full sm:w-auto flex items-center justify-center">
-            <i class="fas fa-sign-out-alt mr-2"></i> Вийти
+          <button id="logout" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+            Вийти
           </button>
         </nav>
       </div>
@@ -504,15 +474,16 @@
 
   <main class="flex-grow p-4">
     <div class="max-w-7xl mx-auto">
-      <div id="territories" class="grid grid-cols-1 gap-3"></div>
+      <div id="territories" class="grid grid-cols-1 gap-4"></div>
     </div>
   </main>
 
+  <!-- Modal for creating territory -->
   <div id="create-territory-modal" class="modal">
     <div class="modal-content">
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold">Створити нову територію</h3>
-        <button id="close-create-modal" class="text-gray-600 hover:text-gray-800 text-2xl">×</button>
+        <button id="close-create-modal" class="text-gray-600 hover:text-gray-800">×</button>
       </div>
       <form id="create-territory-form" class="space-y-4">
         <div>
@@ -521,22 +492,22 @@
             type="number" 
             placeholder="Номер території" 
             required 
-            class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
         </div>
         <div>
           <input 
             name="label" 
             type="text" 
-            placeholder="Мітка (необов’язково)" 
-            class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            placeholder="Додаткова мітка (необов’язково)" 
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
         </div>
         <div>
           <select 
             name="type" 
             required 
-            class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="Не призначено">Не призначено</option>
             <option value="Приватна">Приватна</option>
@@ -544,46 +515,47 @@
             <option value="Ділова">Ділова</option>
           </select>
         </div>
-        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+        <div class="flex space-x-2">
           <button 
             type="submit" 
-            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center"
+            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg"
           >
-            <i class="fas fa-check mr-2"></i> Створити
+            Створити
           </button>
           <button 
             id="cancel-create-btn" 
             type="button" 
-            class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center"
+            class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg"
           >
-            <i class="fas fa-times mr-2"></i> Скасувати
+            Скасувати
           </button>
         </div>
       </form>
-      <p id="error-message" class="text-red-600 mt-2 text-sm"></p>
+      <p id="error-message" class="text-red-600 mt-2"></p>
     </div>
   </div>
 
+  <!-- Modal for editing territory -->
   <div id="edit-territory-modal" class="modal">
     <div class="modal-content">
       <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-semibold">Редагувати тип території</h3>
-        <button id="close-edit-modal" class="text-gray-600 hover:text-gray-800 text-2xl">×</button>
+        <h3 class="text-lg font-semibold">Редагувати територію</h3>
+        <button id="close-edit-modal" class="text-gray-600 hover:text-gray-800">×</button>
       </div>
       <form id="edit-territory-form" class="space-y-4">
         <div>
           <input 
             name="label" 
             type="text" 
-            placeholder="Мітка (необов’язково)" 
-            class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            placeholder="Додаткова мітка (необов’язково)" 
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
         </div>
         <div>
           <select 
             name="type" 
             required 
-            class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="Не призначено">Не призначено</option>
             <option value="Приватна">Приватна</option>
@@ -591,23 +563,23 @@
             <option value="Ділова">Ділова</option>
           </select>
         </div>
-        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+        <div class="flex space-x-2">
           <button 
             type="submit" 
-            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center"
+            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg"
           >
-            <i class="fas fa-save mr-2"></i> Зберегти
+            Зберегти
           </button>
           <button 
             id="cancel-edit-btn" 
             type="button" 
-            class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center"
+            class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg"
           >
-            <i class="fas fa-times mr-2"></i> Скасувати
+            Скасувати
           </button>
         </div>
       </form>
-      <p id="edit-error-message" class="text-red-600 mt-2 text-sm"></p>
+      <p id="edit-error-message" class="text-red-600 mt-2"></p>
     </div>
   </div>
 
