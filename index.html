@@ -558,7 +558,7 @@
               lyr.on('click', async () => {
                 const idNum = d.id.replace('district','');
                 const popupContent = await getTerritoryStatusPopup(idNum, d.name);
-                lyr.bindPopup(popupContent + `<br><button class="popup-btn route-btn" onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup();
+                lyr.bindPopup(popupContent + `<br><button class="popup-btn route-btn" onclick="routeToDistrict('${d.name}')">📌 Маршрут</button>`).openPopup();
               });
             }
           });
@@ -578,7 +578,7 @@
               (async () => {
                 const idNum = d.id.replace('district','');
                 const popupContent = await getTerritoryStatusPopup(idNum, d.name);
-                geoJsonLayer.eachLayer(sub => sub.bindPopup(popupContent + `<br><button class="popup-btn route-btn" onclick="routeToDistrict('${d.name}')">📌 Прокласти маршрут сюди</button>`).openPopup());
+                geoJsonLayer.eachLayer(sub => sub.bindPopup(popupContent + `<br><button class="popup-btn route-btn" onclick="routeToDistrict('${d.name}')">📌 Маршрут</button>`).openPopup());
               })();
             }
           }
@@ -890,4 +890,5 @@
   </script>
 </body>
 </html>
+
 
