@@ -46,6 +46,28 @@
     .status-taken {
       background-color: #F59E0B; /* Orange for taken */
     }
+    .territory-card {
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .action-buttons {
+      display: flex;
+      justify-content: flex-end;
+      padding: 8px;
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    @media (max-width: 640px) {
+      .action-btn {
+        font-size: 0.75rem;
+        padding: 0.5rem 0.75rem;
+      }
+      .territory-btn {
+        padding: 1rem;
+      }
+      .action-buttons {
+        justify-content: space-between;
+      }
+    }
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
@@ -221,14 +243,14 @@
             const { id, number, name, type, status, statusText } = territory;
             console.log(`Додаємо кнопку для території ${id}: name=${name}, type=${type}, status=${status}, statusText=${statusText}`);
             const div = document.createElement("div");
-            div.className = `flex items-center justify-between ${status === 'вільна' ? 'status-free' : 'status-taken'} text-white font-semibold py-3 px-6 rounded-lg w-full mb-2`;
+            div.className = `territory-card mb-4 shadow-md ${status === 'вільна' ? 'status-free' : 'status-taken'}`;
             div.innerHTML = `
-              <button class="territory-btn flex-grow text-left" data-number="${number}" data-type="${type}" data-status="${status}" data-days="${territory.days}">
+              <button class="territory-btn w-full text-white font-semibold py-3 px-6 text-left" data-number="${number}" data-type="${type}" data-status="${status}" data-days="${territory.days}">
                 ${name} <span class="text-sm text-gray-300">(${type})</span> <span class="text-sm text-gray-200 ml-2">[${statusText}]</span>
               </button>
-              <div class="flex space-x-2">
-                <button class="action-btn bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-lg" onclick="editTerritory('${id}', '${name.replace(/'/g, "\\'")}', '${type.replace(/'/g, "\\'")}')">Редагувати</button>
-                <button class="action-btn bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-lg" onclick="deleteTerritory('${id}')">Видалити</button>
+              <div class="action-buttons flex space-x-2">
+                <button class="action-btn bg-gray-500 hover:bg-gray-600 text-white py-1 px-3 rounded" onclick="editTerritory('${id}', '${name.replace(/'/g, "\\'")}', '${type.replace(/'/g, "\\'")}')">Змінити тип</button>
+                <button class="action-btn bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded" onclick="deleteTerritory('${id}')">Видалити</button>
               </div>
             `;
             div.querySelector(".territory-btn").onclick = () => {
@@ -290,7 +312,7 @@
           btn.parentElement.style.display = 'none';
         });
         filteredTerritories.forEach(({ btn }) => {
-          btn.parentElement.style.display = 'flex';
+          btn.parentElement.style.display = 'block';
         });
 
         // Update territory count
@@ -428,17 +450,17 @@
         </div>
         <nav class="flex space-x-2">
           <a href="index.html">
-            <button class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+            <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
               Карта
             </button>
           </a>
           <a href="user.html">
-            <button class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+            <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
               Користувачі
             </button>
           </a>
           <a href="zvit.html">
-            <button class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+            <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
               Звіти
             </button>
           </a>
