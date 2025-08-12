@@ -45,7 +45,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, collection, getDocs, query, orderBy, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getFirestore, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -86,7 +86,8 @@
         const progressText = document.getElementById("progress-text");
 
         let results = [];
-        let publishers = new Map(); // Track territories per publisher
+        let publishers = new Map();
+        const maxTerritoryNumber = 102;
 
         const generateReport = async () => {
           reportContainer.innerHTML = '<p class="text-gray-600">Очікування пошуку...</p>';
@@ -95,66 +96,49 @@
           progressFill.style.width = '0%';
           progressText.innerText = 'Прогрес: 0%';
 
-          // Check specific record for debugging
-          console.log("Перевірка конкретного запису: /territories/66/history/LF71D0KkEXaI8tNcwg0W");
-          const specificDocRef = doc(db, "territories/66/history/LF71D0KkEXaI8tNcwg0W");
-          try {
-            const specificDocSnap = await getDoc(specificDocRef);
-            if (specificDocSnap.exists()) {
-              console.log("Дані запису:", specificDocSnap.data());
-            } else {
-              console.log("Запис не існує за вказаною адресою");
-            }
-          } catch (error) {
-            console.error("Помилка при отриманні запису:", error);
-          }
-
           results = [];
           publishers.clear();
-          const maxTerritoryNumber = 102;
           const progressStep = 100 / maxTerritoryNumber;
+          const batchSize = 10; // Process 10 territories at a time
+          const promises = [];
 
           for (let number = 1; number <= maxTerritoryNumber; number++) {
-            console.log(`Обробка території: ${number}`);
             const historyRef = collection(db, `territories/${number}/history`);
             const q = query(historyRef, orderBy("timestamp", "desc"));
-            try {
-              const historySnap = await getDocs(q);
-              console.log(`Знайдено записів у history для території ${number}: ${historySnap.size}`);
-
-              const latest = historySnap.docs[0]?.data();
-              if (latest) {
-                console.log(`Останній запис для території ${number}:`, latest);
-                if (latest.dateGet && (latest.dateProcess === null || latest.dateProcess === undefined || latest.dateProcess === "")) {
-                  const daysHeld = diffDays(latest.dateGet);
-                  const pib = latest.pib || "Невідомо";
-                  const daysThreshold = parseInt(daysInput.value) || 0;
-                  if (daysHeld >= daysThreshold && (!pibFilter.value || pib.toLowerCase().includes(pibFilter.value.toLowerCase()))) {
-                    results.push({
-                      pib,
-                      number: number.toString(),
-                      dateGet: latest.dateGet || "-",
-                      daysHeld
-                    });
-                    // Update publisher territory count
-                    publishers.set(pib, (publishers.get(pib) || 0) + 1);
-                  }
-                } else {
-                  console.log(`Територія ${number} не на руках: dateGet=${latest.dateGet}, dateProcess=${latest.dateProcess}`);
-                }
-              } else {
-                console.log(`Територія ${number} не має записів у history`);
-              }
-            } catch (error) {
-              console.error(`Помилка при отриманні history для території ${number}:`, error);
-            }
-            // Update progress
-            const progress = Math.min(Math.round((number / maxTerritoryNumber) * 100), 100);
-            progressFill.style.width = `${progress}%`;
-            progressText.innerText = `Прогрес: ${progress}%`;
+            promises.push(getDocs(q).then(historySnap => ({
+              number,
+              historySnap
+            })));
           }
 
-          // Sort by publisher territory count by default
+          // Process in batches
+          for (let i = 0; i < promises.length; i += batchSize) {
+            const batch = promises.slice(i, i + batchSize);
+            const batchResults = await Promise.all(batch);
+            
+            for (const { number, historySnap } of batchResults) {
+              console.log(`Знайдено записів у history для території ${number}: ${historySnap.size}`);
+              const latest = historySnap.docs[0]?.data();
+              if (latest && latest.dateGet && (latest.dateProcess === null || latest.dateProcess === undefined || latest.dateProcess === "")) {
+                const daysHeld = diffDays(latest.dateGet);
+                const pib = latest.pib || "Невідомо";
+                const daysThreshold = parseInt(daysInput.value) || 0;
+                if (daysHeld >= daysThreshold && (!pibFilter.value || pib.toLowerCase().includes(pibFilter.value.toLowerCase()))) {
+                  results.push({
+                    pib,
+                    number: number.toString(),
+                    dateGet: latest.dateGet,
+                    daysHeld
+                  });
+                  publishers.set(pib, (publishers.get(pib) || 0) + 1);
+                }
+              }
+              const progress = Math.min(Math.round((number / maxTerritoryNumber) * 100), 100);
+              progressFill.style.width = `${progress}%`;
+              progressText.innerText = `Прогрес: ${progress}%`;
+            }
+          }
+
           sortByPublisherCount();
           progressContainer.style.display = 'none';
         };
@@ -164,12 +148,11 @@
           summaryContainer.innerHTML = `<p class="text-lg font-semibold mb-4">Загальна кількість територій на руках: ${results.length}</p>`;
 
           if (results.length === 0) {
-            console.log("Немає територій, де dateGet є, а dateProcess відсутній або порожній");
             reportContainer.innerHTML = '<p class="text-gray-600">Немає територій на руках.</p>';
             return;
           }
 
-          console.log("Результати для відображення:", results);
+          const fragment = document.createDocumentFragment();
           results.forEach((result, index) => {
             const entry = document.createElement("div");
             entry.className = "card bg-white p-6 rounded-lg shadow-md mb-4";
@@ -181,29 +164,25 @@
               <div class="mb-2"><b>Днів на руках:</b> ${result.daysHeld}</div>
               <a href="territory-detail.html?number=${result.number}" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg mt-2 inline-block">Переглянути деталі</a>
             `;
-            reportContainer.appendChild(entry);
+            fragment.appendChild(entry);
           });
+          reportContainer.appendChild(fragment);
         };
 
         const sortByPublisherCount = () => {
           results.sort((a, b) => {
             const countA = publishers.get(a.pib) || 0;
             const countB = publishers.get(b.pib) || 0;
-            if (countA !== countB) return countB - countA; // Descending by count
-            return a.pib.localeCompare(b.pib, "uk"); // Alphabetically if equal
+            return countB !== countA ? countB - countA : a.pib.localeCompare(b.pib, "uk");
           });
           renderReport();
         };
 
         const sortResults = (key, order) => {
           results.sort((a, b) => {
-            if (key === "pib") {
-              return order * a.pib.localeCompare(b.pib, "uk");
-            } else if (key === "number") {
-              return order * (parseInt(a.number) - parseInt(b.number));
-            } else if (key === "daysHeld") {
-              return order * (a.daysHeld - b.daysHeld);
-            }
+            if (key === "pib") return order * a.pib.localeCompare(b.pib, "uk");
+            if (key === "number") return order * (parseInt(a.number) - parseInt(b.number));
+            if (key === "daysHeld") return order * (a.daysHeld - b.daysHeld);
             return 0;
           });
           renderReport();
@@ -220,23 +199,21 @@
 <body class="bg-gray-100 min-h-screen flex flex-col">
   <header class="bg-white shadow-md p-4 sticky top-0 z-10">
     <div class="max-w-7xl mx-auto flex justify-between items-center">
-      
-	  <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
-	  <nav class="flex space-x-2">
-      <a href="index.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Карта</a>
-      <a href="territories.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Території</a>
-      <a href="user.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Користувачі</a>
-	  <a href="zvit.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Звіти</a>
-	   </nav>
-	    </div>
-	  
+      <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+        <nav class="flex space-x-2">
+          <a href="index.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Карта</a>
+          <a href="territories.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Території</a>
+          <a href="user.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Користувачі</a>
+          <a href="zvit.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Звіти</a>
+        </nav>
+      </div>
     </div>
   </header>
 
   <main class="flex-grow p-4">
     <div class="max-w-7xl mx-auto">
       <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-	  <h1 class="text-2xl font-bold text-gray-800">Звіт: Території на руках</h1>
+        <h1 class="text-2xl font-bold text-gray-800">Звіт: Території на руках</h1>
         <h3 class="text-lg font-semibold mb-4">Фільтр звіту</h3>
         <label class="block mb-2">Території на руках більше (днів):</label>
         <input id="daysThreshold" type="number" min="0" placeholder="Введіть кількість днів" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
