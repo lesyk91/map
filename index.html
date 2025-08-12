@@ -660,7 +660,7 @@ async function getTerritoryStatusPopup(number, name){
         waypoints: [currentLocation, nearestPoint],
         routeWhileDragging: false,
         addWaypoints: false,
-        show: true,
+        show: false,
         createMarker: () => null,
         router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1' })
       }).on('routesfound', function(e) {
@@ -897,3 +897,4 @@ async function getTerritoryStatusPopup(number, name){
   </script>
 </body>
 </html>
+
