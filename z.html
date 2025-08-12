@@ -178,7 +178,7 @@
           <p class="text-gray-700">Територій без записів: <span id="no-records-count">0</span></p>
         </div>
         <h2 class="text-xl font-semibold text-gray-800 mb-4">Території без записів</h2>
-        <div class="flex flex-wrap items-center mb-4 space-x-4">
+        <div мою class="flex flex-wrap items-center mb-4 space-x-4">
           <label for="no-records-number-filter" class="text-sm text-gray-700">Номер території:</label>
           <input type="text" id="no-records-number-filter" class="filter-input" placeholder="Введіть номер">
           <label for="no-records-type-filter" class="text-sm text-gray-700">Тип території:</label>
@@ -282,7 +282,7 @@
     let searchTimeout = null;
     const sortConfig = {
       noRecords: { key: 'number', direction: 'asc' },
-      processed: { key: 'days', direction: 'desc' }
+      processed: { key: 'days', direction: 'desc' } // Default sort by days descending
     };
 
     function updateProgress(percentage) {
@@ -421,7 +421,7 @@
         if (key === 'processDate') {
           aValue = a.processDate.getTime();
           bValue = b.processDate.getTime();
-        } else if (key === 'number' || key === 'daysSinceProcessed') {
+        } else if (key === 'number' || key === 'days') {
           aValue = Number(aValue);
           bValue = Number(bValue);
         }
@@ -466,7 +466,7 @@
             sortConfig[dataKey].direction = sortConfig[dataKey].direction === 'asc' ? 'desc' : 'asc';
           } else {
             sortConfig[dataKey].key = key;
-            sortConfig[dataKey].direction = 'asc';
+            sortConfig[dataKey].direction = key === 'days' ? 'desc' : 'asc'; // Default to descending for days
           }
           headers.forEach(h => {
             h.classList.remove('sort-asc', 'sort-desc');
