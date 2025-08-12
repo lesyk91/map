@@ -179,8 +179,8 @@
             <option value="Поверхівки">Поверхівки</option>
             <option value="Ділова">Ділова</option>
           </select>
-          <label for="period-min-count" class="text-sm text-gray-700">Мінімальна кількість разів:</label>
-          <input type="number" id="period-min-count" class="input-days" min="0" value="0">
+          <label for="period-count-filter" class="text-sm text-gray-700">Кількість разів:</label>
+          <input type="number" id="period-count-filter" class="input-days" min="0">
           <label for="period-notes-filter" class="text-sm text-gray-700">Пошук у нотатках:</label>
           <input type="text" id="period-notes-filter" class="input-text" placeholder="Введіть текст">
           <button id="period-search-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Пошук</button>
@@ -228,7 +228,7 @@
     const periodTypeFilter = document.getElementById('period-type-filter');
     const periodFrom = document.getElementById('period-from');
     const periodTo = document.getElementById('period-to');
-    const periodMinCount = document.getElementById('period-min-count');
+    const periodCountFilter = document.getElementById('period-count-filter');
     const periodNotesFilter = document.getElementById('period-notes-filter');
     const loader = document.getElementById('loader');
     const periodCount = document.getElementById('period-count');
@@ -283,7 +283,7 @@
       });
     }
 
-    async function fetchPeriodAnalysis(fromDateStr, toDateStr, typeFilter = '', minCount = 0, notesFilter = '') {
+    async function fetchPeriodAnalysis(fromDateStr, toDateStr, typeFilter = '', countFilter = null, notesFilter = '') {
       if (!fromDateStr || !toDateStr) {
         alert('Будь ласка, оберіть дати від і до.');
         return;
@@ -324,7 +324,7 @@
         }
         const count = snap.size;
         const notes = snap.docs.map(doc => doc.data().note || '').filter(note => note).join('; ');
-        if (count >= minCount && (!notesFilter || notes.toLowerCase().includes(notesFilter.toLowerCase())) && (!typeFilter || territoryTypes[num] === typeFilter)) {
+        if ((countFilter === null || count === countFilter) && (!notesFilter || notes.toLowerCase().includes(notesFilter.toLowerCase())) && (!typeFilter || territoryTypes[num] === typeFilter)) {
           periodData.push({ number: num, type: territoryTypes[num], count, notes });
         }
         territoryCount++;
@@ -348,7 +348,7 @@
             <td>Територія ${number}</td>
             <td>${type}</td>
             <td>${count}</td>
-            <td>${notes || 'Немає нотаток'}</td>
+            <td>${notes || ''}</td>
             <td><a href="territory-detail.html?number=${number}" class="text-blue-600 hover:underline">Відкрити</a></td>
           </tr>`;
       });
@@ -428,12 +428,22 @@
     });
 
     periodSearchBtn.addEventListener('click', () => {
-      fetchPeriodAnalysis(periodFrom.value, periodTo.value, periodTypeFilter.value, parseInt(periodMinCount.value) || 0, periodNotesFilter.value);
+      const countValue = periodCountFilter.value ? parseInt(periodCountFilter.value) : null;
+      fetchPeriodAnalysis(periodFrom.value, periodTo.value, periodTypeFilter.value, countValue, periodNotesFilter.value);
     });
 
-    periodTypeFilter.addEventListener('change', debounce(() => fetchPeriodAnalysis(periodFrom.value, periodTo.value, periodTypeFilter.value, parseInt(periodMinCount.value) || 0, periodNotesFilter.value), 300));
-    periodMinCount.addEventListener('input', debounce(() => fetchPeriodAnalysis(periodFrom.value, periodTo.value, periodTypeFilter.value, parseInt(periodMinCount.value) || 0, periodNotesFilter.value), 300));
-    periodNotesFilter.addEventListener('input', debounce(() => fetchPeriodAnalysis(periodFrom.value, periodTo.value, periodTypeFilter.value, parseInt(periodMinCount.value) || 0, periodNotesFilter.value), 300));
+    periodTypeFilter.addEventListener('change', debounce(() => {
+      const countValue = periodCountFilter.value ? parseInt(periodCountFilter.value) : null;
+      fetchPeriodAnalysis(periodFrom.value, periodTo.value, periodTypeFilter.value, countValue, periodNotesFilter.value);
+    }, 300));
+    periodCountFilter.addEventListener('input', debounce(() => {
+      const countValue = periodCountFilter.value ? parseInt(periodCountFilter.value) : null;
+      fetchPeriodAnalysis(periodFrom.value, periodTo.value, periodTypeFilter.value, countValue, periodNotesFilter.value);
+    }, 300));
+    periodNotesFilter.addEventListener('input', debounce(() => {
+      const countValue = periodCountFilter.value ? parseInt(periodCountFilter.value) : null;
+      fetchPeriodAnalysis(periodFrom.value, periodTo.value, periodTypeFilter.value, countValue, periodNotesFilter.value);
+    }, 300));
   </script>
 </body>
 </html>
