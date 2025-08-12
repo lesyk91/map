@@ -480,32 +480,38 @@
 
     logoutBtn?.addEventListener("click", async () => { await signOut(auth); layersControl = null; location.reload(); });
 
-    async function getTerritoryStatusPopup(number, name){
-      try {
-        const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp","desc"));
-        const snap = await getDocs(q);
-        let popup = `<b class="text-lg font-bold">${name}</b><br>`;
-        if (snap.empty) {
-          popup += `<b>Статус:</b> вільно`;
-        } else {
-          const latest = snap.docs[0].data();
-          const status = latest.status === "на руках" ? "на руках" : "вільно";
-          popup += `<b>Статус:</b> ${status}`;
-          if (currentUser && status === "на руках") {
-            popup += `<br><b>ПІБ:</b> ${latest.pib || "невідомо"}`;
-            popup += `<br><b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
-          }
-        }
-        popup += `<br><button onclick="shareTerritory('${number}')" class="popup-btn share-btn">🔗 Поділитися</button>`;
-        if (currentUser) {
-          popup += `<br><a href="territory-detail.html?number=${number}"><button class="popup-btn edit-btn">✏️ Редагувати</button></a>`;
-        }
-        return popup;
-      } catch(err) {
-        console.warn('getTerritoryStatusPopup error', err);
-        return `<b class="text-lg font-bold">${name}</b><br><b>Статус:</b> невідомий`;
+async function getTerritoryStatusPopup(number, name){
+  try {
+    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp","desc"));
+    const snap = await getDocs(q);
+    let popup = `<b class="text-lg font-bold">${name}</b><br>`;
+    if (snap.empty) {
+      popup += `<b>Статус:</b> вільно`;
+    } else {
+      const latest = snap.docs[0].data();
+      const status = latest.status === "на руках" ? "на руках" : "вільно";
+      popup += `<b>Статус:</b> ${status}`;
+      if (latest.dateGet) {
+        const dateGet = new Date(latest.dateGet);
+        const today = new Date();
+        const daysDiff = Math.floor((today - dateGet) / (1000 * 60 * 60 * 24));
+        popup += `<br><b>Днів ${status === "на руках" ? "на руках" : "вільно"}:</b> ${daysDiff}`;
+      }
+      if (currentUser && status === "на руках") {
+        popup += `<br><b>ПІБ:</b> ${latest.pib || "невідомо"}`;
+        popup += `<br><b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
       }
     }
+    popup += `<br><button onclick="shareTerritory('${number}')" class="popup-btn share-btn">🔗 Поділитися</button>`;
+    if (currentUser) {
+      popup += `<br><a href="territory-detail.html?number=${number}"><button class="popup-btn edit-btn">✏️ Редагувати</button></a>`;
+    }
+    return popup;
+  } catch(err) {
+    console.warn('getTerritoryStatusPopup error', err);
+    return `<b class="text-lg font-bold">${name}</b><br><b>Статус:</b> невідомий`;
+  }
+}
 
     function updateTerritoryStatuses(){
       districts.forEach(d => {
@@ -891,7 +897,3 @@
   </script>
 </body>
 </html>
-
-
-
-
