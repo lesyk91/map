@@ -67,8 +67,8 @@
     .report-table tr:hover {
       background-color: #f1f5f9;
     }
-    .input-days, .filter-select {
-      width: 100px;
+    .input-days, .filter-select, .input-date {
+      width: 150px;
       padding: 8px;
       border: 1px solid #d1d5db;
       border-radius: 4px;
@@ -113,8 +113,8 @@
         font-size: 0.75rem;
         padding: 8px;
       }
-      .input-days, .filter-select {
-        width: 80px;
+      .input-days, .filter-select, .input-date {
+        width: 120px;
         font-size: 0.75rem;
       }
       .summary {
@@ -217,13 +217,44 @@
           <tbody id="processed-table"></tbody>
         </table>
       </div>
+      <div class="report-section">
+        <div class="summary">
+          <p class="text-gray-700">Кількість територій: <span id="period-count">0</span></p>
+        </div>
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Аналіз території за період</h2>
+        <div class="flex items-center mb-4 space-x-4">
+          <label for="period-from" class="text-sm text-gray-700">Від:</label>
+          <input type="date" id="period-from" class="input-date">
+          <label for="period-to" class="text-sm text-gray-700">До:</label>
+          <input type="date" id="period-to" class="input-date">
+          <select id="period-type-filter" class="filter-select">
+            <option value="">Усі типи</option>
+            <option value="Приватна">Приватна</option>
+            <option value="Поверхівки">Поверхівки</option>
+            <option value="Ділова">Ділова</option>
+          </select>
+          <button id="period-search-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Пошук</button>
+        </div>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th data-sort="number">Номер території</th>
+              <th data-sort="type">Тип території</th>
+              <th data-sort="count" class="sort-desc">Кількість разів ↓</th>
+              <th>Додатково</th>
+              <th>Дія</th>
+            </tr>
+          </thead>
+          <tbody id="period-table"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, collection, query, orderBy, getDocs, getDoc, doc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getFirestore, collection, query, orderBy, where, getDocs, getDoc, doc, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -244,14 +275,20 @@
     const reportContent = document.getElementById('report-content');
     const noRecordsTable = document.getElementById('no-records-table');
     const processedTable = document.getElementById('processed-table');
+    const periodTable = document.getElementById('period-table');
     const noRecordsSearchBtn = document.getElementById('no-records-search-btn');
     const processedSearchBtn = document.getElementById('processed-search-btn');
+    const periodSearchBtn = document.getElementById('period-search-btn');
     const daysInput = document.getElementById('days-input');
     const noRecordsTypeFilter = document.getElementById('no-records-type-filter');
     const processedTypeFilter = document.getElementById('processed-type-filter');
+    const periodTypeFilter = document.getElementById('period-type-filter');
+    const periodFrom = document.getElementById('period-from');
+    const periodTo = document.getElementById('period-to');
     const loader = document.getElementById('loader');
     const noRecordsCount = document.getElementById('no-records-count');
     const processedCount = document.getElementById('processed-count');
+    const periodCount = document.getElementById('period-count');
     const progressContainer = document.getElementById('progress-container');
     const progressFill = document.getElementById('progress-fill');
     const progressText = document.getElementById('progress-text');
@@ -260,6 +297,7 @@
     let currentUser = null;
     let noRecordsData = [];
     let processedData = [];
+    let periodData = [];
     let territoryTypes = {};
     let sortConfig = { table: null, column: null, direction: 'asc' };
 
@@ -414,8 +452,79 @@
       });
     }
 
+    async function fetchPeriodAnalysis(fromDateStr, toDateStr, typeFilter = '') {
+      if (!fromDateStr || !toDateStr) {
+        alert('Будь ласка, оберіть дати від і до.');
+        return;
+      }
+      loader.style.display = 'block';
+      updateProgress(0);
+      periodTable.innerHTML = '';
+      periodData = [];
+
+      const fromDate = new Date(fromDateStr);
+      fromDate.setHours(0, 0, 0, 0);
+      const toDate = new Date(toDateStr);
+      toDate.setHours(23, 59, 59, 999);
+
+      const fromTimestamp = Timestamp.fromDate(fromDate);
+      const toTimestamp = Timestamp.fromDate(toDate);
+
+      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1).filter(n => n !== 27);
+      const totalTerritories = territoryNumbers.length;
+      let territoryCount = 0;
+
+      const promises = territoryNumbers.map(async num => {
+        const q = query(
+          collection(db, `territories/${num}/history`),
+          where('timestamp', '>=', fromTimestamp),
+          where('timestamp', '<=', toTimestamp)
+        );
+        const snap = await getDocs(q);
+        return { num, snap };
+      });
+
+      const results = await Promise.all(promises.map(p => p.catch(e => ({ num: null, snap: null, error: e }))));
+
+      for (const { num, snap, error } of results) {
+        if (error) {
+          console.warn(`Помилка для території ${num}: ${error.message}`);
+          continue;
+        }
+        const count = snap.size;
+        const notes = snap.docs.map(doc => doc.data().note || '').filter(note => note).join('; ');
+        if ((!typeFilter || territoryTypes[num] === typeFilter)) {
+          periodData.push({ number: num, type: territoryTypes[num], count, notes });
+        }
+        territoryCount++;
+        updateProgress((territoryCount / totalTerritories) * 100);
+      }
+
+      // Default sort by count in descending order
+      sortConfig = { table: 'period-table', column: 'count', direction: 'desc' };
+      periodData = sortData('period-table', 'count', periodData);
+      renderPeriodTable();
+      periodCount.textContent = periodData.length;
+      loader.style.display = 'none';
+      progressContainer.style.display = 'none';
+    }
+
+    function renderPeriodTable() {
+      periodTable.innerHTML = '';
+      periodData.forEach(({ number, type, count, notes }) => {
+        periodTable.innerHTML += `
+          <tr>
+            <td>Територія ${number}</td>
+            <td>${type}</td>
+            <td>${count}</td>
+            <td>${notes || 'Немає нотаток'}</td>
+            <td><a href="territory-detail.html?number=${number}" class="text-blue-600 hover:underline">Відкрити</a></td>
+          </tr>`;
+      });
+    }
+
     function sortData(tableId, column, data) {
-      const direction = sortConfig.table === tableId && sortConfig.column === column && sortConfig.direction === 'asc' ? 'asc' : 'desc'; 
+      const direction = sortConfig.table === tableId && sortConfig.column === column && sortConfig.direction === 'asc' ? 'desc' : 'asc';
       sortConfig = { table: tableId, column, direction };
 
       const headers = document.querySelectorAll(`#${tableId} th`);
@@ -432,11 +541,14 @@
           valA = a.processDate.getTime();
           valB = b.processDate.getTime();
         } else if (column === 'number') {
-          valA = Number(valA.replace('Територія ', '')) || valA;
-          valB = Number(valB.replace('Територія ', '')) || valB;
+          valA = Number(valA);
+          valB = Number(valB);
         } else if (column === 'days') {
           valA = a.daysSinceProcessed;
           valB = b.daysSinceProcessed;
+        } else if (column === 'count') {
+          valA = a.count;
+          valB = b.count;
         }
         if (valA < valB) return direction === 'asc' ? -1 : 1;
         if (valA > valB) return direction === 'asc' ? 1 : -1;
@@ -447,7 +559,7 @@
     }
 
     function addTableSorting() {
-      const tables = ['no-records-table', 'processed-table'];
+      const tables = ['no-records-table', 'processed-table', 'period-table'];
       tables.forEach(tableId => {
         const headers = document.querySelectorAll(`#${tableId} th[data-sort]`);
         headers.forEach(header => {
@@ -456,9 +568,12 @@
             if (tableId === 'no-records-table') {
               noRecordsData = sortData(tableId, column, noRecordsData);
               renderNoRecordsTable();
-            } else {
+            } else if (tableId === 'processed-table') {
               processedData = sortData(tableId, column, processedData);
               renderProcessedTable();
+            } else if (tableId === 'period-table') {
+              periodData = sortData(tableId, column, periodData);
+              renderPeriodTable();
             }
           });
         });
@@ -481,8 +596,10 @@
         reportContent.classList.add('hidden');
         noRecordsTable.innerHTML = '';
         processedTable.innerHTML = '';
+        periodTable.innerHTML = '';
         noRecordsCount.textContent = '0';
         processedCount.textContent = '0';
+        periodCount.textContent = '0';
         progressContainer.style.display = 'none';
       }
     });
@@ -503,8 +620,13 @@
       }
     });
 
+    periodSearchBtn.addEventListener('click', () => {
+      fetchPeriodAnalysis(periodFrom.value, periodTo.value, periodTypeFilter.value);
+    });
+
     noRecordsTypeFilter.addEventListener('change', debounce(() => fetchNoRecords(noRecordsTypeFilter.value), 300));
     processedTypeFilter.addEventListener('change', debounce(() => fetchProcessed(parseInt(daysInput.value) || 0, processedTypeFilter.value), 300));
+    periodTypeFilter.addEventListener('change', debounce(() => fetchPeriodAnalysis(periodFrom.value, periodTo.value, periodTypeFilter.value), 300));
   </script>
 </body>
 </html>
