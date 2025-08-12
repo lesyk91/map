@@ -233,7 +233,7 @@
     const loader = document.getElementById('loader');
     const periodCount = document.getElementById('period-count');
     const progressContainer = document.getElementById('progress-container');
-    const progressFill = document.getElementById('progress-fill');
+    const progressFill = document.getElementById('progress-fill Clas);
     const progressText = document.getElementById('progress-text');
 
     let currentUser = null;
@@ -308,8 +308,8 @@
       const promises = territoryNumbers.map(async num => {
         const q = query(
           collection(db, `territories/${num}/history`),
-          where('timestamp', '>=', fromTimestamp),
-          where('timestamp', '<=', toTimestamp)
+          where('dateGet', '>=', fromTimestamp),
+          where('dateGet', '<=', toTimestamp)
         );
         const snap = await getDocs(q);
         return { num, snap };
