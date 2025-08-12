@@ -415,7 +415,7 @@
     }
 
     function sortData(tableId, column, data) {
-      const direction = sortConfig.table === tableId && sortConfig.column === column && sortConfig.direction === 'asc' ? 'desc' : 'asc';
+      const direction = sortConfig.table === tableId && sortConfig.column === column && sortConfig.direction === 'asc' ? 'asc' : 'desc'; 
       sortConfig = { table: tableId, column, direction };
 
       const headers = document.querySelectorAll(`#${tableId} th`);
