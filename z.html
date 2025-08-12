@@ -210,7 +210,7 @@
               <th data-sort="number">Номер території</th>
               <th data-sort="type">Тип території</th>
               <th data-sort="date">Дата опрацювання</th>
-              <th data-sort="days">Днів з опрацювання</th>
+              <th data-sort="days" class="sort-desc">Днів з опрацювання ↓</th>
               <th>Дія</th>
             </tr>
           </thead>
@@ -263,12 +263,6 @@
     let territoryTypes = {};
     let sortConfig = { table: null, column: null, direction: 'asc' };
 
-    // Mock territory types (replace with Firestore data if available)
-    const mockTerritoryTypes = {
-      1: 'Приватна', 2: 'Поверхівки', 3: 'Ділова', 4: 'Приватна', 5: 'Поверхівки',
-      // Add more as needed or fetch from Firestore
-    };
-
     function updateProgress(percentage) {
       if (percentage < 100) {
         progressContainer.style.display = 'block';
@@ -294,16 +288,21 @@
 
     async function fetchTerritoryTypes() {
       const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1).filter(n => n !== 27);
-      for (const num of territoryNumbers) {
+      const promises = territoryNumbers.map(async num => {
         try {
-          const docRef = doc(db, `territories/${num}/metadata`);
+          const docRef = doc(db, `territories/${num}`);
           const docSnap = await getDoc(docRef);
-          territoryTypes[num] = docSnap.exists() ? docSnap.data().type : mockTerritoryTypes[num] || 'Невідомо';
+          return { num, type: docSnap.exists() ? docSnap.data().type : 'Невідомо' };
         } catch (err) {
           console.warn(`Помилка для території ${num}: ${err.message}`);
-          territoryTypes[num] = mockTerritoryTypes[num] || 'Невідомо';
+          return { num, type: 'Невідомо' };
         }
-      }
+      });
+
+      const results = await Promise.all(promises);
+      results.forEach(({ num, type }) => {
+        territoryTypes[num] = type;
+      });
     }
 
     async function fetchNoRecords(typeFilter = '') {
@@ -316,7 +315,6 @@
       const totalTerritories = territoryNumbers.length;
       let territoryCount = 0;
 
-      // Batch queries using Promise.all
       const promises = territoryNumbers.map(async num => {
         const q = query(collection(db, `territories/${num}/history`), orderBy('timestamp', 'desc'));
         const snap = await getDocs(q);
@@ -337,6 +335,7 @@
         updateProgress((territoryCount / totalTerritories) * 100);
       }
 
+      noRecordsData = sortData('no-records-table', 'number', noRecordsData);
       renderNoRecordsTable();
       noRecordsCount.textContent = noRecordsData.length;
       loader.style.display = 'none';
@@ -392,6 +391,9 @@
         updateProgress((territoryCount / totalTerritories) * 100);
       }
 
+      // Default sort by daysSinceProcessed in descending order
+      sortConfig = { table: 'processed-table', column: 'days', direction: 'desc' };
+      processedData = sortData('processed-table', 'days', processedData);
       renderProcessedTable();
       processedCount.textContent = processedData.length;
       loader.style.display = 'none';
@@ -413,7 +415,6 @@
     }
 
     function sortData(tableId, column, data) {
-      const isNoRecordsTable = tableId === 'no-records-table';
       const direction = sortConfig.table === tableId && sortConfig.column === column && sortConfig.direction === 'asc' ? 'desc' : 'asc';
       sortConfig = { table: tableId, column, direction };
 
@@ -430,9 +431,12 @@
         if (column === 'processDate') {
           valA = a.processDate.getTime();
           valB = b.processDate.getTime();
-        } else if (column === 'number' || column === 'daysSinceProcessed') {
+        } else if (column === 'number') {
           valA = Number(valA.replace('Територія ', '')) || valA;
           valB = Number(valB.replace('Територія ', '')) || valB;
+        } else if (column === 'days') {
+          valA = a.daysSinceProcessed;
+          valB = b.daysSinceProcessed;
         }
         if (valA < valB) return direction === 'asc' ? -1 : 1;
         if (valA > valB) return direction === 'asc' ? 1 : -1;
@@ -468,7 +472,7 @@
         logoutBtn.classList.remove('hidden');
         authMessage.classList.add('hidden');
         reportContent.classList.remove('hidden');
-        await fetchTerritoryTypes(); // Fetch territory types on login
+        await fetchTerritoryTypes();
         addTableSorting();
       } else {
         loginBtn.classList.remove('hidden');
