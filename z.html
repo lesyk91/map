@@ -54,10 +54,12 @@
       cursor: pointer;
     }
     .report-table th.sort-asc::after {
-      content: ' ↑';
+      content: '↑';
+      margin-left: 5px;
     }
     .report-table th.sort-desc::after {
-      content: ' ↓';
+      content: '↓';
+      margin-left: 5px;
     }
     .report-table tr:nth-child(even) {
       background-color: #f9fafb;
@@ -65,18 +67,12 @@
     .report-table tr:hover {
       background-color: #f1f5f9;
     }
-    .input-days, .filter-select, .filter-input {
-      width: 80px;
+    .input-days, .filter-select {
+      width: 100px;
       padding: 8px;
       border: 1px solid #d1d5db;
       border-radius: 4px;
       font-size: 0.875rem;
-    }
-    .filter-select {
-      width: 150px;
-    }
-    .filter-input {
-      width: 100px;
     }
     .summary {
       background-color: #e0f2fe;
@@ -117,15 +113,9 @@
         font-size: 0.75rem;
         padding: 8px;
       }
-      .input-days, .filter-select, .filter-input {
-        width: 60px;
-        font-size: 0.75rem;
-      }
-      .filter-select {
-        width: 120px;
-      }
-      .filter-input {
+      .input-days, .filter-select {
         width: 80px;
+        font-size: 0.75rem;
       }
       .summary {
         font-size: 0.875rem;
@@ -178,17 +168,14 @@
           <p class="text-gray-700">Територій без записів: <span id="no-records-count">0</span></p>
         </div>
         <h2 class="text-xl font-semibold text-gray-800 mb-4">Території без записів</h2>
-        <div мою class="flex flex-wrap items-center mb-4 space-x-4">
-          <label for="no-records-number-filter" class="text-sm text-gray-700">Номер території:</label>
-          <input type="text" id="no-records-number-filter" class="filter-input" placeholder="Введіть номер">
-          <label for="no-records-type-filter" class="text-sm text-gray-700">Тип території:</label>
+        <div class="flex items-center mb-4 space-x-4">
+          <button id="no-records-search-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Пошук</button>
           <select id="no-records-type-filter" class="filter-select">
-            <option value="all">Усі</option>
+            <option value="">Усі типи</option>
             <option value="Приватна">Приватна</option>
             <option value="Поверхівки">Поверхівки</option>
             <option value="Ділова">Ділова</option>
           </select>
-          <button id="no-records-search-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Пошук</button>
         </div>
         <table class="report-table">
           <thead>
@@ -206,18 +193,15 @@
           <p class="text-gray-700">Опрацьованих територій: <span id="processed-count">0</span></p>
         </div>
         <h2 class="text-xl font-semibold text-gray-800 mb-4">Опрацьовані території</h2>
-        <div class="flex flex-wrap items-center mb-4 space-x-4">
-          <label for="processed-number-filter" class="text-sm text-gray-700">Номер території:</label>
-          <input type="text" id="processed-number-filter" class="filter-input" placeholder="Введіть номер">
-          <label for="processed-type-filter" class="text-sm text-gray-700">Тип території:</label>
+        <div class="flex items-center mb-4 space-x-4">
+          <label for="days-input" class="text-sm text-gray-700">Мінімальна кількість днів з опрацювання:</label>
+          <input type="number" id="days-input" class="input-days" min="0" value="0">
           <select id="processed-type-filter" class="filter-select">
-            <option value="all">Усі</option>
+            <option value="">Усі типи</option>
             <option value="Приватна">Приватна</option>
             <option value="Поверхівки">Поверхівки</option>
             <option value="Ділова">Ділова</option>
           </select>
-          <label for="days-input" class="text-sm text-gray-700">Мін. днів з опрацювання:</label>
-          <input type="number" id="days-input" class="input-days" min="0" value="0">
           <button id="processed-search-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Пошук</button>
         </div>
         <table class="report-table">
@@ -239,7 +223,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, collection, query, orderBy, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getFirestore, collection, query, orderBy, getDocs, getDoc, doc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -265,8 +249,6 @@
     const daysInput = document.getElementById('days-input');
     const noRecordsTypeFilter = document.getElementById('no-records-type-filter');
     const processedTypeFilter = document.getElementById('processed-type-filter');
-    const noRecordsNumberFilter = document.getElementById('no-records-number-filter');
-    const processedNumberFilter = document.getElementById('processed-number-filter');
     const loader = document.getElementById('loader');
     const noRecordsCount = document.getElementById('no-records-count');
     const processedCount = document.getElementById('processed-count');
@@ -278,11 +260,13 @@
     let currentUser = null;
     let noRecordsData = [];
     let processedData = [];
-    let territoryTypesCache = new Map();
-    let searchTimeout = null;
-    const sortConfig = {
-      noRecords: { key: 'number', direction: 'asc' },
-      processed: { key: 'days', direction: 'desc' } // Default sort by days descending
+    let territoryTypes = {};
+    let sortConfig = { table: null, column: null, direction: 'asc' };
+
+    // Mock territory types (replace with Firestore data if available)
+    const mockTerritoryTypes = {
+      1: 'Приватна', 2: 'Поверхівки', 3: 'Ділова', 4: 'Приватна', 5: 'Поверхівки',
+      // Add more as needed or fetch from Firestore
     };
 
     function updateProgress(percentage) {
@@ -295,13 +279,197 @@
       }
     }
 
-    onAuthStateChanged(auth, user => {
+    // Debounce function to limit rapid input changes
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    async function fetchTerritoryTypes() {
+      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1).filter(n => n !== 27);
+      for (const num of territoryNumbers) {
+        try {
+          const docRef = doc(db, `territories/${num}/metadata`);
+          const docSnap = await getDoc(docRef);
+          territoryTypes[num] = docSnap.exists() ? docSnap.data().type : mockTerritoryTypes[num] || 'Невідомо';
+        } catch (err) {
+          console.warn(`Помилка для території ${num}: ${err.message}`);
+          territoryTypes[num] = mockTerritoryTypes[num] || 'Невідомо';
+        }
+      }
+    }
+
+    async function fetchNoRecords(typeFilter = '') {
+      loader.style.display = 'block';
+      updateProgress(0);
+      noRecordsTable.innerHTML = '';
+      noRecordsData = [];
+
+      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1).filter(n => n !== 27);
+      const totalTerritories = territoryNumbers.length;
+      let territoryCount = 0;
+
+      // Batch queries using Promise.all
+      const promises = territoryNumbers.map(async num => {
+        const q = query(collection(db, `territories/${num}/history`), orderBy('timestamp', 'desc'));
+        const snap = await getDocs(q);
+        return { num, snap };
+      });
+
+      const results = await Promise.all(promises.map(p => p.catch(e => ({ num: null, snap: null, error: e }))));
+
+      for (const { num, snap, error } of results) {
+        if (error) {
+          console.warn(`Помилка для території ${num}: ${error.message}`);
+          continue;
+        }
+        if (snap.empty && (!typeFilter || territoryTypes[num] === typeFilter)) {
+          noRecordsData.push({ number: num, type: territoryTypes[num] });
+        }
+        territoryCount++;
+        updateProgress((territoryCount / totalTerritories) * 100);
+      }
+
+      renderNoRecordsTable();
+      noRecordsCount.textContent = noRecordsData.length;
+      loader.style.display = 'none';
+      progressContainer.style.display = 'none';
+    }
+
+    function renderNoRecordsTable() {
+      noRecordsTable.innerHTML = '';
+      noRecordsData.forEach(({ number, type }) => {
+        noRecordsTable.innerHTML += `
+          <tr>
+            <td>Територія ${number}</td>
+            <td>${type}</td>
+            <td><a href="territory-detail.html?number=${number}" class="text-blue-600 hover:underline">Відкрити</a></td>
+          </tr>`;
+      });
+    }
+
+    async function fetchProcessed(daysFilter = 0, typeFilter = '') {
+      loader.style.display = 'block';
+      updateProgress(0);
+      processedTable.innerHTML = '';
+      processedData = [];
+
+      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1).filter(n => n !== 27);
+      const totalTerritories = territoryNumbers.length;
+      let territoryCount = 0;
+
+      const promises = territoryNumbers.map(async num => {
+        const q = query(collection(db, `territories/${num}/history`), orderBy('timestamp', 'desc'));
+        const snap = await getDocs(q);
+        return { num, snap };
+      });
+
+      const results = await Promise.all(promises.map(p => p.catch(e => ({ num: null, snap: null, error: e }))));
+
+      for (const { num, snap, error } of results) {
+        if (error) {
+          console.warn(`Помилка для території ${num}: ${error.message}`);
+          continue;
+        }
+        if (!snap.empty) {
+          const latest = snap.docs[0].data();
+          if (latest.dateGet && latest.dateProcess) {
+            const processDate = new Date(latest.dateProcess);
+            const daysSinceProcessed = Math.floor((today - processDate) / (1000 * 60 * 60 * 24));
+            if (daysSinceProcessed >= daysFilter && (!typeFilter || territoryTypes[num] === typeFilter)) {
+              processedData.push({ number: num, type: territoryTypes[num], processDate, daysSinceProcessed });
+            }
+          }
+        }
+        territoryCount++;
+        updateProgress((territoryCount / totalTerritories) * 100);
+      }
+
+      renderProcessedTable();
+      processedCount.textContent = processedData.length;
+      loader.style.display = 'none';
+      progressContainer.style.display = 'none';
+    }
+
+    function renderProcessedTable() {
+      processedTable.innerHTML = '';
+      processedData.forEach(({ number, type, processDate, daysSinceProcessed }) => {
+        processedTable.innerHTML += `
+          <tr>
+            <td>Територія ${number}</td>
+            <td>${type}</td>
+            <td>${processDate.toLocaleDateString('uk-UA')}</td>
+            <td>${daysSinceProcessed}</td>
+            <td><a href="territory-detail.html?number=${number}" class="text-blue-600 hover:underline">Відкрити</a></td>
+          </tr>`;
+      });
+    }
+
+    function sortData(tableId, column, data) {
+      const isNoRecordsTable = tableId === 'no-records-table';
+      const direction = sortConfig.table === tableId && sortConfig.column === column && sortConfig.direction === 'asc' ? 'desc' : 'asc';
+      sortConfig = { table: tableId, column, direction };
+
+      const headers = document.querySelectorAll(`#${tableId} th`);
+      headers.forEach(header => {
+        header.classList.remove('sort-asc', 'sort-desc');
+        if (header.dataset.sort === column) {
+          header.classList.add(`sort-${direction}`);
+        }
+      });
+
+      const sortedData = [...data].sort((a, b) => {
+        let valA = a[column], valB = b[column];
+        if (column === 'processDate') {
+          valA = a.processDate.getTime();
+          valB = b.processDate.getTime();
+        } else if (column === 'number' || column === 'daysSinceProcessed') {
+          valA = Number(valA.replace('Територія ', '')) || valA;
+          valB = Number(valB.replace('Територія ', '')) || valB;
+        }
+        if (valA < valB) return direction === 'asc' ? -1 : 1;
+        if (valA > valB) return direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      return sortedData;
+    }
+
+    function addTableSorting() {
+      const tables = ['no-records-table', 'processed-table'];
+      tables.forEach(tableId => {
+        const headers = document.querySelectorAll(`#${tableId} th[data-sort]`);
+        headers.forEach(header => {
+          header.addEventListener('click', () => {
+            const column = header.dataset.sort;
+            if (tableId === 'no-records-table') {
+              noRecordsData = sortData(tableId, column, noRecordsData);
+              renderNoRecordsTable();
+            } else {
+              processedData = sortData(tableId, column, processedData);
+              renderProcessedTable();
+            }
+          });
+        });
+      });
+    }
+
+    onAuthStateChanged(auth, async user => {
       currentUser = user;
       if (user) {
         loginBtn.classList.add('hidden');
         logoutBtn.classList.remove('hidden');
         authMessage.classList.add('hidden');
         reportContent.classList.remove('hidden');
+        await fetchTerritoryTypes(); // Fetch territory types on login
+        addTableSorting();
       } else {
         loginBtn.classList.remove('hidden');
         logoutBtn.classList.add('hidden');
@@ -320,220 +488,19 @@
       window.location.reload();
     });
 
-    async function getTerritoryType(number) {
-      if (territoryTypesCache.has(number)) {
-        return territoryTypesCache.get(number);
-      }
-      const docRef = doc(db, `territories/${number}`);
-      const docSnap = await getDoc(docRef);
-      const type = docSnap.exists() ? docSnap.data().type || 'Невідомо' : 'Невідомо';
-      territoryTypesCache.set(number, type);
-      return type;
-    }
+    noRecordsSearchBtn.addEventListener('click', () => fetchNoRecords(noRecordsTypeFilter.value));
 
-    async function fetchTerritoryData(number) {
-      const q = query(collection(db, `territories/${number}/history`), orderBy('timestamp', 'desc'));
-      const type = await getTerritoryType(number);
-      try {
-        const snap = await getDocs(q);
-        return { number, type, snap };
-      } catch (err) {
-        console.warn(`Помилка для території ${number}: ${err.message}`);
-        return { number, type, snap: null };
-      }
-    }
-
-    async function fetchNoRecords(numberFilter = '', typeFilter = 'all') {
-      loader.style.display = 'block';
-      updateProgress(0);
-      noRecordsTable.innerHTML = '';
-      noRecordsData = [];
-
-      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1).filter(n => n !== 27);
-      const totalTerritories = territoryNumbers.length;
-      const chunkSize = 10;
-      let processedCount = 0;
-
-      for (let i = 0; i < territoryNumbers.length; i += chunkSize) {
-        const chunk = territoryNumbers.slice(i, i + chunkSize);
-        const promises = chunk.map(num => fetchTerritoryData(num));
-        const results = await Promise.all(promises);
-        results.forEach(({ number, type, snap }) => {
-          if (snap && snap.empty && (typeFilter === 'all' || type === typeFilter) && (numberFilter === '' || number.toString().includes(numberFilter))) {
-            noRecordsData.push({ number, type });
-          }
-          processedCount++;
-          updateProgress((processedCount / totalTerritories) * 100);
-        });
-      }
-
-      sortData('noRecords');
-      renderNoRecordsTable();
-      noRecordsCount.textContent = noRecordsData.length;
-      loader.style.display = 'none';
-      progressContainer.style.display = 'none';
-    }
-
-    async function fetchProcessed(daysFilter = 0, numberFilter = '', typeFilter = 'all') {
-      loader.style.display = 'block';
-      updateProgress(0);
-      processedTable.innerHTML = '';
-      processedData = [];
-
-      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1).filter(n => n !== 27);
-      const totalTerritories = territoryNumbers.length;
-      const chunkSize = 10;
-      let processedCount = 0;
-
-      for (let i = 0; i < territoryNumbers.length; i += chunkSize) {
-        const chunk = territoryNumbers.slice(i, i + chunkSize);
-        const promises = chunk.map(num => fetchTerritoryData(num));
-        const results = await Promise.all(promises);
-        results.forEach(({ number, type, snap }) => {
-          if (snap && !snap.empty) {
-            const latest = snap.docs[0].data();
-            if (latest.dateGet && latest.dateProcess) {
-              const processDate = new Date(latest.dateProcess);
-              const daysSinceProcessed = Math.floor((today - processDate) / (1000 * 60 * 60 * 24));
-              if (daysSinceProcessed >= daysFilter && (typeFilter === 'all' || type === typeFilter) && (numberFilter === '' || number.toString().includes(numberFilter))) {
-                processedData.push({ number, type, processDate, daysSinceProcessed });
-              }
-            }
-          }
-          processedCount++;
-          updateProgress((processedCount / totalTerritories) * 100);
-        });
-      }
-
-      sortData('processed');
-      renderProcessedTable();
-      processedCount.textContent = processedData.length.toString();
-      loader.style.display = 'none';
-      progressContainer.style.display = 'none';
-    }
-
-    function sortData(table) {
-      const { key, direction } = sortConfig[table];
-      const data = table === 'noRecords' ? noRecordsData : processedData;
-      data.sort((a, b) => {
-        let aValue = a[key];
-        let bValue = b[key];
-        if (key === 'processDate') {
-          aValue = a.processDate.getTime();
-          bValue = b.processDate.getTime();
-        } else if (key === 'number' || key === 'days') {
-          aValue = Number(aValue);
-          bValue = Number(bValue);
-        }
-        if (aValue < bValue) return direction === 'asc' ? -1 : 1;
-        if (aValue > bValue) return direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-
-    function renderNoRecordsTable() {
-      noRecordsTable.innerHTML = '';
-      noRecordsData.forEach(({ number, type }) => {
-        noRecordsTable.innerHTML += `
-          <tr>
-            <td>Територія ${number}</td>
-            <td>${type}</td>
-            <td><a href="territory-detail.html?number=${number}" class="text-blue-600 hover:underline">Відкрити</a></td>
-          </tr>`;
-      });
-    }
-
-    function renderProcessedTable() {
-      processedTable.innerHTML = '';
-      processedData.forEach(({ number, type, processDate, daysSinceProcessed }) => {
-        processedTable.innerHTML += `
-          <tr>
-            <td>Територія ${number}</td>
-            <td>${type}</td>
-            <td>${processDate.toLocaleDateString('uk-UA')}</td>
-            <td>${daysSinceProcessed}</td>
-            <td><a href="territory-detail.html?number=${number}" class="text-blue-600 hover:underline">Відкрити</a></td>
-          </tr>`;
-      });
-    }
-
-    function setupSorting(tableId, dataKey) {
-      const headers = document.querySelectorAll(`#${tableId} th[data-sort]`);
-      headers.forEach(header => {
-        header.addEventListener('click', () => {
-          const key = header.getAttribute('data-sort');
-          if (sortConfig[dataKey].key === key) {
-            sortConfig[dataKey].direction = sortConfig[dataKey].direction === 'asc' ? 'desc' : 'asc';
-          } else {
-            sortConfig[dataKey].key = key;
-            sortConfig[dataKey].direction = key === 'days' ? 'desc' : 'asc'; // Default to descending for days
-          }
-          headers.forEach(h => {
-            h.classList.remove('sort-asc', 'sort-desc');
-            if (h.getAttribute('data-sort') === key) {
-              h.classList.add(`sort-${sortConfig[dataKey].direction}`);
-            }
-          });
-          sortData(dataKey);
-          if (dataKey === 'noRecords') {
-            renderNoRecordsTable();
-          } else {
-            renderProcessedTable();
-          }
-        });
-      });
-    }
-
-    function debounceSearch(fn, delay) {
-      return function (...args) {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => fn(...args), delay);
-      };
-    }
-
-    const debouncedFetchNoRecords = debounceSearch((numberFilter, typeFilter) => {
-      fetchNoRecords(numberFilter, typeFilter);
-    }, 300);
-
-    const debouncedFetchProcessed = debounceSearch((daysFilter, numberFilter, typeFilter) => {
-      const days = parseInt(daysFilter) || 0;
+    processedSearchBtn.addEventListener('click', () => {
+      const days = parseInt(daysInput.value) || 0;
       if (days >= 0) {
-        fetchProcessed(days, numberFilter, typeFilter);
+        fetchProcessed(days, processedTypeFilter.value);
       } else {
         alert('Введіть невід’ємне число днів.');
       }
-    }, 300);
-
-    noRecordsSearchBtn.addEventListener('click', () => {
-      debouncedFetchNoRecords(noRecordsNumberFilter.value.trim(), noRecordsTypeFilter.value);
     });
 
-    processedSearchBtn.addEventListener('click', () => {
-      debouncedFetchProcessed(daysInput.value, processedNumberFilter.value.trim(), processedTypeFilter.value);
-    });
-
-    noRecordsNumberFilter.addEventListener('input', () => {
-      debouncedFetchNoRecords(noRecordsNumberFilter.value.trim(), noRecordsTypeFilter.value);
-    });
-
-    noRecordsTypeFilter.addEventListener('change', () => {
-      debouncedFetchNoRecords(noRecordsNumberFilter.value.trim(), noRecordsTypeFilter.value);
-    });
-
-    processedNumberFilter.addEventListener('input', () => {
-      debouncedFetchProcessed(daysInput.value, processedNumberFilter.value.trim(), processedTypeFilter.value);
-    });
-
-    processedTypeFilter.addEventListener('change', () => {
-      debouncedFetchProcessed(daysInput.value, processedNumberFilter.value.trim(), processedTypeFilter.value);
-    });
-
-    daysInput.addEventListener('input', () => {
-      debouncedFetchProcessed(daysInput.value, processedNumberFilter.value.trim(), processedTypeFilter.value);
-    });
-
-    setupSorting('no-records-table', 'noRecords');
-    setupSorting('processed-table', 'processed');
+    noRecordsTypeFilter.addEventListener('change', debounce(() => fetchNoRecords(noRecordsTypeFilter.value), 300));
+    processedTypeFilter.addEventListener('change', debounce(() => fetchProcessed(parseInt(daysInput.value) || 0, processedTypeFilter.value), 300));
   </script>
 </body>
 </html>
