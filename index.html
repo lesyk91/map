@@ -226,13 +226,13 @@
   </div>
 
   <div class="toolbar">
-    <button onclick="findLocation()" class="locate-btn">📍 Моє місцезнаходження</button>
-    <div id="auth-buttons">
+    <button onclick="toggleControls()" class="filters-btn">⚙️ Фільтри</button>
+       <div id="auth-buttons">
       <a href="enter.html"><button class="login-btn">🔐 Увійти</button></a>
       <button class="logout-btn">🚪 Вийти</button>
       <a href="territories.html"><button class="territories-btn">🏞 Території</button></a>
     </div>
-    <button onclick="toggleControls()" class="filters-btn">⚙️ Фільтри</button>
+     <button onclick="findLocation()" class="locate-btn">📍 Моє місцезнаходження</button>
   </div>
 
   <div id="loader" class="bg-white border border-gray-300 rounded-lg shadow-md"></div>
@@ -897,5 +897,6 @@ async function getTerritoryStatusPopup(number, name){
   </script>
 </body>
 </html>
+
 
 
