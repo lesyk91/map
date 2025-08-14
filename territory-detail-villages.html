@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+   <meta name="robots" content="noindex, nofollow">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Деталі села</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .card {
+      transition: all 0.3s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .btn {
+      transition: all 0.3s ease;
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+  </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import {
+      getFirestore,
+      collection, addDoc, query, orderBy, getDocs,
+      doc, getDoc, updateDoc, deleteDoc, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+      authDomain: "map-illintsi.firebaseapp.com",
+      projectId: "map-illintsi",
+      storageBucket: "map-illintsi.appspot.com",
+      messagingSenderId: "62267872375",
+      appId: "1:62267872375:web:10945d2d63b93bccc5e272"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const formatDate = (str) => str ? new Date(str).toLocaleDateString("uk-UA") : "-";
+    const diffDays = (start, end = new Date()) =>
+      start ? Math.ceil((new Date(end) - new Date(start)) / 86400000) : null;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const params = new URLSearchParams(location.search);
+      const villageId = params.get("number");
+      const title = document.getElementById("title");
+      const container = document.getElementById("territory");
+      const statusElement = document.getElementById("territory-status");
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) return (location.href = "index.html");
+
+        const villageRef = doc(db, `territories_villages/${villageId}`);
+        const villageSnap = await getDoc(villageRef);
+        let villageName = `Село ${villageId}`;
+        if (villageSnap.exists()) {
+          villageName = villageSnap.data().name;
+        }
+        title.innerText = villageName;
+
+        const colRef = collection(db, `territories_villages/${villageId}/history`);
+        const q = query(colRef, orderBy("timestamp", "desc"));
+        const snap = await getDocs(q);
+
+        let latest = snap.docs[0]?.data();
+        let statusText = "вільно";
+
+        if (latest && latest.status === "на руках") {
+          statusText = "на руках";
+        }
+
+        statusElement.innerHTML = `<b>Статус села:</b> <p><span class="${statusText === 'вільно' ? 'text-green-600' : 'text-red-600'}">${statusText}</span></p>`;
+        const allowNew = statusText !== "на руках";
+
+        if (allowNew) {
+          const form = document.createElement("form");
+          form.className = "bg-white p-6 rounded-lg shadow-md mb-6";
+          form.innerHTML = `
+            <h3 class="text-lg font-semibold mb-4">Новий запис</h3>
+            <input required name="pib" placeholder="ПІБ" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+            <input required name="dateGet" type="date" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+            <input name="dateProcess" type="date" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+            <textarea name="note" placeholder="Нотатки" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea><br/>
+            <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Зберегти</button>
+          `;
+          form.onsubmit = async (e) => {
+            e.preventDefault();
+            const f = new FormData(form);
+            const get = f.get("dateGet");
+            const proc = f.get("dateProcess");
+            const status = proc ? "опрацьовано" : "на руках";
+            await addDoc(colRef, {
+              pib: f.get("pib"),
+              dateGet: get,
+              dateProcess: proc,
+              note: f.get("note"),
+              user: auth.currentUser.uid,
+              timestamp: serverTimestamp(),
+              status
+            });
+            location.reload();
+          };
+          container.appendChild(form);
+        } else {
+          container.innerHTML += `<p class="text-red-600 font-semibold mb-4">Село ще на руках. Спочатку закрийте попередній запис.</p>`;
+        }
+
+        snap.forEach(docSnap => {
+          const d = docSnap.data();
+          const entry = document.createElement("div");
+          entry.className = "card bg-white p-6 rounded-lg shadow-md mb-4";
+          entry.innerHTML = `
+            <div class="mb-2"><b>ПІБ:</b> ${d.pib}</div>
+            <div class="mb-2"><b>Дата отримання:</b> ${formatDate(d.dateGet)}</div>
+            <div class="mb-2"><b>Дата опрацювання:</b> ${formatDate(d.dateProcess)}</div>
+            <div class="mb-2"><b>Нотатки:</b> ${d.note || "-"}</div>
+            <div class="mb-2"><b>Хто додав:</b> <span id="user-${d.user}">Завантаження...</span></div>
+            <div class="mb-2"><b>Статус:</b> ${d.status}</div>
+            <div class="mb-2"><b>Час опрацювання (днів):</b> ${
+              d.dateGet
+                ? (d.dateProcess
+                    ? diffDays(d.dateGet, d.dateProcess)
+                    : diffDays(d.dateGet)
+                  )
+                : "-"
+            }</div>
+            <div class="mb-4"><b>Час від останнього опрацювання (днів):</b> ${d.dateProcess ? diffDays(d.dateProcess) : "-"}</div>
+            <div class="flex space-x-2">
+              <button class="btn bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg" onclick="edit('${villageId}','${docSnap.id}')">Редагувати</button>
+              <button class="btn bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg" onclick="del('${villageId}','${docSnap.id}')">Видалити</button>
+            </div>
+          `;
+
+          container.appendChild(entry);
+
+          const userSpan = entry.querySelector(`#user-${d.user}`);
+          const userRef = doc(db, "users", d.user);
+          getDoc(userRef).then(snap => {
+            if (snap.exists()) {
+              userSpan.innerText = snap.data().name;
+            } else {
+              userSpan.innerText = "Невідомо";
+            }
+          }).catch(() => userSpan.innerText = "Помилка");
+        });
+      });
+    });
+
+    window.edit = async (num, id) => {
+      const ref = doc(db, `territories_villages/${num}/history/${id}`);
+      const snap = await getDoc(ref);
+      const d = snap.data();
+      const f = document.createElement("form");
+      f.className = "bg-white p-6 rounded-lg shadow-md";
+      f.innerHTML = `
+        <h3 class="text-lg font-semibold mb-4">Редагування</h3>
+        <input name="pib" value="${d.pib}" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+        <input name="dateGet" type="date" value="${d.dateGet}" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+        <input name="dateProcess" type="date" value="${d.dateProcess || ""}" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><br/>
+        <textarea name="note" class="w-full p-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">${d.note || ""}</textarea><br/>
+        <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Оновити</button>
+      `;
+      f.onsubmit = async (e) => {
+        e.preventDefault();
+        const fd = new FormData(f);
+        const get = fd.get("dateGet");
+        const proc = fd.get("dateProcess");
+        const status = proc ? "опрацьовано" : "на руках";
+        await updateDoc(ref, {
+          pib: fd.get("pib"),
+          dateGet: get,
+          dateProcess: proc,
+          note: fd.get("note"),
+          status,
+          user: auth.currentUser.uid
+        });
+        location.reload();
+      };
+      document.getElementById("territory").innerHTML = "";
+      document.getElementById("territory").appendChild(f);
+    };
+
+    window.del = async (num, id) => {
+      if (confirm("Видалити запис?")) {
+        await deleteDoc(doc(db, `territories_villages/${num}/history/${id}`));
+        location.reload();
+      }
+    };
+  </script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+  <header class="bg-white shadow-md p-4 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <div class="flex items-center space-x-4">
+        <a href="territories.html" class="text-blue-600 hover:text-blue-800 font-semibold flex items-center">
+          <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+          </svg>
+          Назад
+        </a>
+        <h1 id="title" class="text-2xl font-bold text-gray-800"></h1>
+      </div>
+      <p id="territory-status" class="text-lg font-semibold"></p>
+    </div>
+  </header>
+
+  <main class="flex-grow p-4">
+    <div class="max-w-7xl mx-auto">
+      <div id="territory" class="space-y-4"></div>
+    </div>
+  </main>
+
+  <footer class="bg-white shadow-inner p-4 mt-auto">
+    <div class="max-w-7xl mx-auto text-center text-gray-600">
+      © 2025 Села. Всі права захищено.
+    </div>
+  </footer>
+</body>
+</html>
