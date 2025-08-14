@@ -236,17 +236,17 @@
           // Execute all history queries in parallel
           const territoriesData = await Promise.all(historyQueries);
 
-          // Sort territories by number
+          // Sort territories by number initially
           territories.push(...territoriesData.sort((a, b) => a.number - b.number));
 
           container.innerHTML = '';
           territories.forEach(territory => {
-            const { id, number, name, type, status, statusText } = territory;
-            console.log(`Додаємо кнопку для території ${id}: name=${name}, type=${type}, status=${status}, statusText=${statusText}`);
+            const { id, number, name, type, status, statusText, days } = territory;
+            console.log(`Додаємо кнопку для території ${id}: name=${name}, type=${type}, status=${status}, days=${days}, statusText=${statusText}`);
             const div = document.createElement("div");
             div.className = `territory-card mb-4 shadow-md ${status === 'вільна' ? 'status-free' : 'status-taken'}`;
             div.innerHTML = `
-              <button class="territory-btn w-full text-white font-semibold py-3 px-6 text-left" data-number="${number}" data-type="${type}" data-status="${status}" data-days="${territory.days}">
+              <button class="territory-btn w-full text-white font-semibold py-3 px-6 text-left" data-number="${number}" data-type="${type}" data-status="${status}" data-days="${days}">
                 ${name} <span class="text-sm text-gray-300">(${type})</span> <span class="text-sm text-gray-200 ml-2">[${statusText}]</span>
               </button>
               <div class="action-buttons flex space-x-2">
@@ -259,7 +259,7 @@
               window.location.href = `territory-detail.html?number=${id}`;
             };
             container.appendChild(div);
-            territoryButtons.push(div.querySelector(".territory-btn"));
+            territoryButtons.push({ element: div, number, name, type, status, days });
           });
 
           // Update territory count
@@ -288,17 +288,21 @@
         const searchTerm = searchInput.value.trim().toLowerCase();
         const selectedType = typeFilter.value;
         const selectedStatus = statusFilter.value;
-        const selectedSort = sortFilter.value;
+        const selectedSort = sortFilter.value.trim();
         console.log(`Фільтрація: пошук="${searchTerm}", тип="${selectedType}", статус="${selectedStatus}", сортування="${selectedSort}"`);
 
         // Create a copy of territories for filtering
-        let filteredTerritories = Array.from(territoryButtons).map(btn => ({
-          btn,
-          number: parseInt(btn.dataset.number),
-          type: btn.dataset.type,
-          status: btn.dataset.status,
-          days: parseInt(btn.dataset.days) || 0
+        let filteredTerritories = territoryButtons.map(({ element, number, name, type, status, days }) => ({
+          element,
+          number: parseInt(number, 10),
+          name,
+          type,
+          status,
+          days: Number(days) || 0
         }));
+
+        // Log territories before filtering
+        console.log('Перед фільтрацією:', filteredTerritories.map(t => ({ number: t.number, name: t.name, type: t.type, status: t.status, days: t.days })));
 
         // Filter territories
         filteredTerritories = filteredTerritories.filter(({ number, type, status }) => {
@@ -308,27 +312,44 @@
           return matchesSearch && matchesType && matchesStatus;
         });
 
-        // Sort territories based on selected option
-        if (selectedSort === "number-asc") {
+        // Log filtered territories
+        console.log('Після фільтрації:', filteredTerritories.map(t => ({ number: t.number, name: t.name, type: t.type, status: t.status, days: t.days })));
+
+        // Sort territories based on selected sort order
+        if (selectedSort === 'days-desc') {
+          filteredTerritories.sort((a, b) => (b.days - a.days) || (a.number - b.number));
+        } else if (selectedSort === 'days-asc') {
+          filteredTerritories.sort((a, b) => (a.days - b.days) || (a.number - b.number));
+        } else if (selectedSort === 'number-desc') {
+          filteredTerritories.sort((a, b) => (b.number - a.number));
+        } else {
           filteredTerritories.sort((a, b) => a.number - b.number);
-        } else if (selectedSort === "number-desc") {
-          filteredTerritories.sort((a, b) => b.number - a.number);
-        } else if (selectedSort === "days-asc") {
-          filteredTerritories.sort((a, b) => a.days - b.days);
-        } else if (selectedSort === "days-desc") {
-          filteredTerritories.sort((a, b) => b.days - a.days);
         }
 
-        // Update display
-        territoryButtons.forEach(btn => {
-          btn.parentElement.style.display = 'none';
-        });
-        filteredTerritories.forEach(({ btn }) => {
-          btn.parentElement.style.display = 'block';
+        // Log sorted territories
+        console.log('Після сортування:', filteredTerritories.map(t => ({ number: t.number, name: t.name, type: t.type, status: t.status, days: t.days })));
+
+        // Clear current display completely
+        while (container.firstChild) {
+          container.removeChild(container.firstChild);
+        }
+
+        // Append filtered and sorted territories
+        filteredTerritories.forEach(({ element }) => {
+          container.appendChild(element);
+          console.log(`Додано елемент з number=${element.querySelector('.territory-btn').dataset.number}, days=${element.querySelector('.territory-btn').dataset.days}`);
         });
 
         // Update territory count
         territoryCount.textContent = `Завантажено: ${filteredTerritories.length} територій`;
+
+        if (filteredTerritories.length === 0) {
+          container.innerHTML = '<p class="text-gray-600">Немає територій, що відповідають критеріям пошуку.</p>';
+        }
+
+        // Force DOM refresh if needed
+        container.style.display = 'none';
+        setTimeout(() => container.style.display = 'grid', 0);
       }
 
       createForm.onsubmit = async (e) => {
@@ -454,10 +475,10 @@
             <option value="на руках">На руках</option>
           </select>
           <select id="sort-filter" class="w-full sm:w-48 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="number-asc">Номер (за зростанням)</option>
-            <option value="number-desc">Номер (за спаданням)</option>
-            <option value="days-asc">Дні (за зростанням)</option>
-            <option value="days-desc">Дні (за спаданням)</option>
+            <option value="number-asc">Номер: від меншого до більшого</option>
+            <option value="number-desc">Номер: від більшого до меншого</option>
+            <option value="days-asc">Днів: від меншого до більшого</option>
+            <option value="days-desc">Днів: від більшого до меншого</option>
           </select>
           <button 
             id="create-territory-btn" 
