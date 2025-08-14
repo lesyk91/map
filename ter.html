@@ -72,7 +72,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, orderBy, limit, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -168,6 +168,7 @@
 
           const territories = [];
           const currentDate = new Date();
+          console.log(`Поточна дата для розрахунку: ${currentDate.toISOString()}`);
 
           // Prepare all history queries for parallel execution
           const historyQueries = snapshot.docs.map(async (docSnap) => {
@@ -196,30 +197,42 @@
                 data: latestRecord
               });
 
+              let relevantDate = null;
               if (latestRecord.dateGet && !latestRecord.dateProcess) {
                 status = "на руках";
-                const receivedDate = new Date(latestRecord.dateGet);
-                if (isNaN(receivedDate)) {
-                  console.error(`Невалідна дата dateGet для села ${villageId}:`, latestRecord.dateGet);
-                  statusText = "Помилка дати отримання";
-                } else {
-                  days = Math.floor((currentDate - receivedDate) / (1000 * 60 * 60 * 24));
-                  statusText = `На руках ${days} дн.`;
-                }
+                relevantDate = latestRecord.dateGet;
+                statusText = `На руках {days} дн.`;
               } else if (latestRecord.dateGet && latestRecord.dateProcess) {
                 status = "вільна";
-                const processedDate = new Date(latestRecord.dateProcess);
-                if (isNaN(processedDate)) {
-                  console.error(`Невалідна дата dateProcess для села ${villageId}:`, latestRecord.dateProcess);
-                  statusText = "Помилка дати опрацювання";
+                relevantDate = latestRecord.dateProcess;
+                statusText = `Вільна {days} дн.`;
+              }
+
+              if (relevantDate) {
+                let dateObj;
+                if (relevantDate instanceof Timestamp) {
+                  dateObj = relevantDate.toDate();
+                } else if (typeof relevantDate === 'string') {
+                  dateObj = new Date(relevantDate);
                 } else {
-                  days = Math.floor((currentDate - processedDate) / (1000 * 60 * 60 * 24));
-                  statusText = `Вільна ${days} дн.`;
+                  console.error(`Невідомий тип дати для села ${villageId}:`, typeof relevantDate);
+                  dateObj = null;
+                }
+
+                if (dateObj && !isNaN(dateObj.getTime())) {
+                  days = Math.floor((currentDate - dateObj) / (1000 * 60 * 60 * 24));
+                  statusText = statusText.replace('{days}', days);
+                } else {
+                  console.error(`Невалідна дата для села ${villageId}:`, relevantDate);
+                  statusText = "Помилка дати";
+                  days = 0;
                 }
               }
             } else {
               console.log(`Село ${villageId}: немає записів історії`);
             }
+
+            console.log(`Село ${villageId}: розраховані days = ${days}, statusText = ${statusText}`);
 
             return {
               id: villageId,
@@ -233,17 +246,17 @@
           // Execute all history queries in parallel
           const territoriesData = await Promise.all(historyQueries);
 
-          // Sort territories by id
+          // Sort territories by id initially
           territories.push(...territoriesData.sort((a, b) => parseInt(a.id) - parseInt(b.id)));
 
           container.innerHTML = '';
           territories.forEach(territory => {
-            const { id, name, status, statusText } = territory;
-            console.log(`Додаємо кнопку для села ${id}: name=${name}, status=${status}, statusText=${statusText}`);
+            const { id, name, status, statusText, days } = territory;
+            console.log(`Додаємо кнопку для села ${id}: name=${name}, status=${status}, days=${days}, statusText=${statusText}`);
             const div = document.createElement("div");
             div.className = `territory-card mb-4 shadow-md ${status === 'вільна' ? 'status-free' : 'status-taken'}`;
             div.innerHTML = `
-              <button class="territory-btn w-full text-white font-semibold py-3 px-6 text-left" data-id="${id}" data-name="${name}" data-status="${status}" data-days="${territory.days}">
+              <button class="territory-btn w-full text-white font-semibold py-3 px-6 text-left" data-id="${id}" data-name="${name}" data-status="${status}" data-days="${days}">
                 ${name} <span class="text-sm text-gray-200 ml-2">[${statusText}]</span>
               </button>
               <div class="action-buttons flex space-x-2">
@@ -256,7 +269,7 @@
               window.location.href = `territory-detail-villages.html?number=${id}`;
             };
             container.appendChild(div);
-            territoryButtons.push(div.querySelector(".territory-btn"));
+            territoryButtons.push({ element: div, id, name, status, days });
           });
 
           // Update territory count
@@ -283,17 +296,20 @@
       function filterTerritories() {
         const searchTerm = searchInput.value.trim().toLowerCase();
         const selectedStatus = statusFilter.value;
-        const selectedSort = sortOrder.value;
+        const selectedSort = sortOrder.value.trim();
         console.log(`Фільтрація: пошук="${searchTerm}", статус="${selectedStatus}", сортування="${selectedSort}"`);
 
         // Create a copy of territories for filtering
-        let filteredTerritories = Array.from(territoryButtons).map(btn => ({
-          btn,
-          id: parseInt(btn.dataset.id),
-          name: btn.dataset.name,
-          status: btn.dataset.status,
-          days: parseInt(btn.dataset.days) || 0
+        let filteredTerritories = territoryButtons.map(({ element, id, name, status, days }) => ({
+          element,
+          id: parseInt(id, 10),
+          name,
+          status,
+          days: Number(days) || 0
         }));
+
+        // Log territories before filtering
+        console.log('Перед фільтрацією:', filteredTerritories.map(t => ({ id: t.id, name: t.name, status: t.status, days: t.days })));
 
         // Filter territories
         filteredTerritories = filteredTerritories.filter(({ name, status }) => {
@@ -302,26 +318,42 @@
           return matchesSearch && matchesStatus;
         });
 
+        // Log filtered territories
+        console.log('Після фільтрації:', filteredTerritories.map(t => ({ id: t.id, name: t.name, status: t.status, days: t.days })));
+
         // Sort territories based on selected sort order
         if (selectedSort === 'days-desc') {
-          filteredTerritories.sort((a, b) => b.days - a.days);
+          filteredTerritories.sort((a, b) => (b.days - a.days) || (a.id - b.id));
         } else if (selectedSort === 'days-asc') {
-          filteredTerritories.sort((a, b) => a.days - b.days);
+          filteredTerritories.sort((a, b) => (a.days - b.days) || (a.id - b.id));
         } else {
-          // Default sort by id ascending
           filteredTerritories.sort((a, b) => a.id - b.id);
         }
 
-        // Update display
-        territoryButtons.forEach(btn => {
-          btn.parentElement.style.display = 'none';
-        });
-        filteredTerritories.forEach(({ btn }) => {
-          btn.parentElement.style.display = 'block';
+        // Log sorted territories
+        console.log('Після сортування:', filteredTerritories.map(t => ({ id: t.id, name: t.name, status: t.status, days: t.days })));
+
+        // Clear current display completely
+        while (container.firstChild) {
+          container.removeChild(container.firstChild);
+        }
+
+        // Append filtered and sorted territories
+        filteredTerritories.forEach(({ element }) => {
+          container.appendChild(element);
+          console.log(`Додано елемент з id=${element.querySelector('.territory-btn').dataset.id}, days=${element.querySelector('.territory-btn').dataset.days}`);
         });
 
         // Update territory count
         territoryCount.textContent = `Завантажено: ${filteredTerritories.length} сіл`;
+
+        if (filteredTerritories.length === 0) {
+          container.innerHTML = '<p class="text-gray-600">Немає сіл, що відповідають критеріям пошуку.</p>';
+        }
+
+        // Force DOM refresh if needed
+        container.style.display = 'none';
+        setTimeout(() => container.style.display = 'grid', 0);
       }
 
       createForm.onsubmit = async (e) => {
@@ -565,7 +597,7 @@
 
   <footer class="bg-white shadow-inner p-4 mt-auto">
     <div class="max-w-7xl mx-auto text-center text-gray-600">
-      © 2026 Села. Всі права захищено.
+      © 2027 Села. Всі права захищено.
     </div>
   </footer>
 </body>
