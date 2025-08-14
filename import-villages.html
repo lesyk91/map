@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Імпорт історії територій</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+    }
+    .btn {
+      transition: all 0.3s ease;
+    }
+    #progress-container {
+      display: none;
+      margin-top: 1rem;
+    }
+    #progress-bar {
+      width: 100%;
+      background-color: #e0e0e0;
+      border-radius: 0.5rem;
+      overflow: hidden;
+    }
+    #progress-fill {
+      height: 1.5rem;
+      background-color: #4CAF50;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    #progress-text {
+      margin-top: 0.5rem;
+      font-weight: 600;
+      color: #333;
+    }
+    .example-table {
+      margin-top: 1rem;
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 600px;
+      background-color: white;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .example-table th, .example-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    .example-table th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+  <header class="bg-white shadow-md p-4 sticky top-0 z-10" style= "width: 100%; position: fixed;">	
+	 <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+	 <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+	  <nav class="flex space-x-2">
+      <a href="index.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Карта</a>
+      <a href="territories.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Території</a>
+      <a href="zvit.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Звіти</a>
+	   </nav>
+	    </div>
+    </div>
+	 </header>
+  <div class="max-w-7xl mx-auto text-center">
+    <h1 id="title" class="text-2xl font-bold text-gray-800 mb-4">Імпорт історії територій</h1>
+    <input type="file" id="excelFile" accept=".xlsx, .xls" class="mb-4" />
+    <button onclick="importExcel()" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Імпортувати</button>
+    <div id="progress-container">
+      <div id="progress-bar">
+        <div id="progress-fill"></div>
+      </div>
+      <div id="progress-text">Прогрес: 0%</div>
+    </div>
+    <div class="mt-6">
+      <h2 class="text-lg font-semibold text-gray-700 mb-2">Як створити Excel-файл для імпорту</h2>
+	   
+      <p class="text-gray-600 mb-4">
+        Створіть Excel-файл із першим листом (наприклад, "Лист1"). Використовуйте наступні стовпці: <strong>№ п/п</strong>, <strong>Село</strong>, <strong>Вісник</strong>, <strong>дата отримання</strong>, <strong>дата опрацювання</strong>. Колонка "Село" використовується для перевірки відповідності назви території в базі даних. Дати мають бути у форматі <strong>DD.MM.YY</strong> (наприклад, 22.06.24). Форматуйте клітинки дат як текст або спеціальний формат "DD.MM.YY". Нижче наведено приклад:
+        </p>
+      <table class="example-table mx-auto">
+        <thead>
+          <tr>
+            <th>№ п/п</th>
+            <th>Село</th>
+            <th>Вісник</th>
+            <th>дата отримання</th>
+            <th>дата опрацювання</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>4</td>
+            <td>Борисівка</td>
+            <td>Групове</td>
+            <td>22.06.24</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td>Василівка</td>
+            <td>Групове</td>
+            <td>22.06.24</td>
+            <td>01.06.25</td>
+          </tr>
+        </tbody>
+      </table>
+	    
+	 <p class="text-gray-600 mb-4" style="margin: 15px;">  
+		<h2 class="text-lg font-semibold text-gray-700 mb-2">Посилання на приклад Excel-файлу:</h2>  
+	     <a href="ExampleImportTerritories.xlsx" download
+       class="bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 ease-in-out">
+       Завантажити файл
+    </a>
+	     </p>  
+	   
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, serverTimestamp, getDoc, doc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+      authDomain: "map-illintsi.firebaseapp.com",
+      projectId: "map-illintsi",
+      storageBucket: "map-illintsi.appspot.com",
+      messagingSenderId: "62267872375",
+      appId: "1:62267872375:web:10945d2d63b93bccc5e272"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const formatDateForFirestore = (dateInput) => {
+      if (!dateInput) {
+        console.log('Дата відсутня або порожня:', dateInput);
+        return "";
+      }
+
+      let date;
+      if (dateInput instanceof Date) {
+        console.log('Дата є об’єктом Date:', dateInput);
+        date = dateInput;
+      } else if (typeof dateInput === 'string') {
+        console.log('Дата є рядком:', dateInput);
+        const parts = dateInput.trim().split('.');
+        if (parts.length !== 3) {
+          console.warn(`Невалідний формат рядка дати: ${dateInput}`);
+          return "";
+        }
+        let [day, month, year] = parts.map(part => parseInt(part, 10));
+        if (year < 100) {
+          year += year < 70 ? 2000 : 1900;
+        }
+        date = new Date(year, month - 1, day);
+      } else if (typeof dateInput === 'number') {
+        console.log('Дата є числом (Excel date):', dateInput);
+        const excelEpoch = new Date(1900, 0, 1);
+        const leapYearAdjustment = dateInput > 60 ? 1 : 0;
+        date = new Date(excelEpoch.getTime() + (dateInput - 1 - leapYearAdjustment) * 24 * 60 * 60 * 1000);
+      } else {
+        console.warn(`Непідтримуваний тип дати: ${typeof dateInput}`, dateInput);
+        return "";
+      }
+
+      if (isNaN(date)) {
+        console.warn(`Невалідна дата після парсингу: ${dateInput}`);
+        return "";
+      }
+
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      console.log(`Сформатована дата для ${dateInput}: ${year}-${month}-${day}`);
+      return `${year}-${month}-${day}`;
+    };
+
+    window.importExcel = async function() {
+      try {
+        if (!auth.currentUser) {
+          alert('Будь ласка, увійдіть у систему для імпорту.');
+          location.href = "index.html";
+          return;
+        }
+
+        if (typeof XLSX === 'undefined') {
+          throw new Error('Бібліотека XLSX не завантажена');
+        }
+
+        const fileInput = document.getElementById('excelFile');
+        if (!fileInput.files.length) {
+          alert('Будь ласка, виберіть Excel-файл для імпорту.');
+          return;
+        }
+
+        const progressContainer = document.getElementById('progress-container');
+        const progressFill = document.getElementById('progress-fill');
+        const progressText = document.getElementById('progress-text');
+        progressContainer.style.display = 'block';
+        progressFill.style.width = '0%';
+        progressText.innerText = 'Прогрес: 0%';
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+
+        reader.onload = async (e) => {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array', cellDates: false, dateNF: 'dd.mm.yy' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+            console.log('Дані з Excel:', jsonData);
+
+            if (!jsonData.length) {
+              alert('Excel-файл порожній.');
+              progressContainer.style.display = 'none';
+              return;
+            }
+
+            const totalRows = jsonData.length;
+            let processedRows = 0;
+
+            for (const row of jsonData) {
+              const territoryNumber = row['№ п/п'];
+              const village = row['Село'] ? row['Село'].trim() : "";
+              const pib = row['Вісник'] || "";
+              const dateGet = formatDateForFirestore(row['дата отримання']);
+              const dateProcess = formatDateForFirestore(row['дата опрацювання']);
+
+              if (!territoryNumber) {
+                console.warn(`Пропущено рядок без номера території:`, row);
+                processedRows++;
+                continue;
+              }
+
+              // Перевірка відповідності назви села в базі даних
+              const territoryDocRef = doc(db, `territories_villages/${territoryNumber}`);
+              const territoryDoc = await getDoc(territoryDocRef);
+              if (!territoryDoc.exists() || territoryDoc.data().name.trim() !== village) {
+                console.warn(`Назва села не співпадає або територія не існує для ${territoryNumber}: Очікувана '${territoryDoc.exists() ? territoryDoc.data().name : 'не існує'}', в Excel '${village}'`);
+                processedRows++;
+                continue;
+              }
+
+              const status = dateProcess ? "опрацьовано" : "на руках";
+              const historyRef = collection(db, `territories_villages/${territoryNumber}/history`);
+
+              await addDoc(historyRef, {
+                pib,
+                dateGet,
+                dateProcess,
+                note: "",
+                user: auth.currentUser.uid,
+                timestamp: serverTimestamp(),
+                status
+              });
+
+              console.log(`Додано запис для території ${territoryNumber}:`, { pib, dateGet, dateProcess });
+
+              processedRows++;
+              const progress = Math.min(Math.round((processedRows / totalRows) * 100), 100);
+              progressFill.style.width = `${progress}%`;
+              progressText.innerText = `Прогрес: ${progress}%`;
+            }
+
+            alert('Дані успішно імпортовано до Firestore.');
+            progressContainer.style.display = 'none';
+            fileInput.value = '';
+          } catch (error) {
+            console.error('Помилка обробки Excel:', error);
+            alert('Сталася помилка під час обробки Excel: ' + error.message);
+            progressContainer.style.display = 'none';
+          }
+        };
+
+        reader.onerror = () => {
+          console.error('Помилка читання файлу');
+          alert('Помилка читання Excel-файлу.');
+          progressContainer.style.display = 'none';
+        };
+
+        reader.readAsArrayBuffer(file);
+      } catch (error) {
+        console.error('Помилка імпорту:', error);
+        alert('Сталася помилка під час імпорту: ' + error.message);
+        progressContainer.style.display = 'none';
+      }
+    };
+  </script>
+</body>
+</html>
