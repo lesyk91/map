@@ -85,7 +85,7 @@
     <div class="mt-6">
       <h2 class="text-lg font-semibold text-gray-700 mb-2">Як створити Excel-файл для імпорту</h2>
       <p class="text-gray-600 mb-4">
-        Створіть Excel-файл із першим листом (наприклад, "Лесик"). Використовуйте наступні стовпці: <strong>номер</strong>, <strong>село</strong>, <strong>Вісник</strong>, <strong>дата отримання</strong>, <strong>дата опрацювання</strong>. Колонка "село" використовується для перевірки або створення назви території в базі даних. Дати можуть бути у форматі серійних номерів Excel (наприклад, 45094) або у форматі <strong>DD.MM.YY</strong> (наприклад, 22.06.24). Форматуйте клітинки дат як текст або спеціальний формат "DD.MM.YY". Нижче наведено приклад:
+        Створіть Excel-файл із першим листом (наприклад, "Лист1"). Використовуйте наступні стовпці: <strong>номер</strong>, <strong>село</strong>, <strong>Вісник</strong>, <strong>дата отримання</strong>, <strong>дата опрацювання</strong>. Колонка "село" використовується для перевірки або створення назви території в базі даних. Дати можуть бути у форматі серійних номерів Excel (наприклад, 45094) або у форматі <strong>DD.MM.YY</strong> (наприклад, 22.06.24). Форматуйте клітинки дат як текст або спеціальний формат "DD.MM.YY". Нижче наведено приклад:
       </p>
       <table class="example-table mx-auto">
         <thead>
@@ -148,23 +148,30 @@
       }
 
       let date;
-      if (typeof dateInput === 'number') {
-        console.log('Дата є числом (Excel date):', dateInput);
-        const excelEpoch = new Date(1900, 0, 1);
-        const leapYearAdjustment = dateInput > 60 ? 1 : 0;
-        date = new Date(excelEpoch.getTime() + (dateInput - 1 - leapYearAdjustment) * 24 * 60 * 60 * 1000);
+      console.log('Вхідна дата:', dateInput, 'Тип:', typeof dateInput);
+
+      // Перевірка, чи є вхідне значення числом (серійний номер Excel)
+      if (!isNaN(parseFloat(dateInput)) && isFinite(dateInput)) {
+        console.log('Обробка як числової дати (Excel):', dateInput);
+        const excelEpoch = new Date(1900, 0, 1); // 1 січня 1900
+        const days = Math.floor(parseFloat(dateInput));
+        const leapYearAdjustment = days > 60 ? 1 : 0;
+        date = new Date(excelEpoch.getTime() + (days - 1 - leapYearAdjustment) * 24 * 60 * 60 * 1000);
+        console.log('Перетворена дата:', date);
       } else if (typeof dateInput === 'string') {
-        console.log('Дата є рядком:', dateInput);
+        console.log('Обробка як рядкової дати:', dateInput);
         const parts = dateInput.trim().split('.');
-        if (parts.length !== 3) {
+        if (parts.length === 3) {
+          let [day, month, year] = parts.map(part => parseInt(part, 10));
+          if (year < 100) {
+            year += year < 70 ? 2000 : 1900;
+          }
+          date = new Date(year, month - 1, day);
+          console.log('Перетворена дата:', date);
+        } else {
           console.warn(`Невалідний формат рядка дати: ${dateInput}`);
           return "";
         }
-        let [day, month, year] = parts.map(part => parseInt(part, 10));
-        if (year < 100) {
-          year += year < 70 ? 2000 : 1900;
-        }
-        date = new Date(year, month - 1, day);
       } else if (dateInput instanceof Date) {
         console.log('Дата є об’єктом Date:', dateInput);
         date = dateInput;
@@ -173,8 +180,8 @@
         return "";
       }
 
-      if (isNaN(date.getTime())) {
-        console.warn(`Невалідна дата після парсингу: ${dateInput}`);
+      if (!date || isNaN(date.getTime())) {
+        console.warn(`Невалідна дата після парсингу: ${dateInput}, Результат: ${date}`);
         return "";
       }
 
