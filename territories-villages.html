@@ -4,313 +4,553 @@
   <meta name="robots" content="noindex, nofollow">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Імпорт історії територій</title>
+  <title>Села</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      margin: 0;
-      background-color: #f0f0f0;
-    }
-    .btn {
+    .territory-btn, .action-btn {
       transition: all 0.3s ease;
     }
-    #progress-container {
-      display: none;
-      margin-top: 1rem;
+    .territory-btn:hover, .action-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-    #progress-bar {
+    html {
+      scroll-behavior: smooth;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 50;
+      left: 0;
+      top: 0;
       width: 100%;
-      background-color: #e0e0e0;
-      border-radius: 0.5rem;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.4);
+    }
+    .modal-content {
+      background-color: white;
+      margin: 15% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    .modal.show {
+      display: block;
+    }
+    .status-free {
+      background-color: #10B981; /* Green for free */
+    }
+    .status-taken {
+      background-color: #F59E0B; /* Orange for taken */
+    }
+    .territory-card {
+      border-radius: 8px;
       overflow: hidden;
     }
-    #progress-fill {
-      height: 1.5rem;
-      background-color: #4CAF50;
-      width: 0%;
-      transition: width 0.3s ease;
+    .action-buttons {
+      display: flex;
+      justify-content: flex-end;
+      padding: 3px;
+      background-color: rgba(255, 255, 255, 0.1);
     }
-    #progress-text {
-      margin-top: 0.5rem;
-      font-weight: 600;
-      color: #333;
-    }
-    .example-table {
-      margin-top: 1rem;
-      border-collapse: collapse;
-      width: 100%;
-      max-width: 600px;
-      background-color: white;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-    .example-table th, .example-table td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: left;
-    }
-    .example-table th {
-      background-color: #f2f2f2;
-      font-weight: bold;
+    @media (max-width: 640px) {
+      .action-btn {
+        font-size: 0.75rem;
+        padding: 0.5rem 0.75rem;
+      }
+      .territory-btn {
+        padding: 1rem;
+      }
+      .action-buttons {
+        justify-content: space-between;
+      }
     }
   </style>
-</head>
-<body class="bg-gray-100 min-h-screen flex flex-col">
-  <header class="bg-white shadow-md p-4 sticky top-0 z-10" style="width: 100%; position: fixed;">
-    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
-      <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
-        <nav class="flex space-x-2">
-          <a href="index.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Карта</a>
-          <a href="territories.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Території</a>
-          <a href="zvit.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Звіти</a>
-        </nav>
-      </div>
-    </div>
-  </header>
-  <div class="max-w-7xl mx-auto text-center">
-    <h1 id="title" class="text-2xl font-bold text-gray-800 mb-4">Імпорт історії територій</h1>
-    <input type="file" id="excelFile" accept=".xlsx, .xls" class="mb-4" />
-    <button onclick="importExcel()" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Імпортувати</button>
-    <div id="progress-container">
-      <div id="progress-bar">
-        <div id="progress-fill"></div>
-      </div>
-      <div id="progress-text">Прогрес: 0%</div>
-    </div>
-    <div class="mt-6">
-      <h2 class="text-lg font-semibold text-gray-700 mb-2">Як створити Excel-файл для імпорту</h2>
-      <p class="text-gray-600 mb-4">
-        Створіть Excel-файл із першим листом (наприклад, "Лист1"). Використовуйте наступні стовпці: <strong>№ п/п</strong>, <strong>Село</strong>, <strong>Вісник</strong>, <strong>дата отримання</strong>, <strong>дата опрацювання</strong>. Колонка "Село" використовується для перевірки або створення назви території в базі даних. Дати мають бути у форматі <strong>DD.MM.YY</strong> (наприклад, 22.06.24). Форматуйте клітинки дат як текст або спеціальний формат "DD.MM.YY". Нижче наведено приклад:
-      </p>
-      <table class="example-table mx-auto">
-        <thead>
-          <tr>
-            <th>№ п/п</th>
-            <th>Село</th>
-            <th>Вісник</th>
-            <th>дата отримання</th>
-            <th>дата опрацювання</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>4</td>
-            <td>Борисівка</td>
-            <td>Групове</td>
-            <td>22.06.24</td>
-            <td></td>
-          </tr>
-          <tr>
-            <td>5</td>
-            <td>Василівка</td>
-            <td>Групове</td>
-            <td>22.06.24</td>
-            <td>01.06.25</td>
-          </tr>
-        </tbody>
-      </table>
-      <p class="text-gray-600 mb-4" style="margin: 15px;">
-        <h2 class="text-lg font-semibold text-gray-700 mb-2">Посилання на приклад Excel-файлу:</h2>
-        <a href="ExampleImportTerritories.xlsx" download class="bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 ease-in-out">
-          Завантажити файл
-        </a>
-      </p>
-    </div>
-  </div>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, serverTimestamp, getDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getFirestore, collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
       authDomain: "map-illintsi.firebaseapp.com",
       projectId: "map-illintsi",
-      storageBucket: "map-illintsi.appspot.com",
+      storageBucket: "map-illintsi.firebasestorage.app",
       messagingSenderId: "62267872375",
-      appId: "1:62267872375:web:10945d2d63b93bccc5e272"
+      appId: "1:62267872375:web:10945d2d63b93bccc5e272",
+      measurementId: "G-22L16KP5Z0"
     };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    const formatDateForFirestore = (dateInput) => {
-      if (!dateInput) {
-        console.log('Дата відсутня або порожня:', dateInput);
-        return "";
-      }
+    document.addEventListener("DOMContentLoaded", () => {
+      const container = document.getElementById("territories");
+      const logoutBtn = document.getElementById("logout");
+      const searchInput = document.getElementById("search");
+      const statusFilter = document.getElementById("status-filter");
+      const territoryCount = document.getElementById("territory-count");
+      const createModal = document.getElementById("create-territory-modal");
+      const editModal = document.getElementById("edit-territory-modal");
+      const createBtn = document.getElementById("create-territory-btn");
+      const closeCreateModal = document.getElementById("close-create-modal");
+      const closeEditModal = document.getElementById("close-edit-modal");
+      const createForm = document.getElementById("create-territory-form");
+      const editForm = document.getElementById("edit-territory-form");
+      const errorMessage = document.getElementById("error-message");
+      const editErrorMessage = document.getElementById("edit-error-message");
+      const cancelCreateBtn = document.getElementById("cancel-create-btn");
+      const cancelEditBtn = document.getElementById("cancel-edit-btn");
 
-      let date;
-      if (dateInput instanceof Date) {
-        console.log('Дата є об’єктом Date:', dateInput);
-        date = dateInput;
-      } else if (typeof dateInput === 'string') {
-        console.log('Дата є рядком:', dateInput);
-        const parts = dateInput.trim().split('.');
-        if (parts.length !== 3) {
-          console.warn(`Невалідний формат рядка дати: ${dateInput}`);
-          return "";
+      let territoryButtons = [];
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          console.log("Користувач не авторизований, перенаправлення на index.html");
+          window.location.href = "index.html";
+        } else {
+          console.log("Користувач авторизований:", user.uid);
+          await loadTerritories();
         }
-        let [day, month, year] = parts.map(part => parseInt(part, 10));
-        if (year < 100) {
-          year += year < 70 ? 2000 : 1900;
-        }
-        date = new Date(year, month - 1, day);
-      } else if (typeof dateInput === 'number') {
-        console.log('Дата є числом (Excel date):', dateInput);
-        const excelEpoch = new Date(1900, 0, 1);
-        const leapYearAdjustment = dateInput > 60 ? 1 : 0;
-        date = new Date(excelEpoch.getTime() + (dateInput - 1 - leapYearAdjustment) * 24 * 60 * 60 * 1000);
-      } else {
-        console.warn(`Непідтримуваний тип дати: ${typeof dateInput}`, dateInput);
-        return "";
-      }
+      });
 
-      if (isNaN(date)) {
-        console.warn(`Невалідна дата після парсингу: ${dateInput}`);
-        return "";
-      }
+      logoutBtn.onclick = () => {
+        console.log("Вихід із системи");
+        signOut(auth);
+      };
 
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      console.log(`Сформатована дата для ${dateInput}: ${year}-${month}-${day}`);
-      return `${year}-${month}-${day}`;
-    };
+      createBtn.onclick = () => {
+        console.log("Відкриття модального вікна створення");
+        createModal.classList.add("show");
+      };
 
-    window.importExcel = async function() {
-      try {
-        if (!auth.currentUser) {
-          alert('Будь ласка, увійдіть у систему для імпорту.');
-          location.href = "index.html";
-          return;
-        }
+      closeCreateModal.onclick = () => {
+        console.log("Закриття модального вікна створення");
+        createModal.classList.remove("show");
+        createForm.reset();
+        errorMessage.textContent = "";
+      };
 
-        if (typeof XLSX === 'undefined') {
-          throw new Error('Бібліотека XLSX не завантажена');
-        }
+      closeEditModal.onclick = () => {
+        console.log("Закриття модального вікна редагування");
+        editModal.classList.remove("show");
+        editForm.reset();
+        editErrorMessage.textContent = "";
+      };
 
-        const fileInput = document.getElementById('excelFile');
-        if (!fileInput.files.length) {
-          alert('Будь ласка, виберіть Excel-файл для імпорту.');
-          return;
-        }
+      cancelCreateBtn.onclick = () => {
+        console.log("Скасування створення села");
+        createModal.classList.remove("show");
+        createForm.reset();
+        errorMessage.textContent = "";
+      };
 
-        const progressContainer = document.getElementById('progress-container');
-        const progressFill = document.getElementById('progress-fill');
-        const progressText = document.getElementById('progress-text');
-        progressContainer.style.display = 'block';
-        progressFill.style.width = '0%';
-        progressText.innerText = 'Прогрес: 0%';
+      cancelEditBtn.onclick = () => {
+        console.log("Скасування редагування села");
+        editModal.classList.remove("show");
+        editForm.reset();
+        editErrorMessage.textContent = "";
+      };
 
-        const file = fileInput.files[0];
-        const reader = new FileReader();
+      async function loadTerritories() {
+        container.innerHTML = '<p class="text-gray-600">Завантаження сіл...</p>';
+        territoryButtons = [];
+        try {
+          console.log("Початок завантаження сіл із Firestore");
+          const territoriesRef = collection(db, "territories_villages");
+          const snapshot = await getDocs(territoriesRef);
+          console.log(`Знайдено ${snapshot.size} документів із даними`);
 
-        reader.onload = async (e) => {
-          try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array', cellDates: false, dateNF: 'dd.mm.yy' });
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          const territories = [];
+          const currentDate = new Date();
 
-            console.log('Дані з Excel:', JSON.stringify(jsonData, null, 2));
+          // Prepare all history queries for parallel execution
+          const historyQueries = snapshot.docs.map(async (docSnap) => {
+            const villageId = docSnap.id;
+            const data = docSnap.data();
+            console.log(`Село ${villageId}:`, {
+              id: villageId,
+              exists: docSnap.exists(),
+              data: data
+            });
 
-            if (!jsonData.length) {
-              alert('Excel-файл порожній.');
-              progressContainer.style.display = 'none';
-              return;
-            }
+            // Fetch only the latest history record, ordered by dateGet
+            const historyRef = collection(db, `territories_villages/${villageId}/history`);
+            const historyQuery = query(historyRef, orderBy("dateGet", "desc"), limit(1));
+            const historySnapshot = await getDocs(historyQuery);
+            console.log(`Село ${villageId}: знайдено ${historySnapshot.size} записів історії`);
 
-            const totalRows = jsonData.length;
-            let processedRows = 0;
+            let status = "вільна";
+            let days = 0;
+            let statusText = "Не було записів";
 
-            for (const row of jsonData) {
-              const territoryNumber = row['№ п/п'];
-              const village = row['Село'] ? row['Село'].trim() : "";
-              const pib = row['Вісник'] || "";
-              const dateGet = formatDateForFirestore(row['дата отримання']);
-              const dateProcess = formatDateForFirestore(row['дата опрацювання']);
-
-              console.log(`Обробка рядка: territoryNumber=${territoryNumber}, village=${village}, pib=${pib}, dateGet=${dateGet}, dateProcess=${dateProcess}`);
-
-              if (!territoryNumber || !village) {
-                console.warn(`Пропущено рядок: відсутній номер території (${territoryNumber}) або назва села (${village})`, row);
-                processedRows++;
-                continue;
-              }
-
-              // Перевірка або створення документа території
-              const territoryDocRef = doc(db, `territories_villages/${territoryNumber}`);
-              const territoryDoc = await getDoc(territoryDocRef);
-
-              if (!territoryDoc.exists()) {
-                console.log(`Територія ${territoryNumber} не існує, створюємо нову з назвою '${village}'`);
-                await setDoc(territoryDocRef, {
-                  name: village,
-                  createdBy: auth.currentUser.uid,
-                  createdAt: serverTimestamp()
-                });
-              } else {
-                const territoryName = territoryDoc.data().name ? territoryDoc.data().name.trim() : "";
-                if (territoryName !== village) {
-                  console.warn(`Назва села не співпадає для ${territoryNumber}: Очікувана '${territoryName}', в Excel '${village}'`);
-                  processedRows++;
-                  continue;
-                }
-              }
-
-              const status = dateProcess ? "опрацьовано" : "на руках";
-              const historyRef = collection(db, `territories_villages/${territoryNumber}/history`);
-
-              await addDoc(historyRef, {
-                pib,
-                dateGet,
-                dateProcess,
-                note: "",
-                user: auth.currentUser.uid,
-                timestamp: serverTimestamp(),
-                status
+            if (!historySnapshot.empty) {
+              const latestRecord = historySnapshot.docs[0].data();
+              console.log(`Останній запис для села ${villageId}:`, {
+                id: historySnapshot.docs[0].id,
+                data: latestRecord
               });
 
-              console.log(`Додано запис для території ${territoryNumber}:`, { pib, dateGet, dateProcess });
-
-              processedRows++;
-              const progress = Math.min(Math.round((processedRows / totalRows) * 100), 100);
-              progressFill.style.width = `${progress}%`;
-              progressText.innerText = `Прогрес: ${progress}%`;
+              if (latestRecord.dateGet && !latestRecord.dateProcess) {
+                status = "на руках";
+                const receivedDate = new Date(latestRecord.dateGet);
+                if (isNaN(receivedDate)) {
+                  console.error(`Невалідна дата dateGet для села ${villageId}:`, latestRecord.dateGet);
+                  statusText = "Помилка дати отримання";
+                } else {
+                  days = Math.floor((currentDate - receivedDate) / (1000 * 60 * 60 * 24));
+                  statusText = `На руках ${days} дн.`;
+                }
+              } else if (latestRecord.dateGet && latestRecord.dateProcess) {
+                status = "вільна";
+                const processedDate = new Date(latestRecord.dateProcess);
+                if (isNaN(processedDate)) {
+                  console.error(`Невалідна дата dateProcess для села ${villageId}:`, latestRecord.dateProcess);
+                  statusText = "Помилка дати опрацювання";
+                } else {
+                  days = Math.floor((currentDate - processedDate) / (1000 * 60 * 60 * 24));
+                  statusText = `Вільна ${days} дн.`;
+                }
+              }
+            } else {
+              console.log(`Село ${villageId}: немає записів історії`);
             }
 
-            alert('Дані успішно імпортовано до Firestore.');
-            progressContainer.style.display = 'none';
-            fileInput.value = '';
+            return {
+              id: villageId,
+              name: data.name || `Село ${villageId}`,
+              status,
+              days,
+              statusText
+            };
+          });
+
+          // Execute all history queries in parallel
+          const territoriesData = await Promise.all(historyQueries);
+
+          // Sort territories by id
+          territories.push(...territoriesData.sort((a, b) => parseInt(a.id) - parseInt(b.id)));
+
+          container.innerHTML = '';
+          territories.forEach(territory => {
+            const { id, name, status, statusText } = territory;
+            console.log(`Додаємо кнопку для села ${id}: name=${name}, status=${status}, statusText=${statusText}`);
+            const div = document.createElement("div");
+            div.className = `territory-card mb-4 shadow-md ${status === 'вільна' ? 'status-free' : 'status-taken'}`;
+            div.innerHTML = `
+              <button class="territory-btn w-full text-white font-semibold py-3 px-6 text-left" data-id="${id}" data-name="${name}" data-status="${status}" data-days="${territory.days}">
+                ${name} <span class="text-sm text-gray-200 ml-2">[${statusText}]</span>
+              </button>
+              <div class="action-buttons flex space-x-2">
+                <button class="action-btn bg-gray-500 hover:bg-gray-600 text-white py-1 px-3 rounded" onclick="editTerritory('${id}', '${name.replace(/'/g, "\\'")}')">Змінити назву</button>
+                <button class="action-btn bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded" onclick="deleteTerritory('${id}')">Видалити</button>
+              </div>
+            `;
+            div.querySelector(".territory-btn").onclick = () => {
+              console.log(`Перехід до деталей села ${id}`);
+              window.location.href = `territory-detail-villages.html?number=${id}`;
+            };
+            container.appendChild(div);
+            territoryButtons.push(div.querySelector(".territory-btn"));
+          });
+
+          // Update territory count
+          territoryCount.textContent = `Завантажено сіл: ${territoryButtons.length}`;
+
+          if (territoryButtons.length === 0) {
+            console.log("Не знайдено жодного села");
+            container.innerHTML = '<p class="text-gray-600">Села відсутні. Створіть нове село.</p>';
+            territoryCount.textContent = "Завантажено: 0 сіл";
+          } else {
+            console.log(`Відображено ${territoryButtons.length} сіл`);
+          }
+        } catch (error) {
+          console.error("Помилка завантаження сіл:", error);
+          container.innerHTML = `<p class="text-red-600">Помилка завантаження сіл: ${error.message}</p>`;
+          territoryCount.textContent = "Завантажено: 0 сіл";
+        }
+      }
+
+      searchInput.addEventListener("input", filterTerritories);
+      statusFilter.addEventListener("change", filterTerritories);
+
+      function filterTerritories() {
+        const searchTerm = searchInput.value.trim().toLowerCase();
+        const selectedStatus = statusFilter.value;
+        console.log(`Фільтрація: пошук="${searchTerm}", статус="${selectedStatus}"`);
+
+        // Create a copy of territories for filtering
+        let filteredTerritories = Array.from(territoryButtons).map(btn => ({
+          btn,
+          id: parseInt(btn.dataset.id),
+          name: btn.dataset.name,
+          status: btn.dataset.status
+        }));
+
+        // Filter territories
+        filteredTerritories = filteredTerritories.filter(({ name, status }) => {
+          const matchesSearch = searchTerm === '' || name.toLowerCase().includes(searchTerm);
+          const matchesStatus = selectedStatus === '' || selectedStatus === status;
+          return matchesSearch && matchesStatus;
+        });
+
+        // Sort by id ascending (default)
+        filteredTerritories.sort((a, b) => a.id - b.id);
+
+        // Update display
+        territoryButtons.forEach(btn => {
+          btn.parentElement.style.display = 'none';
+        });
+        filteredTerritories.forEach(({ btn }) => {
+          btn.parentElement.style.display = 'block';
+        });
+
+        // Update territory count
+        territoryCount.textContent = `Завантажено: ${filteredTerritories.length} сіл`;
+      }
+
+      createForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(createForm);
+        const name = formData.get("name").trim();
+
+        if (!name) {
+          errorMessage.textContent = "Введіть назву села";
+          console.log("Помилка валідації назви села:", name);
+          return;
+        }
+
+        const territoriesRef = collection(db, "territories_villages");
+        const territoriesSnapshot = await getDocs(territoriesRef);
+        const existingIds = territoriesSnapshot.docs.map(doc => doc.id);
+        const existingNames = territoriesSnapshot.docs.map(doc => doc.data().name);
+
+        if (existingNames.includes(name)) {
+          errorMessage.textContent = `Село з назвою ${name} вже існує`;
+          console.log(`Село ${name} вже існує`);
+          return;
+        }
+
+        const maxId = Math.max(0, ...existingIds.map(id => parseInt(id) || 0));
+        const villageId = (maxId + 1).toString();
+
+        try {
+          console.log(`Створення села ${villageId}:`, { name });
+          await setDoc(doc(db, `territories_villages/${villageId}`), {
+            name: name
+          });
+          errorMessage.textContent = "";
+          createForm.reset();
+          createModal.classList.remove("show");
+          await loadTerritories();
+        } catch (error) {
+          console.error("Помилка створення села:", error);
+          errorMessage.textContent = "Помилка при створенні села: " + error.message;
+        }
+      };
+
+      window.editTerritory = async (villageId, currentName) => {
+        console.log(`Відкриття редагування села ${villageId}: name=${currentName}`);
+        editForm.querySelector("input[name='name']").value = currentName;
+        editForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const formData = new FormData(editForm);
+          const newName = formData.get("name").trim();
+
+          if (!newName) {
+            editErrorMessage.textContent = "Введіть назву села";
+            return;
+          }
+
+          const territoriesRef = collection(db, "territories_villages");
+          const territoriesSnapshot = await getDocs(territoriesRef);
+          const existingNames = territoriesSnapshot.docs
+            .filter(doc => doc.id !== villageId)
+            .map(doc => doc.data().name);
+
+          if (existingNames.includes(newName)) {
+            editErrorMessage.textContent = `Село з назвою ${newName} вже існує`;
+            return;
+          }
+
+          try {
+            console.log(`Оновлення села ${villageId}:`, { name: newName });
+            await updateDoc(doc(db, `territories_villages/${villageId}`), {
+              name: newName
+            });
+            editErrorMessage.textContent = "";
+            editModal.classList.remove("show");
+            await loadTerritories();
           } catch (error) {
-            console.error('Помилка обробки Excel:', error);
-            alert('Сталася помилка під час обробки Excel: ' + error.message);
-            progressContainer.style.display = 'none';
+            console.error("Помилка редагування села:", error);
+            editErrorMessage.textContent = "Помилка при редагуванні села: " + error.message;
           }
         };
+        editModal.classList.add("show");
+      };
 
-        reader.onerror = () => {
-          console.error('Помилка читання файлу');
-          alert('Помилка читання Excel-файлу.');
-          progressContainer.style.display = 'none';
-        };
+      window.deleteTerritory = async (villageId) => {
+        console.log(`Спроба видалення села ${villageId}`);
+        const historyRef = collection(db, `territories_villages/${villageId}/history`);
+        const historySnapshot = await getDocs(historyRef);
+        if (!historySnapshot.empty) {
+          console.log(`Село ${villageId} має ${historySnapshot.size} записів в історії, видалення заборонено`);
+          alert("Село не можна видалити, оскільки воно має записи в історії.");
+          return;
+        }
 
-        reader.readAsArrayBuffer(file);
-      } catch (error) {
-        console.error('Помилка імпорту:', error);
-        alert('Сталася помилка під час імпорту: ' + error.message);
-        progressContainer.style.display = 'none';
-      }
-    };
+        if (confirm(`Ви впевнені, що хочете видалити село ${villageId}?`)) {
+          try {
+            console.log(`Видалення села ${villageId}`);
+            await deleteDoc(doc(db, `territories_villages/${villageId}`));
+            await loadTerritories();
+          } catch (error) {
+            console.error("Помилка видалення села:", error);
+            errorMessage.textContent = "Помилка при видаленні села: " + error.message;
+          }
+        }
+      };
+    });
   </script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+  <header class="bg-white shadow-md p-4 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+      <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
+        <h1 class="text-2xl font-bold text-gray-800">Список сіл</h1>
+        <p id="territory-count" class="text-gray-600">Завантажено: 0 сіл</p>
+      </div>
+      <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+          <input 
+            id="search" 
+            type="text" 
+            placeholder="Пошук села (напр. Березівка)" 
+            class="w-full sm:w-64 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+          <select id="status-filter" class="w-full sm:w-48 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Всі статуси</option>
+            <option value="вільна">Вільна</option>
+            <option value="на руках">На руках</option>
+          </select>
+          <button 
+            id="create-territory-btn" 
+            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg"
+          >
+            Створити село
+          </button>
+        </div>
+        <nav class="flex space-x-2">
+          <a href="index.html">
+            <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              Карта
+            </button>
+          </a>
+          <a href="user.html">
+            <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              Користувачі
+            </button>
+          </a>
+          <a href="zvit.html">
+            <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              Звіти
+            </button>
+          </a>
+          <button id="logout" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+            Вийти
+          </button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow p-4">
+    <div class="max-w-7xl mx-auto">
+      <div id="territories" class="grid grid-cols-1 gap-0"></div>
+    </div>
+  </main>
+
+  <!-- Modal for creating territory -->
+  <div id="create-territory-modal" class="modal">
+    <div class="modal-content">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Створити нове село</h3>
+        <button id="close-create-modal" class="text-gray-600 hover:text-gray-800">×</button>
+      </div>
+      <form id="create-territory-form" class="space-y-4">
+        <div>
+          <input 
+            name="name" 
+            type="text" 
+            placeholder="Назва села" 
+            required 
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+        </div>
+        <div class="flex space-x-2">
+          <button 
+            type="submit" 
+            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg"
+          >
+            Створити
+          </button>
+          <button 
+            id="cancel-create-btn" 
+            type="button" 
+            class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg"
+          >
+            Скасувати
+          </button>
+        </div>
+      </form>
+      <p id="error-message" class="text-red-600 mt-2"></p>
+    </div>
+  </div>
+
+  <!-- Modal for editing territory -->
+  <div id="edit-territory-modal" class="modal">
+    <div class="modal-content">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Редагувати село</h3>
+        <button id="close-edit-modal" class="text-gray-600 hover:text-gray-800">×</button>
+      </div>
+      <form id="edit-territory-form" class="space-y-4">
+        <div>
+          <input 
+            name="name" 
+            type="text" 
+            placeholder="Назва села" 
+            class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+        </div>
+        <div class="flex space-x-2">
+          <button 
+            type="submit" 
+            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg"
+          >
+            Зберегти
+          </button>
+          <button 
+            id="cancel-edit-btn" 
+            type="button" 
+            class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg"
+          >
+            Скасувати
+          </button>
+        </div>
+      </form>
+      <p id="edit-error-message" class="text-red-600 mt-2"></p>
+    </div>
+  </div>
+
+  <footer class="bg-white shadow-inner p-4 mt-auto">
+    <div class="max-w-7xl mx-auto text-center text-gray-600">
+      © 2025 Села. Всі права захищено.
+    </div>
+  </footer>
 </body>
 </html>
