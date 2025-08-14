@@ -85,13 +85,13 @@
     <div class="mt-6">
       <h2 class="text-lg font-semibold text-gray-700 mb-2">Як створити Excel-файл для імпорту</h2>
       <p class="text-gray-600 mb-4">
-        Створіть Excel-файл із першим листом (наприклад, "Лист1"). Використовуйте наступні стовпці: <strong>№ п/п</strong>, <strong>Село</strong>, <strong>Вісник</strong>, <strong>дата отримання</strong>, <strong>дата опрацювання</strong>. Колонка "Село" використовується для перевірки або створення назви території в базі даних. Дати мають бути у форматі <strong>DD.MM.YY</strong> (наприклад, 22.06.24). Форматуйте клітинки дат як текст або спеціальний формат "DD.MM.YY". Нижче наведено приклад:
+        Створіть Excel-файл із першим листом (наприклад, "Лист1"). Використовуйте наступні стовпці: <strong>номер</strong>, <strong>село</strong>, <strong>Вісник</strong>, <strong>дата отримання</strong>, <strong>дата опрацювання</strong>. Колонка "село" використовується для перевірки або створення назви території в базі даних. Дати можуть бути у форматі серійних номерів Excel (наприклад, 45094) або у форматі <strong>DD.MM.YY</strong> (наприклад, 22.06.24). Форматуйте клітинки дат як текст або спеціальний формат "DD.MM.YY". Нижче наведено приклад:
       </p>
       <table class="example-table mx-auto">
         <thead>
           <tr>
-            <th>№ п/п</th>
-            <th>Село</th>
+            <th>номер</th>
+            <th>село</th>
             <th>Вісник</th>
             <th>дата отримання</th>
             <th>дата опрацювання</th>
@@ -102,15 +102,15 @@
             <td>4</td>
             <td>Борисівка</td>
             <td>Групове</td>
-            <td>22.06.24</td>
-            <td></td>
+            <td>45094</td>
+            <td>45139</td>
           </tr>
           <tr>
             <td>5</td>
             <td>Василівка</td>
             <td>Групове</td>
-            <td>22.06.24</td>
-            <td>01.06.25</td>
+            <td>45231</td>
+            <td>45809</td>
           </tr>
         </tbody>
       </table>
@@ -221,15 +221,16 @@
             const worksheet = workbook.Sheets[sheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
 
-            console.log('Сирі дані з Excel:', JSON.stringify(jsonData, null, 2));
+            console.log('Сирі дані з Excel (перший рядок - заголовки):', JSON.stringify(jsonData[0], null, 2));
+            console.log('Сирі дані з Excel (всі рядки):', JSON.stringify(jsonData, null, 2));
 
-            // Перетворюємо сирі дані в об'єкти з правильними ключами
-            const headers = jsonData[0]; // Перший рядок — заголовки
+            // Перетворюємо сирі дані в об'єкти з обрізаними ключами (видаляємо зайві пробіли з заголовків)
+            const headers = jsonData[0].map(header => header.trim()); // Обрізаємо пробіли в заголовках
             const rows = jsonData.slice(1); // Решта — дані
             const jsonDataMapped = rows.map(row => {
               const obj = {};
               headers.forEach((header, index) => {
-                obj[header] = row[index];
+                obj[header] = row[index] !== undefined ? String(row[index]).trim() : "";
               });
               return obj;
             });
@@ -246,13 +247,20 @@
             let processedRows = 0;
 
             for (const row of jsonDataMapped) {
-              const territoryNumber = row['№ п/п'] ? String(row['№ п/п']).trim() : undefined;
-              const village = row['Село'] ? String(row['Село']).trim() : "";
+              const territoryNumber = row['номер'] ? String(row['номер']).trim() : undefined;
+              const village = row['село'] ? String(row['село']).trim() : "";
               const pib = row['Вісник'] ? String(row['Вісник']).trim() : "";
               const dateGet = formatDateForFirestore(row['дата отримання']);
               const dateProcess = formatDateForFirestore(row['дата опрацювання']);
 
-              console.log(`Обробка рядка: territoryNumber=${territoryNumber}, village=${village}, pib=${pib}, dateGet=${dateGet}, dateProcess=${dateProcess}`);
+              console.log(`Обробка рядка:`, {
+                territoryNumber,
+                village,
+                pib,
+                dateGet,
+                dateProcess,
+                rawRow: row
+              });
 
               if (!territoryNumber || !village) {
                 console.warn(`Пропущено рядок: відсутній номер території (${territoryNumber}) або назва села (${village})`, row);
