@@ -56,72 +56,43 @@
       padding: 3px;
       background-color: rgba(255, 255, 255, 0.1);
     }
-    .header-container {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 1rem;
-      padding: 1rem;
-      background: linear-gradient(to right, #1E3A8A, #3B82F6);
-      color: white;
-      border-radius: 0 0 8px 8px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      cursor: pointer;
     }
-    .header-container h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin: 0;
+    .hamburger span {
+      width: 24px;
+      height: 3px;
+      background-color: #1F2937;
+      margin: 2px 0;
+      transition: all 0.3s ease;
     }
-    .header-container .territory-count {
-      font-size: 0.875rem;
-      opacity: 0.9;
+    .mobile-menu {
+      display: none;
     }
-    .filter-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      flex-grow: 1;
+    .mobile-menu.show {
+      display: block;
     }
-    .filter-group input, .filter-group select {
-      padding: 0.5rem;
-      border-radius: 6px;
-      border: 1px solid #D1D5DB;
-      background: white;
-      color: #1F2937;
-      font-size: 0.875rem;
-      width: 100%;
-      max-width: 200px;
-    }
-    .filter-group input:focus, .filter-group select:focus {
-      outline: none;
-      ring: 2px solid #3B82F6;
-    }
-    .nav-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-    .nav-buttons button, .nav-buttons a button {
-      padding: 0.5rem 1rem;
-      font-size: 0.875rem;
-      border-radius: 6px;
-      transition: background-color 0.3s ease;
-    }
-    @media (max-width: 640px) {
-      .header-container {
+    @media (max-width: 768px) {
+      .hamburger {
+        display: flex;
+      }
+      .desktop-nav {
+        display: none;
+      }
+      .mobile-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: white;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 20;
+      }
+      .mobile-menu .nav-links {
         flex-direction: column;
-        align-items: flex-start;
-      }
-      .filter-group {
-        flex-direction: column;
-        width: 100%;
-      }
-      .filter-group input, .filter-group select {
-        max-width: none;
-      }
-      .nav-buttons {
-        width: 100%;
-        justify-content: space-between;
+        padding: 1rem;
       }
       .action-btn {
         font-size: 0.75rem;
@@ -173,8 +144,14 @@
       const editErrorMessage = document.getElementById("edit-error-message");
       const cancelCreateBtn = document.getElementById("cancel-create-btn");
       const cancelEditBtn = document.getElementById("cancel-edit-btn");
+      const hamburger = document.getElementById("hamburger");
+      const mobileMenu = document.getElementById("mobile-menu");
 
       let territoryButtons = [];
+
+      hamburger.addEventListener("click", () => {
+        mobileMenu.classList.toggle("show");
+      });
 
       onAuthStateChanged(auth, async (user) => {
         if (!user) {
@@ -194,6 +171,7 @@
       createBtn.onclick = () => {
         console.log("Відкриття модального вікна створення");
         createModal.classList.add("show");
+        mobileMenu.classList.remove("show");
       };
 
       closeCreateModal.onclick = () => {
@@ -236,7 +214,6 @@
           const territories = [];
           const currentDate = new Date();
 
-          // Prepare all history queries for parallel execution
           const historyQueries = snapshot.docs.map(async (docSnap) => {
             const territoryId = docSnap.id;
             const data = docSnap.data();
@@ -246,7 +223,6 @@
               data: data
             });
 
-            // Fetch only the latest history record, ordered by dateGet
             const historyRef = collection(db, `territories/${territoryId}/history`);
             const historyQuery = query(historyRef, orderBy("dateGet", "desc"), limit(1));
             const historySnapshot = await getDocs(historyQuery);
@@ -299,10 +275,7 @@
             };
           });
 
-          // Execute all history queries in parallel
           const territoriesData = await Promise.all(historyQueries);
-
-          // Sort territories by number initially
           territories.push(...territoriesData.sort((a, b) => a.number - b.number));
 
           container.innerHTML = '';
@@ -328,7 +301,6 @@
             territoryButtons.push({ element: div, number, name, type, status, days });
           });
 
-          // Update territory count
           territoryCount.textContent = `Завантажено: ${territoryButtons.length} територій`;
 
           if (territoryButtons.length === 0) {
@@ -357,7 +329,6 @@
         const selectedSort = sortFilter.value.trim();
         console.log(`Фільтрація: пошук="${searchTerm}", тип="${selectedType}", статус="${selectedStatus}", сортування="${selectedSort}"`);
 
-        // Create a copy of territories for filtering
         let filteredTerritories = territoryButtons.map(({ element, number, name, type, status, days }) => ({
           element,
           number: parseInt(number, 10),
@@ -367,10 +338,8 @@
           days: Number(days) || 0
         }));
 
-        // Log territories before filtering
         console.log('Перед фільтрацією:', filteredTerritories.map(t => ({ number: t.number, name: t.name, type: t.type, status: t.status, days: t.days })));
 
-        // Filter territories
         filteredTerritories = filteredTerritories.filter(({ number, type, status }) => {
           const matchesSearch = searchTerm === '' || `територія ${number}`.toLowerCase().includes(searchTerm);
           const matchesType = selectedType === '' || selectedType === type;
@@ -378,10 +347,8 @@
           return matchesSearch && matchesType && matchesStatus;
         });
 
-        // Log filtered territories
         console.log('Після фільтрації:', filteredTerritories.map(t => ({ number: t.number, name: t.name, type: t.type, status: t.status, days: t.days })));
 
-        // Sort territories based on selected sort order
         if (selectedSort === 'days-desc') {
           filteredTerritories.sort((a, b) => (b.days - a.days) || (a.number - b.number));
         } else if (selectedSort === 'days-asc') {
@@ -392,28 +359,23 @@
           filteredTerritories.sort((a, b) => a.number - b.number);
         }
 
-        // Log sorted territories
         console.log('Після сортування:', filteredTerritories.map(t => ({ number: t.number, name: t.name, type: t.type, status: t.status, days: t.days })));
 
-        // Clear current display completely
         while (container.firstChild) {
           container.removeChild(container.firstChild);
         }
 
-        // Append filtered and sorted territories
         filteredTerritories.forEach(({ element }) => {
           container.appendChild(element);
           console.log(`Додано елемент з number=${element.querySelector('.territory-btn').dataset.number}, days=${element.querySelector('.territory-btn').dataset.days}`);
         });
 
-        // Update territory count
         territoryCount.textContent = `Завантажено: ${filteredTerritories.length} територій`;
 
         if (filteredTerritories.length === 0) {
           container.innerHTML = '<p class="text-gray-600">Немає територій, що відповідають критеріям пошуку.</p>';
         }
 
-        // Force DOM refresh if needed
         container.style.display = 'none';
         setTimeout(() => container.style.display = 'grid', 0);
       }
@@ -514,56 +476,128 @@
   </script>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col">
-  <header class="sticky top-0 z-10">
-    <div class="header-container max-w-7xl mx-auto">
+  <header class="bg-white shadow-md p-3 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <!-- Left: Title and Count -->
       <div class="flex items-center space-x-4">
-        <h1>Список територій</h1>
-        <p id="territory-count" class="territory-count">Завантажено: 0 територій</p>
+        <h1 class="text-xl font-bold text-gray-800">Території</h1>
+        <p id="territory-count" class="text-sm text-gray-600 hidden sm:block">Завантажено: 0 територій</p>
       </div>
-      <div class="filter-group">
+      <!-- Right: Controls -->
+      <div class="flex items-center space-x-3">
+        <!-- Hamburger for Mobile -->
+        <div id="hamburger" class="hamburger sm:hidden">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <!-- Desktop Navigation and Controls -->
+        <div class="desktop-nav flex items-center space-x-3">
+          <input 
+            id="search" 
+            type="text" 
+            placeholder="Пошук (напр. 42)" 
+            class="w-32 sm:w-40 px-3 py-1.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          >
+          <select id="type-filter" class="w-24 sm:w-32 px-3 py-1.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+            <option value="">Тип</option>
+            <option value="Не призначено">Не призначено</option>
+            <option value="Приватна">Приватна</option>
+            <option value="Поверхівки">Поверхівки</option>
+            <option value="Ділова">Ділова</option>
+          </select>
+          <select id="status-filter" class="w-24 sm:w-32 px-3 py-1.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+            <option value="">Статус</option>
+            <option value="вільна">Вільна</option>
+            <option value="на руках">На руках</option>
+          </select>
+          <select id="sort-filter" class="w-24 sm:w-32 px-3 py-1.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+            <option value="number-asc">Номер ↑</option>
+            <option value="number-desc">Номер ↓</option>
+            <option value="days-asc">Дні ↑</option>
+            <option value="days-desc">Дні ↓</option>
+          </select>
+          <button 
+            id="create-territory-btn" 
+            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1.5 px-3 rounded-lg text-sm"
+          >
+            Створити
+          </button>
+          <nav class="flex space-x-2">
+            <a href="index.html">
+              <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1.5 px-3 rounded-lg text-sm">
+                Карта
+              </button>
+            </a>
+            <a href="user.html">
+              <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1.5 px-3 rounded-lg text-sm">
+                Користувачі
+              </button>
+            </a>
+            <a href="zvit.html">
+              <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1.5 px-3 rounded-lg text-sm">
+                Звіти
+              </button>
+            </a>
+            <button id="logout" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-1.5 px-3 rounded-lg text-sm">
+              Вийти
+            </button>
+          </nav>
+        </div>
+      </div>
+    </div>
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="mobile-menu sm:hidden">
+      <div class="nav-links flex flex-col space-y-2 p-4">
         <input 
-          id="search" 
+          id="search-mobile" 
           type="text" 
           placeholder="Пошук (напр. 42)" 
-          class="focus:ring-2 focus:ring-blue-500"
+          class="w-full px-3 py-1.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
         >
-        <select id="type-filter" class="focus:ring-2 focus:ring-blue-500">
-          <option value="">Всі типи</option>
+        <select id="type-filter-mobile" class="w-full px-3 py-1.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+          <option value="">Тип</option>
           <option value="Не призначено">Не призначено</option>
           <option value="Приватна">Приватна</option>
           <option value="Поверхівки">Поверхівки</option>
           <option value="Ділова">Ділова</option>
         </select>
-        <select id="status-filter" class="focus:ring-2 focus:ring-blue-500">
-          <option value="">Всі статуси</option>
+        <select id="status-filter-mobile" class="w-full px-3 py-1.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+          <option value="">Статус</option>
           <option value="вільна">Вільна</option>
           <option value="на руках">На руках</option>
         </select>
-        <select id="sort-filter" class="focus:ring-2 focus:ring-blue-500">
-          <option value="number-asc">Номер: від меншого</option>
-          <option value="number-desc">Номер: від більшого</option>
-          <option value="days-asc">Днів: від меншого</option>
-          <option value="days-desc">Днів: від більшого</option>
+        <select id="sort-filter-mobile" class="w-full px-3 py-1.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+          <option value="number-asc">Номер ↑</option>
+          <option value="number-desc">Номер ↓</option>
+          <option value="days-asc">Дні ↑</option>
+          <option value="days-desc">Дні ↓</option>
         </select>
         <button 
-          id="create-territory-btn" 
-          class="bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg"
+          id="create-territory-btn-mobile" 
+          class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1.5 px-3 rounded-lg text-sm"
         >
           Створити
         </button>
-      </div>
-      <nav class="nav-buttons">
         <a href="index.html">
-          <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold">Карта</button>
+          <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1.5 px-3 rounded-lg text-sm w-full">
+            Карта
+          </button>
         </a>
         <a href="user.html">
-          <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold">Користувачі</button>
+          <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1.5 px-3 rounded-lg text-sm w-full">
+            Користувачі
+          </button>
         </a>
         <a href="zvit.html">
-          <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold">Звіти</button>
+          <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1.5 px-3 rounded-lg text-sm w-full">
+            Звіти
+          </button>
         </a>
-        <button id="logout" class="bg-red-500 hover:bg-red-600 text-white font-semibold">Вийти</button>
-      </nav>
+        <button id="logout-mobile" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-1.5 px-3 rounded-lg text-sm w-full">
+          Вийти
+        </button>
+      </div>
     </div>
   </header>
 
