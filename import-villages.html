@@ -85,7 +85,7 @@
     <div class="mt-6">
       <h2 class="text-lg font-semibold text-gray-700 mb-2">Як створити Excel-файл для імпорту</h2>
       <p class="text-gray-600 mb-4">
-        Створіть Excel-файл із першим листом (наприклад, "лесик"). Використовуйте наступні стовпці: <strong>номер</strong>, <strong>село</strong>, <strong>Вісник</strong>, <strong>дата отримання</strong>, <strong>дата опрацювання</strong>. Колонка "село" використовується для перевірки або створення назви території в базі даних. Дати можуть бути у форматі серійних номерів Excel (наприклад, 45094) або у форматі <strong>DD.MM.YY</strong> (наприклад, 22.06.24). Форматуйте клітинки дат як текст або спеціальний формат "DD.MM.YY". Нижче наведено приклад:
+        Створіть Excel-файл із першим листом (наприклад, "Лесик"). Використовуйте наступні стовпці: <strong>номер</strong>, <strong>село</strong>, <strong>Вісник</strong>, <strong>дата отримання</strong>, <strong>дата опрацювання</strong>. Колонка "село" використовується для перевірки або створення назви території в базі даних. Дати можуть бути у форматі серійних номерів Excel (наприклад, 45094) або у форматі <strong>DD.MM.YY</strong> (наприклад, 22.06.24). Форматуйте клітинки дат як текст або спеціальний формат "DD.MM.YY". Нижче наведено приклад:
       </p>
       <table class="example-table mx-auto">
         <thead>
@@ -148,9 +148,11 @@
       }
 
       let date;
-      if (dateInput instanceof Date) {
-        console.log('Дата є об’єктом Date:', dateInput);
-        date = dateInput;
+      if (typeof dateInput === 'number') {
+        console.log('Дата є числом (Excel date):', dateInput);
+        const excelEpoch = new Date(1900, 0, 1);
+        const leapYearAdjustment = dateInput > 60 ? 1 : 0;
+        date = new Date(excelEpoch.getTime() + (dateInput - 1 - leapYearAdjustment) * 24 * 60 * 60 * 1000);
       } else if (typeof dateInput === 'string') {
         console.log('Дата є рядком:', dateInput);
         const parts = dateInput.trim().split('.');
@@ -163,17 +165,15 @@
           year += year < 70 ? 2000 : 1900;
         }
         date = new Date(year, month - 1, day);
-      } else if (typeof dateInput === 'number') {
-        console.log('Дата є числом (Excel date):', dateInput);
-        const excelEpoch = new Date(1900, 0, 1);
-        const leapYearAdjustment = dateInput > 60 ? 1 : 0;
-        date = new Date(excelEpoch.getTime() + (dateInput - 1 - leapYearAdjustment) * 24 * 60 * 60 * 1000);
+      } else if (dateInput instanceof Date) {
+        console.log('Дата є об’єктом Date:', dateInput);
+        date = dateInput;
       } else {
         console.warn(`Непідтримуваний тип дати: ${typeof dateInput}`, dateInput);
         return "";
       }
 
-      if (isNaN(date)) {
+      if (isNaN(date.getTime())) {
         console.warn(`Невалідна дата після парсингу: ${dateInput}`);
         return "";
       }
@@ -224,9 +224,9 @@
             console.log('Сирі дані з Excel (перший рядок - заголовки):', JSON.stringify(jsonData[0], null, 2));
             console.log('Сирі дані з Excel (всі рядки):', JSON.stringify(jsonData, null, 2));
 
-            // Перетворюємо сирі дані в об'єкти з обрізаними ключами (видаляємо зайві пробіли з заголовків)
-            const headers = jsonData[0].map(header => header.trim()); // Обрізаємо пробіли в заголовках
-            const rows = jsonData.slice(1); // Решта — дані
+            // Перетворюємо сирі дані в об'єкти з обрізаними ключами
+            const headers = jsonData[0].map(header => header.trim());
+            const rows = jsonData.slice(1).filter(row => row.some(cell => cell !== undefined && cell !== ""));
             const jsonDataMapped = rows.map(row => {
               const obj = {};
               headers.forEach((header, index) => {
@@ -275,9 +275,7 @@
               if (!territoryDoc.exists()) {
                 console.log(`Територія ${territoryNumber} не існує, створюємо нову з назвою '${village}'`);
                 await setDoc(territoryDocRef, {
-                  name: village,
-                  createdBy: auth.currentUser.uid,
-                  createdAt: serverTimestamp()
+                  name: village
                 });
               } else {
                 const territoryName = territoryDoc.data().name ? territoryDoc.data().name.trim() : "";
