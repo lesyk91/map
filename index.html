@@ -491,10 +491,11 @@ async function getTerritoryStatusPopup(number, name){
       const latest = snap.docs[0].data();
       const status = latest.status === "на руках" ? "на руках" : "вільно";
       popup += `<b>Статус:</b> ${status}`;
-      if (latest.dateGet) {
-        const dateGet = new Date(latest.dateGet);
+      const dateField = status === "вільно" ? latest.dateProcess : latest.dateGet;
+      if (dateField) {
+        const date = new Date(dateField);
         const today = new Date();
-        const daysDiff = Math.floor((today - dateGet) / (1000 * 60 * 60 * 24));
+        const daysDiff = Math.floor((today - date) / (1000 * 60 * 60 * 24));
         popup += `<br><b>Днів ${status === "на руках" ? "на руках" : "вільно"}:</b> ${daysDiff}`;
       }
       if (currentUser && status === "на руках") {
@@ -897,7 +898,3 @@ async function getTerritoryStatusPopup(number, name){
   </script>
 </body>
 </html>
-
-
-
-
