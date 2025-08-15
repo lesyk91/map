@@ -13,7 +13,6 @@
     html, body, #map {
       height: 100%; margin: 0; padding: 0;
     }
-    /* Toolbar for buttons */
     .toolbar {
       position: absolute;
       top: 10px;
@@ -43,25 +42,21 @@
     .toolbar button:active {
       transform: scale(0.95);
     }
-    /* Hide auth buttons initially based on state */
     #auth-buttons button { display: none; }
-    /* Filters button */
     button.filters-btn {
       background: #10b981;
       color: white;
       border: none;
     }
-.leaflet-popup-content-wrapper {
-  border-radius: 8px; /* Зменшено з 12px */
-  box-shadow: 0 3px 6px rgba(0,0,0,0.2); /* Менша тінь */
-  max-width: 220px; /* Зменшено з 288px (приблизно) */
-}
-    
-    /* Controls panel - hidden by default, slide in from left */
+    .leaflet-popup-content-wrapper {
+      border-radius: 8px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+      max-width: 220px;
+    }
     .controls {
       position: absolute;
       top: 60px;
-      left: -300px; /* Hidden off-screen */
+      left: -300px;
       width: 280px;
       z-index: 1000;
       background: white;
@@ -76,7 +71,6 @@
     .controls.visible {
       left: 10px;
     }
-    /* Custom checkboxes */
     .controls input[type="checkbox"] {
       appearance: none;
       width: 20px;
@@ -121,7 +115,6 @@
     }
     .subgroup { margin-left: 24px; }
     .subgroup label { font-size: 14px; }
-    /* Loader */
     #loader {
       position: absolute;
       top: 10px;
@@ -133,7 +126,6 @@
       border-radius: 10px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    /* Progress Overlay */
     #progress-overlay {
       position: fixed;
       top: 0;
@@ -158,19 +150,12 @@
     #progress-bar { width: 100%; height: 24px; background: #e5e7eb; border-radius: 12px; overflow: hidden; }
     #progress-fill { height: 100%; background: #10b981; width: 0; transition: width 0.3s ease; }
     #progress-text { margin-top: 8px; font-size: 16px; color: #374151; }
-    /* Leaflet Popup Styles */
-    -wrapper {
-      border-radius: 12px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-      padding: 0;
-    }
     .leaflet-popup-content {
       padding: 1px;
       font-size: 16px;
       line-height: 1;
     }
     .leaflet-popup-tip { border-top-color: white; }
-    /* Buttons in Popup */
     .popup-btn {
       margin-top: 8px;
       padding: 8px 16px;
@@ -186,10 +171,9 @@
     .share-btn { background: #3b82f6; }
     .edit-btn { background: #f59e0b; }
     .route-btn { background: #10b981; }
-    /* Mobile adaptations */
     @media (max-width: 640px) {
       .toolbar {
-        flex-direction: row-reverse;
+        flex-direction: row;
         flex-wrap: wrap;
         gap: 8px;
         left: 5px;
@@ -200,7 +184,7 @@
         font-size: 14px;
       }
       .controls {
-        width: 50%;
+        width: 60%;
         left: -100%;
         top: 90px;
         max-height: calc(100vh - 80px);
@@ -226,13 +210,13 @@
   </div>
 
   <div class="toolbar">
-    <button onclick="findLocation()" class="locate-btn">📍 Моє місцезнаходження</button>
+    <button onclick="toggleControls()" class="filters-btn">⚙️ Фільтри</button>
     <div id="auth-buttons">
       <a href="enter.html"><button class="login-btn">🔐 Увійти</button></a>
       <button class="logout-btn">🚪 Вийти</button>
       <a href="territories.html"><button class="territories-btn">🏞 Території</button></a>
     </div>
-    <button onclick="toggleControls()" class="filters-btn">⚙️ Фільтри</button>
+    <button onclick="findLocation()" class="locate-btn">📍 Моє місцезнаходження</button>
   </div>
 
   <div id="loader" class="bg-white border border-gray-300 rounded-lg shadow-md"></div>
@@ -480,38 +464,40 @@
 
     logoutBtn?.addEventListener("click", async () => { await signOut(auth); layersControl = null; location.reload(); });
 
-async function getTerritoryStatusPopup(number, name){
-  try {
-    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp","desc"));
-    const snap = await getDocs(q);
-    let popup = `<b class="text-lg font-bold">${name}</b><br>`;
-    if (snap.empty) {
-      popup += `<b>Статус:</b> вільно`;
-    } else {
-      const latest = snap.docs[0].data();
-      const status = latest.status === "на руках" ? "на руках" : "вільно";
-      popup += `<b>Статус:</b> ${status}`;
-      if (latest.dateGet) {
-        const dateGet = new Date(latest.dateGet);
-        const today = new Date();
-        const daysDiff = Math.floor((today - dateGet) / (1000 * 60 * 60 * 24));
-        popup += `<br><b>Днів ${status === "на руках" ? "на руках" : "вільно"}:</b> ${daysDiff}`;
-      }
-      if (currentUser && status === "на руках") {
-        popup += `<br><b>ПІБ:</b> ${latest.pib || "невідомо"}`;
-        popup += `<br><b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
+    async function getTerritoryStatusPopup(number, name){
+      try {
+        const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp","desc"));
+        const snap = await getDocs(q);
+        let popup = `<b class="text-lg font-bold">${name}</b><br>`;
+        if (snap.empty) {
+          popup += `<b>Статус:</b> вільно`;
+        } else {
+          const latest = snap.docs[0].data();
+          const status = latest.status === "на руках" ? "на руках" : "вільно";
+          popup += `<b>Статус:</b> ${status}`;
+          // Використовуємо dateProcess для статусу "вільно", інакше dateGet
+          const dateField = status === "вільно" ? latest.dateProcess : latest.dateGet;
+          if (dateField) {
+            const date = new Date(dateField);
+            const today = new Date();
+            const daysDiff = Math.floor((today - date) / (1000 * 60 * 60 * 24));
+            popup += `<br><b>Днів ${status === "на руках" ? "на руках" : "вільно"}:</b> ${daysDiff}`;
+          }
+          if (currentUser && status === "на руках") {
+            popup += `<br><b>ПІБ:</b> ${latest.pib || "невідомо"}`;
+            popup += `<br><b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
+          }
+        }
+        popup += `<br><button onclick="shareTerritory('${number}')" class="popup-btn share-btn">🔗 Поділитися</button>`;
+        if (currentUser) {
+          popup += `<br><a href="territory-detail.html?number=${number}"><button class="popup-btn edit-btn">✏️ Редагувати</button></a>`;
+        }
+        return popup;
+      } catch(err) {
+        console.warn('getTerritoryStatusPopup error', err);
+        return `<b class="text-lg font-bold">${name}</b><br><b>Статус:</b> невідомий`;
       }
     }
-    popup += `<br><button onclick="shareTerritory('${number}')" class="popup-btn share-btn">🔗 Поділитися</button>`;
-    if (currentUser) {
-      popup += `<br><a href="territory-detail.html?number=${number}"><button class="popup-btn edit-btn">✏️ Редагувати</button></a>`;
-    }
-    return popup;
-  } catch(err) {
-    console.warn('getTerritoryStatusPopup error', err);
-    return `<b class="text-lg font-bold">${name}</b><br><b>Статус:</b> невідомий`;
-  }
-}
 
     function updateTerritoryStatuses(){
       districts.forEach(d => {
@@ -660,7 +646,7 @@ async function getTerritoryStatusPopup(number, name){
         waypoints: [currentLocation, nearestPoint],
         routeWhileDragging: false,
         addWaypoints: false,
-        show: true,
+        show: false,
         createMarker: () => null,
         router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1' })
       }).on('routesfound', function(e) {
