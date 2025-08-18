@@ -53,6 +53,12 @@
       box-shadow: 0 3px 6px rgba(0,0,0,0.2);
       max-width: 220px;
     }
+    .leaflet-popup-content {
+      padding: 1px;
+      font-size: 16px;
+      line-height: 1;
+    }
+    .leaflet-popup-tip { border-top-color: white; }
     .controls {
       position: absolute;
       top: 60px;
@@ -165,6 +171,23 @@
     .share-btn { background: #3b82f6; }
     .edit-btn { background: #f59e0b; }
     .route-btn { background: #10b981; }
+    .legend {
+      background: white;
+      padding: 8px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .legend h4 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .legend div {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
     @media (max-width: 640px) {
       .toolbar {
         flex-direction: row;
@@ -437,7 +460,6 @@
       }
     }
 
-    // Function to interpolate between two colors
     function interpolateColor(color1, color2, factor) {
       const result = color1.slice(1).match(/.{2}/g).map((hex, i) => {
         const c1 = parseInt(hex, 16);
@@ -448,11 +470,25 @@
       return `#${result.join('')}`;
     }
 
-    // Function to get fill color based on days free
     function getFillColorForDays(days) {
-      if (days > 360) return '#333333'; // Dark gray for > 360 days
-      const factor = Math.min(days / 360, 1); // Normalize days to 0-1 for 0-360 days
-      return interpolateColor('#00FF00', '#FF0000', factor); // Light green to dark red
+      if (days > 360) return '#333333';
+      const factor = Math.min(days / 360, 1);
+      return interpolateColor('#00FF00', '#FF0000', factor);
+    }
+
+    function addLegend() {
+      const legend = L.control({ position: 'bottomright' });
+      legend.onAdd = function () {
+        const div = L.DomUtil.create('div', 'legend');
+        div.innerHTML = `
+          <h4>Дні у статусі "вільно"</h4>
+          <div><span style="background: #00FF00; width: 20px; height: 10px; display: inline-block;"></span> 0 днів</div>
+          <div><span style="background: #FF0000; width: 20px; height: 10px; display: inline-block;"></span> 360 днів</div>
+          <div><span style="background: #333333; width: 20px; height: 10px; display: inline-block;"></span> Понад 360 днів</div>
+        `;
+        return div;
+      };
+      legend.addTo(map);
     }
 
     onAuthStateChanged(auth, user => {
@@ -472,7 +508,7 @@
         freeControl.style.display = 'block';
         Object.keys(territoryStatuses).forEach(id => {
           territoryStatuses[id] = "вільно";
-          territoryDaysFree[id] = 0; // Default to 0 days for unauthenticated users
+          territoryDaysFree[id] = 0;
         });
         updateTerritoriesDisplay();
       }
@@ -521,39 +557,34 @@
       }
     }
 
-    function updateTerritoryStatuses(){
-      districts.forEach(d => {
+    async function updateTerritoryStatuses(){
+      for (const d of districts) {
         try {
           const idNum = d.id.replace('district','');
           const q = query(collection(db, `territories/${idNum}/history`), orderBy("timestamp","desc"));
-          onSnapshot(q, snap => {
-            if (!snap || snap.empty) {
-              territoryStatuses[d.id] = "вільно";
-              territoryDaysFree[d.id] = 0;
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            const latest = snap.docs[0].data();
+            territoryStatuses[d.id] = latest.status === "на руках" ? "на руках" : "вільно";
+            if (territoryStatuses[d.id] === "вільно" && latest.dateProcess) {
+              const date = new Date(latest.dateProcess);
+              const today = new Date();
+              const daysDiff = Math.floor((today - date) / (1000 * 60 * 60 * 24));
+              territoryDaysFree[d.id] = daysDiff;
             } else {
-              const latest = snap.docs[0].data();
-              territoryStatuses[d.id] = latest.status === "на руках" ? "на руках" : "вільно";
-              if (territoryStatuses[d.id] === "вільно" && latest.dateProcess) {
-                const date = new Date(latest.dateProcess);
-                const today = new Date();
-                const daysDiff = Math.floor((today - date) / (1000 * 60 * 60 * 24));
-                territoryDaysFree[d.id] = daysDiff;
-              } else {
-                territoryDaysFree[d.id] = 0;
-              }
+              territoryDaysFree[d.id] = 0;
             }
-            updateTerritoriesDisplay();
-          }, err => {
-            console.warn(`Помилка onSnapshot для ${d.id}:`, err);
+          } else {
             territoryStatuses[d.id] = "вільно";
             territoryDaysFree[d.id] = 0;
-            updateTerritoriesDisplay();
-          });
+          }
         } catch(e) {
-          console.warn('updateTerritoryStatuses catch', e);
+          console.warn(`Помилка для ${d.id}:`, e);
+          territoryStatuses[d.id] = "вільно";
           territoryDaysFree[d.id] = 0;
         }
-      });
+      }
+      updateTerritoriesDisplay();
     }
 
     (async () => {
@@ -590,7 +621,6 @@
                 const idNum = d.id.replace('district','');
                 const popupContent = await getTerritoryStatusPopup(idNum, d.name);
                 lyr.bindPopup(popupContent + `<br><button class="popup-btn route-btn" onclick="routeToDistrict('${d.name}')">📌 Маршрут</button>`).openPopup();
-                // Update layer style after popup to ensure correct color
                 lyr.setStyle({
                   fillColor: territoryStatuses[d.id] === "вільно" ? getFillColorForDays(territoryDaysFree[d.id] || 0) : d.fillColor
                 });
@@ -652,7 +682,7 @@
 
       showLoadingText('');
       tryAddLayersControl();
-      updateTerritoriesDisplay();
+      addLegend();
       updateTerritoryStatuses();
     })();
 
@@ -920,7 +950,6 @@
 
       updateParentState('taken');
       updateParentState('free');
-
       updateTerritoriesDisplay();
     }
 
