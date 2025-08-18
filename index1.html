@@ -13,6 +13,7 @@
     html, body, #map {
       height: 100%; margin: 0; padding: 0;
     }
+    /* Toolbar for buttons */
     .toolbar {
       position: absolute;
       top: 10px;
@@ -42,7 +43,9 @@
     .toolbar button:active {
       transform: scale(0.95);
     }
+    /* Hide auth buttons initially based on state */
     #auth-buttons button { display: none; }
+    /* Filters button */
     button.filters-btn {
       background: #10b981;
       color: white;
@@ -53,12 +56,7 @@
       box-shadow: 0 3px 6px rgba(0,0,0,0.2);
       max-width: 220px;
     }
-    .leaflet-popup-content {
-      padding: 1px;
-      font-size: 16px;
-      line-height: 1;
-    }
-    .leaflet-popup-tip { border-top-color: white; }
+    /* Controls panel - hidden by default, slide in from left */
     .controls {
       position: absolute;
       top: 60px;
@@ -77,6 +75,7 @@
     .controls.visible {
       left: 10px;
     }
+    /* Custom checkboxes */
     .controls input[type="checkbox"] {
       appearance: none;
       width: 20px;
@@ -121,6 +120,7 @@
     }
     .subgroup { margin-left: 24px; }
     .subgroup label { font-size: 14px; }
+    /* Loader */
     #loader {
       position: absolute;
       top: 10px;
@@ -132,6 +132,7 @@
       border-radius: 10px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+    /* Progress Overlay */
     #progress-overlay {
       position: fixed;
       top: 0;
@@ -156,6 +157,14 @@
     #progress-bar { width: 100%; height: 24px; background: #e5e7eb; border-radius: 12px; overflow: hidden; }
     #progress-fill { height: 100%; background: #10b981; width: 0; transition: width 0.3s ease; }
     #progress-text { margin-top: 8px; font-size: 16px; color: #374151; }
+    /* Leaflet Popup Styles */
+    .leaflet-popup-content {
+      padding: 1px;
+      font-size: 16px;
+      line-height: 1;
+    }
+    .leaflet-popup-tip { border-top-color: white; }
+    /* Buttons in Popup */
     .popup-btn {
       margin-top: 8px;
       padding: 8px 16px;
@@ -171,6 +180,7 @@
     .share-btn { background: #3b82f6; }
     .edit-btn { background: #f59e0b; }
     .route-btn { background: #10b981; }
+    /* Legend */
     .legend {
       background: white;
       padding: 8px;
@@ -188,6 +198,7 @@
       gap: 8px;
       font-size: 12px;
     }
+    /* Mobile adaptations */
     @media (max-width: 640px) {
       .toolbar {
         flex-direction: row;
@@ -416,7 +427,7 @@
     const overlayMaps = {};
     const territoryStatuses = {};
     const territoryTypes = {};
-    const territoryDaysFree = {};
+    const territoryDays = {};
     let layersControl = null;
     const loadedLayers = [];
 
@@ -438,14 +449,14 @@
       else targetId = `district${rawTarget}`;
     }
 
-    districts.sort((a,b) => {
-      const na = parseInt(a.id.replace('district',''),10);
-      const nb = parseInt(b.id.replace('district',''),10);
+    districts.sort((a, b) => {
+      const na = parseInt(a.id.replace('district', ''), 10);
+      const nb = parseInt(b.id.replace('district', ''), 10);
       return na - nb;
     });
 
-    function showLoadingText(txt){ document.getElementById('loader').innerText = txt || ''; }
-    function updateProgress(percentage){
+    function showLoadingText(txt) { document.getElementById('loader').innerText = txt || ''; }
+    function updateProgress(percentage) {
       const progressOverlay = document.getElementById('progress-overlay');
       const progressFill = document.getElementById('progress-fill');
       const progressText = document.getElementById('progress-text');
@@ -460,20 +471,14 @@
       }
     }
 
-    function interpolateColor(color1, color2, factor) {
-      const result = color1.slice(1).match(/.{2}/g).map((hex, i) => {
-        const c1 = parseInt(hex, 16);
-        const c2 = parseInt(color2.slice(1).match(/.{2}/g)[i], 16);
-        const interpolated = Math.round(c1 + (c2 - c1) * factor);
-        return interpolated.toString(16).padStart(2, '0');
-      });
-      return `#${result.join('')}`;
-    }
-
-    function getFillColorForDays(days) {
-      if (days > 360) return '#333333';
-      const factor = Math.min(days / 360, 1);
-      return interpolateColor('#00FF00', '#FF0000', factor);
+    function getColorGradient(days, maxDays) {
+      const startColor = [128, 0, 0]; // Темно-червоний (RGB)
+      const endColor = [255, 192, 203]; // Світло-червоний (RGB)
+      const ratio = Math.min(days / maxDays, 1);
+      const r = Math.round(startColor[0] + (endColor[0] - startColor[0]) * (1 - ratio));
+      const g = Math.round(startColor[1] + (endColor[1] - startColor[1]) * (1 - ratio));
+      const b = Math.round(startColor[2] + (endColor[2] - startColor[2]) * (1 - ratio));
+      return `rgb(${r}, ${g}, ${b})`;
     }
 
     function addLegend() {
@@ -482,9 +487,8 @@
         const div = L.DomUtil.create('div', 'legend');
         div.innerHTML = `
           <h4>Дні у статусі "вільно"</h4>
-          <div><span style="background: #00FF00; width: 20px; height: 10px; display: inline-block;"></span> 0 днів</div>
-          <div><span style="background: #FF0000; width: 20px; height: 10px; display: inline-block;"></span> 360 днів</div>
-          <div><span style="background: #333333; width: 20px; height: 10px; display: inline-block;"></span> Понад 360 днів</div>
+          <div><span style="background: #800000; width: 20px; height: 10px; display: inline-block;"></span> Більше днів</div>
+          <div><span style="background: #FFC0CB; width: 20px; height: 10px; display: inline-block;"></span> Менше днів</div>
         `;
         return div;
       };
@@ -506,24 +510,21 @@
         territoriesBtn.style.display = 'none';
         takenControl.style.display = 'block';
         freeControl.style.display = 'block';
-        Object.keys(territoryStatuses).forEach(id => {
-          territoryStatuses[id] = "вільно";
-          territoryDaysFree[id] = 0;
-        });
+        Object.keys(territoryStatuses).forEach(id => territoryStatuses[id] = "вільно");
         updateTerritoriesDisplay();
       }
     });
 
     logoutBtn?.addEventListener("click", async () => { await signOut(auth); layersControl = null; location.reload(); });
 
-    async function getTerritoryStatusPopup(number, name){
+    async function getTerritoryStatusPopup(number, name) {
       try {
-        const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp","desc"));
+        const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
         const snap = await getDocs(q);
         let popup = `<b class="text-lg font-bold">${name}</b><br>`;
         if (snap.empty) {
           popup += `<b>Статус:</b> вільно`;
-          territoryDaysFree[`district${number}`] = 0;
+          territoryDays[`district${number}`] = 0;
         } else {
           const latest = snap.docs[0].data();
           const status = latest.status === "на руках" ? "на руках" : "вільно";
@@ -534,11 +535,7 @@
             const today = new Date();
             const daysDiff = Math.floor((today - date) / (1000 * 60 * 60 * 24));
             popup += `<br><b>Днів ${status === "на руках" ? "на руках" : "вільно"}:</b> ${daysDiff}`;
-            if (status === "вільно") {
-              territoryDaysFree[`district${number}`] = daysDiff;
-            }
-          } else {
-            if (status === "вільно") territoryDaysFree[`district${number}`] = 0;
+            if (status === "вільно") territoryDays[`district${number}`] = daysDiff;
           }
           if (currentUser && status === "на руках") {
             popup += `<br><b>ПІБ:</b> ${latest.pib || "невідомо"}`;
@@ -550,40 +547,60 @@
           popup += `<br><a href="territory-detail.html?number=${number}"><button class="popup-btn edit-btn">✏️ Редагувати</button></a>`;
         }
         return popup;
-      } catch(err) {
+      } catch (err) {
         console.warn('getTerritoryStatusPopup error', err);
-        territoryDaysFree[`district${number}`] = 0;
+        territoryDays[`district${number}`] = 0;
         return `<b class="text-lg font-bold">${name}</b><br><b>Статус:</b> невідомий`;
       }
     }
 
-    async function updateTerritoryStatuses(){
+    async function updateTerritoryStatuses() {
+      const freeTerritories = [];
+
       for (const d of districts) {
         try {
-          const idNum = d.id.replace('district','');
-          const q = query(collection(db, `territories/${idNum}/history`), orderBy("timestamp","desc"));
+          const idNum = d.id.replace('district', '');
+          const q = query(collection(db, `territories/${idNum}/history`), orderBy("timestamp", "desc"));
           const snap = await getDocs(q);
+          let days = 0;
           if (!snap.empty) {
             const latest = snap.docs[0].data();
             territoryStatuses[d.id] = latest.status === "на руках" ? "на руках" : "вільно";
             if (territoryStatuses[d.id] === "вільно" && latest.dateProcess) {
               const date = new Date(latest.dateProcess);
               const today = new Date();
-              const daysDiff = Math.floor((today - date) / (1000 * 60 * 60 * 24));
-              territoryDaysFree[d.id] = daysDiff;
-            } else {
-              territoryDaysFree[d.id] = 0;
+              days = Math.floor((today - date) / (1000 * 60 * 60 * 24));
             }
           } else {
             territoryStatuses[d.id] = "вільно";
-            territoryDaysFree[d.id] = 0;
           }
-        } catch(e) {
+          if (territoryStatuses[d.id] === "вільно") {
+            freeTerritories.push({ id: d.id, name: d.name, days });
+            territoryDays[d.id] = days;
+          }
+        } catch (e) {
           console.warn(`Помилка для ${d.id}:`, e);
           territoryStatuses[d.id] = "вільно";
-          territoryDaysFree[d.id] = 0;
+          freeTerritories.push({ id: d.id, name: d.name, days: 0 });
+          territoryDays[d.id] = 0;
         }
       }
+
+      freeTerritories.sort((a, b) => b.days - a.days);
+      const maxDays = 360;
+
+      freeTerritories.forEach((territory) => {
+        const layer = loadedLayers.find(l => l.id === territory.id);
+        if (layer) {
+          const color = getColorGradient(territory.days, maxDays);
+          layer.geoJsonLayer.setStyle({
+            color: color,
+            fillColor: color,
+            fillOpacity: 0.4
+          });
+        }
+      });
+
       updateTerritoriesDisplay();
     }
 
@@ -601,29 +618,22 @@
         data.features.forEach((feature) => {
           const d = districts.find(x => x.id === feature.id);
           if (!d) {
-            console.warn(`Не знайдено опису для feature.id=${feature.id}`); 
+            console.warn(`Не знайдено опису для feature.id=${feature.id}`);
             loadedCount++;
-            updateProgress((loadedCount/totalDistricts)*100);
+            updateProgress((loadedCount / totalDistricts) * 100);
             return;
           }
 
           const layerGroup = L.layerGroup();
           const geoJsonLayer = L.geoJSON(feature, {
-            style: () => ({
-              color: d.color,
-              fillColor: territoryStatuses[d.id] === "вільно" ? getFillColorForDays(territoryDaysFree[d.id] || 0) : d.fillColor,
-              fillOpacity: 0.4
-            }),
+            style: { color: d.color, fillColor: d.fillColor, fillOpacity: 0.4 },
             onEachFeature: (feat, lyr) => {
               const center = lyr.getBounds().getCenter();
               districtCenters.push({ id: d.id, name: feat.properties?.name || d.name, latlng: center });
               lyr.on('click', async () => {
-                const idNum = d.id.replace('district','');
+                const idNum = d.id.replace('district', '');
                 const popupContent = await getTerritoryStatusPopup(idNum, d.name);
                 lyr.bindPopup(popupContent + `<br><button class="popup-btn route-btn" onclick="routeToDistrict('${d.name}')">📌 Маршрут</button>`).openPopup();
-                lyr.setStyle({
-                  fillColor: territoryStatuses[d.id] === "вільно" ? getFillColorForDays(territoryDaysFree[d.id] || 0) : d.fillColor
-                });
               });
             }
           });
@@ -632,7 +642,6 @@
           loadedLayers.push({ id: d.id, name: d.name, layerGroup, geoJsonLayer });
           overlayMaps[d.name] = layerGroup;
           territoryStatuses[d.id] = "вільно";
-          territoryDaysFree[d.id] = 0;
 
           if (!targetId) {
             map.addLayer(layerGroup);
@@ -642,7 +651,7 @@
               const bounds = geoJsonLayer.getBounds();
               if (bounds && bounds.isValid && bounds.isValid()) map.fitBounds(bounds.pad(0.15));
               (async () => {
-                const idNum = d.id.replace('district','');
+                const idNum = d.id.replace('district', '');
                 const popupContent = await getTerritoryStatusPopup(idNum, d.name);
                 geoJsonLayer.eachLayer(sub => sub.bindPopup(popupContent + `<br><button class="popup-btn route-btn" onclick="routeToDistrict('${d.name}')">📌 Маршрут</button>`).openPopup());
               })();
@@ -676,7 +685,7 @@
         });
         await Promise.all(typePromises);
 
-      } catch(err) {
+      } catch (err) {
         console.warn('Помилка при завантаженні all_districts.json:', err);
       }
 
@@ -696,7 +705,7 @@
         showLoadingText('');
         if (currentMarker) map.removeLayer(currentMarker);
         if (currentCircle) map.removeLayer(currentCircle);
-        currentCircle = L.circle(latlng, { radius: position.coords.accuracy, color:'blue', fillColor:'#30f', fillOpacity:0.2 }).addTo(map);
+        currentCircle = L.circle(latlng, { radius: position.coords.accuracy, color: 'blue', fillColor: '#30f', fillOpacity: 0.2 }).addTo(map);
         currentMarker = L.marker(latlng).addTo(map).bindPopup(`Ваше місцерозташування (точність ${Math.round(position.coords.accuracy)} м)`).openPopup();
         map.setView(latlng, 16);
       }, error => {
@@ -741,7 +750,7 @@
       if (navigator.share) {
         navigator.share({ title, text: `Територія: №${number}`, url }).catch(err => {
           console.warn('share failed', err);
-          try { navigator.clipboard.writeText(url); alert('Посилання скопійовано в буфер'); } catch(e){ prompt('Посилання на територію:', url); }
+          try { navigator.clipboard.writeText(url); alert('Посилання скопійовано в буфер'); } catch(e) { prompt('Посилання на територію:', url); }
         });
       } else {
         try {
@@ -795,9 +804,6 @@
         loadedLayers.forEach(item => {
           if (item.id === targetId) {
             if (!map.hasLayer(item.layerGroup)) map.addLayer(item.layerGroup);
-            item.geoJsonLayer.setStyle({
-              fillColor: territoryStatuses[item.id] === "вільно" ? getFillColorForDays(territoryDaysFree[item.id] || 0) : districts.find(d => d.id === item.id).fillColor
-            });
           } else {
             if (map.hasLayer(item.layerGroup)) map.removeLayer(item.layerGroup);
           }
@@ -805,7 +811,7 @@
         return;
       }
 
-      loadedLayers.forEach(({ id, layerGroup, geoJsonLayer }) => {
+      loadedLayers.forEach(({ id, layerGroup }) => {
         const status = territoryStatuses[id] || "вільно";
         const typeKey = territoryTypes[id];
         let shouldShow = false;
@@ -822,9 +828,6 @@
 
         if (shouldShow) {
           if (!map.hasLayer(layerGroup)) map.addLayer(layerGroup);
-          geoJsonLayer.setStyle({
-            fillColor: status === "вільно" ? getFillColorForDays(territoryDaysFree[id] || 0) : districts.find(d => d.id === id).fillColor
-          });
         } else {
           if (map.hasLayer(layerGroup)) map.removeLayer(layerGroup);
         }
@@ -848,7 +851,7 @@
       }
     }
 
-    function tryAddLayersControl(){
+    function tryAddLayersControl() {
       if (layersControl) return;
       const sortedOverlayMaps = {};
       loadedLayers.forEach(({ name, layerGroup }) => { sortedOverlayMaps[name] = layerGroup; });
