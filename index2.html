@@ -499,6 +499,7 @@
       try {
         const res = await fetch('all_districts.json');
         if (!res.ok) throw new Error(`Не вдалося завантажити all_districts.json: ${res.status}`);
+
         const data = await res.json();
 
         data.features.forEach((feature) => {
