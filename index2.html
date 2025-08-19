@@ -13,6 +13,7 @@
     html, body, #map {
       height: 100%; margin: 0; padding: 0;
     }
+    /* Toolbar for buttons */
     .toolbar {
       position: absolute;
       top: 10px;
@@ -42,21 +43,25 @@
     .toolbar button:active {
       transform: scale(0.95);
     }
+    /* Hide auth buttons initially based on state */
     #auth-buttons button { display: none; }
+    /* Filters button */
     button.filters-btn {
       background: #10b981;
       color: white;
       border: none;
     }
-    .leaflet-popup-content-wrapper {
-      border-radius: 8px;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.2);
-      max-width: 220px;
-    }
+.leaflet-popup-content-wrapper {
+  border-radius: 8px; /* Зменшено з 12px */
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2); /* Менша тінь */
+  max-width: 220px; /* Зменшено з 288px (приблизно) */
+}
+    
+    /* Controls panel - hidden by default, slide in from left */
     .controls {
       position: absolute;
       top: 60px;
-      left: -300px;
+      left: -300px; /* Hidden off-screen */
       width: 280px;
       z-index: 1000;
       background: white;
@@ -71,6 +76,7 @@
     .controls.visible {
       left: 10px;
     }
+    /* Custom checkboxes */
     .controls input[type="checkbox"] {
       appearance: none;
       width: 20px;
@@ -115,6 +121,7 @@
     }
     .subgroup { margin-left: 24px; }
     .subgroup label { font-size: 14px; }
+    /* Loader */
     #loader {
       position: absolute;
       top: 10px;
@@ -126,6 +133,7 @@
       border-radius: 10px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+    /* Progress Overlay */
     #progress-overlay {
       position: fixed;
       top: 0;
@@ -150,12 +158,19 @@
     #progress-bar { width: 100%; height: 24px; background: #e5e7eb; border-radius: 12px; overflow: hidden; }
     #progress-fill { height: 100%; background: #10b981; width: 0; transition: width 0.3s ease; }
     #progress-text { margin-top: 8px; font-size: 16px; color: #374151; }
+    /* Leaflet Popup Styles */
+    -wrapper {
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      padding: 0;
+    }
     .leaflet-popup-content {
       padding: 1px;
       font-size: 16px;
       line-height: 1;
     }
     .leaflet-popup-tip { border-top-color: white; }
+    /* Buttons in Popup */
     .popup-btn {
       margin-top: 8px;
       padding: 8px 16px;
@@ -171,23 +186,7 @@
     .share-btn { background: #3b82f6; }
     .edit-btn { background: #f59e0b; }
     .route-btn { background: #10b981; }
-    .legend {
-      background: white;
-      padding: 8px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    .legend h4 {
-      margin: 0 0 8px;
-      font-size: 14px;
-      font-weight: bold;
-    }
-    .legend div {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-    }
+    /* Mobile adaptations */
     @media (max-width: 640px) {
       .toolbar {
         flex-direction: row;
@@ -228,12 +227,12 @@
 
   <div class="toolbar">
     <button onclick="toggleControls()" class="filters-btn">⚙️ Фільтри</button>
-    <div id="auth-buttons">
+       <div id="auth-buttons">
       <a href="enter.html"><button class="login-btn">🔐 Увійти</button></a>
       <button class="logout-btn">🚪 Вийти</button>
       <a href="territories.html"><button class="territories-btn">🏞 Території</button></a>
     </div>
-    <button onclick="findLocation()" class="locate-btn">📍 Моє місцезнаходження</button>
+     <button onclick="findLocation()" class="locate-btn">📍 Моє місцезнаходження</button>
   </div>
 
   <div id="loader" class="bg-white border border-gray-300 rounded-lg shadow-md"></div>
@@ -275,7 +274,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, collection, query, orderBy, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getFirestore, collection, query, orderBy, getDocs, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
@@ -307,12 +306,115 @@
       attribution: '© Esri', maxZoom: 20
     });
 
+    const districts = [
+      { id: 'district1', name: 'Територія 1' },
+      { id: 'district2', name: 'Територія 2' },
+      { id: 'district3', name: 'Територія 3' },
+      { id: 'district4', name: 'Територія 4' },
+      { id: 'district5', name: 'Територія 5' },
+      { id: 'district6', name: 'Територія 6' },
+      { id: 'district7', name: 'Територія 7' },
+      { id: 'district8', name: 'Територія 8' },
+      { id: 'district9', name: 'Територія 9' },
+      { id: 'district10', name: 'Територія 10' },
+      { id: 'district11', name: 'Територія 11' },
+      { id: 'district12', name: 'Територія 12' },
+      { id: 'district13', name: 'Територія 13' },
+      { id: 'district14', name: 'Територія 14' },
+      { id: 'district15', name: 'Територія 15' },
+      { id: 'district16', name: 'Територія 16' },
+      { id: 'district17', name: 'Територія 17' },
+      { id: 'district18', name: 'Територія 18' },
+      { id: 'district19', name: 'Територія 19' },
+      { id: 'district20', name: 'Територія 20' },
+      { id: 'district21', name: 'Територія 21' },
+      { id: 'district22', name: 'Територія 22' },
+      { id: 'district23', name: 'Територія 23' },
+      { id: 'district24', name: 'Територія 24' },
+      { id: 'district25', name: 'Територія 25' },
+      { id: 'district26', name: 'Територія 26' },
+      { id: 'district28', name: 'Територія 28' },
+      { id: 'district29', name: 'Територія 29' },
+      { id: 'district30', name: 'Територія 30' },
+      { id: 'district31', name: 'Територія 31' },
+      { id: 'district32', name: 'Територія 32' },
+      { id: 'district33', name: 'Територія 33' },
+      { id: 'district34', name: 'Територія 34' },
+      { id: 'district35', name: 'Територія 35' },
+      { id: 'district36', name: 'Територія 36' },
+      { id: 'district37', name: 'Територія 37' },
+      { id: 'district38', name: 'Територія 38' },
+      { id: 'district39', name: 'Територія 39' },
+      { id: 'district40', name: 'Територія 40' },
+      { id: 'district41', name: 'Територія 41' },
+      { id: 'district42', name: 'Територія 42' },
+      { id: 'district43', name: 'Територія 43' },
+      { id: 'district44', name: 'Територія 44' },
+      { id: 'district45', name: 'Територія 45' },
+      { id: 'district46', name: 'Територія 46' },
+      { id: 'district47', name: 'Територія 47' },
+      { id: 'district48', name: 'Територія 48' },
+      { id: 'district49', name: 'Територія 49' },
+      { id: 'district50', name: 'Територія 50' },
+      { id: 'district51', name: 'Територія 51' },
+      { id: 'district52', name: 'Територія 52' },
+      { id: 'district53', name: 'Територія 53' },
+      { id: 'district54', name: 'Територія 54' },
+      { id: 'district55', name: 'Територія 55' },
+      { id: 'district56', name: 'Територія 56' },
+      { id: 'district57', name: 'Територія 57' },
+      { id: 'district58', name: 'Територія 58' },
+      { id: 'district59', name: 'Територія 59' },
+      { id: 'district60', name: 'Територія 60' },
+      { id: 'district61', name: 'Територія 61' },
+      { id: 'district62', name: 'Територія 62' },
+      { id: 'district63', name: 'Територія 63' },
+      { id: 'district64', name: 'Територія 64' },
+      { id: 'district65', name: 'Територія 65' },
+      { id: 'district66', name: 'Територія 66' },
+      { id: 'district67', name: 'Територія 67' },
+      { id: 'district68', name: 'Територія 68' },
+      { id: 'district69', name: 'Територія 69' },
+      { id: 'district70', name: 'Територія 70' },
+      { id: 'district71', name: 'Територія 71' },
+      { id: 'district72', name: 'Територія 72' },
+      { id: 'district73', name: 'Територія 73' },
+      { id: 'district74', name: 'Територія 74' },
+      { id: 'district75', name: 'Територія 75' },
+      { id: 'district76', name: 'Територія 76' },
+      { id: 'district77', name: 'Територія 77' },
+      { id: 'district78', name: 'Територія 78' },
+      { id: 'district79', name: 'Територія 79' },
+      { id: 'district80', name: 'Територія 80' },
+      { id: 'district81', name: 'Територія 81' },
+      { id: 'district82', name: 'Територія 82' },
+      { id: 'district83', name: 'Територія 83' },
+      { id: 'district84', name: 'Територія 84' },
+      { id: 'district85', name: 'Територія 85' },
+      { id: 'district86', name: 'Територія 86' },
+      { id: 'district87', name: 'Територія 87' },
+      { id: 'district88', name: 'Територія 88' },
+      { id: 'district89', name: 'Територія 89' },
+      { id: 'district90', name: 'Територія 90' },
+      { id: 'district91', name: 'Територія 91' },
+      { id: 'district92', name: 'Територія 92' },
+      { id: 'district93', name: 'Територія 93' },
+      { id: 'district94', name: 'Територія 94' },
+      { id: 'district95', name: 'Територія 95' },
+      { id: 'district96', name: 'Територія 96' },
+      { id: 'district97', name: 'Територія 97' },
+      { id: 'district98', name: 'Територія 98' },
+      { id: 'district99', name: 'Територія 99' },
+      { id: 'district100', name: 'Територія 100' },
+      { id: 'district101', name: 'Територія 101' },
+      { id: 'district102', name: 'Територія 102' }
+    ];
+
     const districtCenters = [];
     const districtGeometries = [];
     const overlayMaps = {};
-    const territoryStatuses = {};
+    const territoryInfo = {};
     const territoryTypes = {};
-    const territoryDays = {};
     let layersControl = null;
     const loadedLayers = [];
 
@@ -328,10 +430,20 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     let rawTarget = urlParams.get("territory");
-    let targetId = rawTarget ? (rawTarget.startsWith('district') ? rawTarget : `district${rawTarget}`) : null;
+    let targetId = null;
+    if (rawTarget) {
+      if (rawTarget.startsWith('district')) targetId = rawTarget;
+      else targetId = `district${rawTarget}`;
+    }
 
-    function showLoadingText(txt) { document.getElementById('loader').innerText = txt || ''; }
-    function updateProgress(percentage) {
+    districts.sort((a,b) => {
+      const na = parseInt(a.id.replace('district',''),10);
+      const nb = parseInt(b.id.replace('district',''),10);
+      return na - nb;
+    });
+
+    function showLoadingText(txt){ document.getElementById('loader').innerText = txt || ''; }
+    function updateProgress(percentage){
       const progressOverlay = document.getElementById('progress-overlay');
       const progressFill = document.getElementById('progress-fill');
       const progressText = document.getElementById('progress-text');
@@ -341,43 +453,9 @@
         progressText.innerText = `${Math.round(percentage)}%`;
       } else {
         progressOverlay.style.display = 'none';
+        progressFill.style.width = `100%`;
+        progressText.innerText = `100%`;
       }
-    }
-
-    function getColorGradient(days, status) {
-      const maxDays = 360;
-      const ratio = Math.min(days / maxDays, 1);
-      if (status === "вільно") {
-        const startColor = [255, 192, 203]; // Світло-червоний
-        const endColor = [128, 0, 0]; // Темно-червоний
-        const r = Math.round(startColor[0] + (endColor[0] - startColor[0]) * ratio);
-        const g = Math.round(startColor[1] + (endColor[1] - startColor[1]) * ratio);
-        const b = Math.round(startColor[2] + (endColor[2] - startColor[2]) * ratio);
-        return `rgb(${r}, ${g}, ${b})`;
-      } else {
-        const startColor = [173, 216, 230]; // Світло-синій
-        const endColor = [0, 0, 139]; // Темно-синій
-        const r = Math.round(startColor[0] + (endColor[0] - startColor[0]) * ratio);
-        const g = Math.round(startColor[1] + (endColor[1] - startColor[1]) * ratio);
-        const b = Math.round(startColor[2] + (endColor[2] - startColor[2]) * ratio);
-        return `rgb(${r}, ${g}, ${b})`;
-      }
-    }
-
-    function addLegend() {
-      const legend = L.control({ position: 'bottomright' });
-      legend.onAdd = function () {
-        const div = L.DomUtil.create('div', 'legend');
-        div.innerHTML = `
-          <h4>Легенда</h4>
-          <div><span style="background: #ADD8E6; width: 20px; height: 10px; display: inline-block;"></span> На руках: 0 днів</div>
-          <div><span style="background: #00008B; width: 20px; height: 10px; display: inline-block;"></span> На руках: ≥360 днів</div>
-          <div><span style="background: #FFC0CB; width: 20px; height: 10px; display: inline-block;"></span> Вільно: 0 днів</div>
-          <div><span style="background: #800000; width: 20px; height: 10px; display: inline-block;"></span> Вільно: ≥360 днів</div>
-        `;
-        return div;
-      };
-      legend.addTo(map);
     }
 
     onAuthStateChanged(auth, user => {
@@ -395,146 +473,160 @@
         territoriesBtn.style.display = 'none';
         takenControl.style.display = 'block';
         freeControl.style.display = 'block';
-        Object.keys(territoryStatuses).forEach(id => territoryStatuses[id] = "вільно");
+        Object.keys(territoryInfo).forEach(id => territoryInfo[id] = {status: "вільно", days: 0});
         updateTerritoriesDisplay();
       }
     });
 
-    logoutBtn?.addEventListener("click", async () => {
-      await signOut(auth);
-      layersControl = null;
-      location.reload();
-    });
+    logoutBtn?.addEventListener("click", async () => { await signOut(auth); layersControl = null; location.reload(); });
 
-    async function getTerritoryStatusPopup(number, name) {
-      try {
-        const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp", "desc"));
-        const snap = await getDocs(q);
-        let popup = `<b class="text-lg font-bold">${name}</b><br>`;
-        if (snap.empty) {
-          popup += `<b>Статус:</b> вільно`;
-          territoryDays[`district${number}`] = 0;
-        } else {
-          const latest = snap.docs[0].data();
-          const status = latest.status === "на руках" ? "на руках" : "вільно";
-          popup += `<b>Статус:</b> ${status}`;
-          const dateField = status === "вільно" ? latest.dateProcess : latest.dateGet;
-          if (dateField) {
-            const date = new Date(dateField);
-            const today = new Date();
-            const daysDiff = Math.floor((today - date) / (1000 * 60 * 60 * 24));
-            popup += `<br><b>Днів ${status === "на руках" ? "на руках" : "вільно"}:</b> ${daysDiff}`;
-            territoryDays[`district${number}`] = daysDiff;
-          }
-          if (currentUser && status === "на руках") {
-            popup += `<br><b>ПІБ:</b> ${latest.pib || "невідомо"}`;
-            popup += `<br><b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
-          }
-        }
-        popup += `<br><button onclick="shareTerritory('${number}')" class="popup-btn share-btn">🔗 Поділитися</button>`;
-        if (currentUser) {
-          popup += `<br><a href="territory-detail.html?number=${number}"><button class="popup-btn edit-btn">✏️ Редагувати</button></a>`;
-        }
-        return popup;
-      } catch (err) {
-        console.warn('getTerritoryStatusPopup error', err);
-        territoryDays[`district${number}`] = 0;
-        return `<b class="text-lg font-bold">${name}</b><br><b>Статус:</b> невідомий`;
+async function getTerritoryStatusPopup(number, name){
+  try {
+    const q = query(collection(db, `territories/${number}/history`), orderBy("timestamp","desc"));
+    const snap = await getDocs(q);
+    let popup = `<b class="text-lg font-bold">${name}</b><br>`;
+    if (snap.empty) {
+      popup += `<b>Статус:</b> вільно`;
+    } else {
+      const latest = snap.docs[0].data();
+      const status = latest.status === "на руках" ? "на руках" : "вільно";
+      popup += `<b>Статус:</b> ${status}`;
+      const dateField = status === "на руках" ? latest.dateGet : latest.dateProcess;
+      if (dateField) {
+        const date = new Date(dateField);
+        const today = new Date();
+        const daysDiff = Math.floor((today - date) / (1000 * 60 * 60 * 24));
+        popup += `<br><b>Днів ${status === "на руках" ? "на руках" : "вільно"}:</b> ${daysDiff}`;
+      }
+      if (currentUser && status === "на руках") {
+        popup += `<br><b>ПІБ:</b> ${latest.pib || "невідомо"}`;
+        popup += `<br><b>Дата отримання:</b> ${latest.dateGet ? new Date(latest.dateGet).toLocaleDateString("uk-UA") : "невідомо"}`;
       }
     }
+    popup += `<br><button onclick="shareTerritory('${number}')" class="popup-btn share-btn">🔗 Поділитися</button>`;
+    if (currentUser) {
+      popup += `<br><a href="territory-detail.html?number=${number}"><button class="popup-btn edit-btn">✏️ Редагувати</button></a>`;
+    }
+    return popup;
+  } catch(err) {
+    console.warn('getTerritoryStatusPopup error', err);
+    return `<b class="text-lg font-bold">${name}</b><br><b>Статус:</b> невідомий`;
+  }
+}
 
-    async function updateTerritoryStatuses() {
-      const territories = [];
-
-      for (let i = 1; i <= 102; i++) {
-        const id = `district${i}`;
-        const name = `Територія ${i}`;
-        try {
-          const q = query(collection(db, `territories/${i}/history`), orderBy("timestamp", "desc"));
-          const snap = await getDocs(q);
-          let days = 0;
-          if (!snap.empty) {
-            const latest = snap.docs[0].data();
-            territoryStatuses[id] = latest.status === "на руках" ? "на руках" : "вільно";
-            const dateField = territoryStatuses[id] === "вільно" ? latest.dateProcess : latest.dateGet;
-            if (dateField) {
-              const date = new Date(dateField);
-              const today = new Date();
-              days = Math.floor((today - date) / (1000 * 60 * 60 * 24));
-            }
-          } else {
-            territoryStatuses[id] = "вільно";
-          }
-          territoryDays[id] = days;
-          territories.push({ id, name, days, status: territoryStatuses[id] });
-        } catch (e) {
-          console.warn(`Помилка для ${id}:`, e);
-          territoryStatuses[id] = "вільно";
-          territoryDays[id] = 0;
-          territories.push({ id, name, days: 0, status: "вільно" });
-        }
+    function getFillColor(status, days) {
+      let startRGB, endRGB;
+      if (status === "вільно") {
+        startRGB = [255, 200, 200]; // світло червоний #FFC8C8
+        endRGB = [139, 0, 0]; // темно червоний #8B0000
+      } else if (status === "на руках") {
+        startRGB = [200, 200, 255]; // світло синій #C8C8FF
+        endRGB = [0, 0, 139]; // темно синій #00008B
+      } else {
+        return '#CCCCCC'; // сірий для невідомо
       }
+      const factor = Math.min(days / 360, 1);
+      const r = Math.round(startRGB[0] + factor * (endRGB[0] - startRGB[0]));
+      const g = Math.round(startRGB[1] + factor * (endRGB[1] - startRGB[1]));
+      const b = Math.round(startRGB[2] + factor * (endRGB[2] - startRGB[2]));
+      return `rgb(${r},${g},${b})`;
+    }
 
-      territories.forEach((territory) => {
-        const layer = loadedLayers.find(l => l.id === territory.id);
-        if (layer) {
-          const color = getColorGradient(territory.days, territory.status);
-          layer.geoJsonLayer.setStyle({
-            color: color,
-            fillColor: color,
-            fillOpacity: 0.4
-          });
+    function updateStyles() {
+      loadedLayers.forEach(({id, geoJsonLayer}) => {
+        const info = territoryInfo[id];
+        if (info) {
+          const fill = getFillColor(info.status, info.days);
+          const border = info.status === "вільно" ? '#8B0000' : '#00008B';
+          geoJsonLayer.setStyle({fillColor: fill, color: border, fillOpacity: 0.4, weight: 2});
         }
       });
+    }
 
-      updateTerritoriesDisplay();
+    function updateTerritoryStatuses(){
+      districts.forEach(d => {
+        try {
+          const idNum = d.id.replace('district','');
+          const q = query(collection(db, `territories/${idNum}/history`), orderBy("timestamp","desc"));
+          onSnapshot(q, snap => {
+            if (!snap || snap.empty) {
+              territoryInfo[d.id] = {status: "вільно", days: 0};
+            } else {
+              const latest = snap.docs[0].data();
+              const status = latest.status === "на руках" ? "на руках" : "вільно";
+              const dateField = status === "на руках" ? latest.dateGet : latest.dateProcess;
+              let days = 0;
+              if (dateField) {
+                const date = new Date(dateField);
+                const today = new Date();
+                days = Math.floor((today - date) / (1000 * 60 * 60 * 24));
+              }
+              territoryInfo[d.id] = {status, days};
+            }
+            updateTerritoriesDisplay();
+          }, err => {
+            console.warn(`Помилка onSnapshot для ${d.id}:`, err);
+            territoryInfo[d.id] = {status: "вільно", days: 0};
+            updateTerritoriesDisplay();
+          });
+        } catch(e) {
+          console.warn('updateTerritoryStatuses catch', e);
+        }
+      });
     }
 
     (async () => {
       showLoadingText('Завантаження територій...');
       updateProgress(0);
       let loadedCount = 0;
-      const totalDistricts = 102;
+      const totalDistricts = districts.length;
 
       try {
         const res = await fetch('all_districts.json');
         if (!res.ok) throw new Error(`Не вдалося завантажити all_districts.json: ${res.status}`);
-
         const data = await res.json();
 
         data.features.forEach((feature) => {
-          const id = feature.id;
-          const name = `Територія ${id.replace('district', '')}`;
+          const d = districts.find(x => x.id === feature.id);
+          if (!d) {
+            console.warn(`Не знайдено опису для feature.id=${feature.id}`); 
+            loadedCount++;
+            updateProgress((loadedCount/totalDistricts)*100);
+            return;
+          }
+
           const layerGroup = L.layerGroup();
           const geoJsonLayer = L.geoJSON(feature, {
-            style: { color: '#FFC0CB', fillColor: '#FFC0CB', fillOpacity: 0.4 },
+            style: { color: '#808080', weight: 2, fillColor: '#FFFFFF', fillOpacity: 0.4 },
             onEachFeature: (feat, lyr) => {
               const center = lyr.getBounds().getCenter();
-              districtCenters.push({ id, name, latlng: center });
+              districtCenters.push({ id: d.id, name: feat.properties?.name || d.name, latlng: center });
               lyr.on('click', async () => {
-                const idNum = id.replace('district', '');
-                const popupContent = await getTerritoryStatusPopup(idNum, name);
-                lyr.bindPopup(popupContent + `<br><button class="popup-btn route-btn" onclick="routeToDistrict('${name}')">📌 Маршрут</button>`).openPopup();
+                const idNum = d.id.replace('district','');
+                const popupContent = await getTerritoryStatusPopup(idNum, d.name);
+                lyr.bindPopup(popupContent + `<br><button class="popup-btn route-btn" onclick="routeToDistrict('${d.name}')">📌 Маршрут</button>`).openPopup();
               });
             }
           });
 
           geoJsonLayer.addTo(layerGroup);
-          loadedLayers.push({ id, name, layerGroup, geoJsonLayer });
-          overlayMaps[name] = layerGroup;
-          territoryStatuses[id] = "вільно";
+          loadedLayers.push({ id: d.id, name: d.name, layerGroup, geoJsonLayer });
+          overlayMaps[d.name] = layerGroup;
+          territoryInfo[d.id] = {status: "вільно", days: 0};
 
           if (!targetId) {
             map.addLayer(layerGroup);
-          } else if (id === targetId) {
-            map.addLayer(layerGroup);
-            const bounds = geoJsonLayer.getBounds();
-            if (bounds && bounds.isValid()) map.fitBounds(bounds.pad(0.15));
-            (async () => {
-              const idNum = id.replace('district', '');
-              const popupContent = await getTerritoryStatusPopup(idNum, name);
-              geoJsonLayer.eachLayer(sub => sub.bindPopup(popupContent + `<br><button class="popup-btn route-btn" onclick="routeToDistrict('${name}')">📌 Маршрут</button>`).openPopup());
-            })();
+          } else {
+            if (d.id === targetId) {
+              map.addLayer(layerGroup);
+              const bounds = geoJsonLayer.getBounds();
+              if (bounds && bounds.isValid && bounds.isValid()) map.fitBounds(bounds.pad(0.15));
+              (async () => {
+                const idNum = d.id.replace('district','');
+                const popupContent = await getTerritoryStatusPopup(idNum, d.name);
+                geoJsonLayer.eachLayer(sub => sub.bindPopup(popupContent + `<br><button class="popup-btn route-btn" onclick="routeToDistrict('${d.name}')">📌 Маршрут</button>`).openPopup());
+              })();
+            }
           }
 
           const coordinates = [];
@@ -545,28 +637,32 @@
             if (geom.type === "Polygon") coords.forEach(pushCoords);
             if (geom.type === "MultiPolygon") coords.forEach(polygon => polygon.forEach(pushCoords));
           });
-          districtGeometries.push({ id, name, coordinates });
+          districtGeometries.push({ id: d.id, name: d.name, coordinates });
 
           loadedCount++;
           updateProgress((loadedCount / totalDistricts) * 100);
         });
 
-        const typePromises = Array.from({length: 102}, (_, i) => {
-          const idNum = i + 1;
-          const docRef = doc(db, 'territories', idNum.toString());
-          return getDoc(docRef).then(snap => {
-            territoryTypes[`district${idNum}`] = snap.exists() ? (typeMap[snap.data().type] || 'невідомо') : 'невідомо';
-          });
+        const typePromises = districts.map(async (d) => {
+          const idNum = d.id.replace('district', '');
+          const docRef = doc(db, 'territories', idNum);
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const dbType = snap.data().type || 'невідомо';
+            territoryTypes[d.id] = typeMap[dbType] || 'невідомо';
+          } else {
+            territoryTypes[d.id] = 'невідомо';
+          }
         });
         await Promise.all(typePromises);
 
-      } catch (err) {
+      } catch(err) {
         console.warn('Помилка при завантаженні all_districts.json:', err);
       }
 
       showLoadingText('');
       tryAddLayersControl();
-      addLegend();
+      updateTerritoriesDisplay();
       updateTerritoryStatuses();
     })();
 
@@ -580,7 +676,7 @@
         showLoadingText('');
         if (currentMarker) map.removeLayer(currentMarker);
         if (currentCircle) map.removeLayer(currentCircle);
-        currentCircle = L.circle(latlng, { radius: position.coords.accuracy, color: 'blue', fillColor: '#30f', fillOpacity: 0.2 }).addTo(map);
+        currentCircle = L.circle(latlng, { radius: position.coords.accuracy, color:'blue', fillColor:'#30f', fillOpacity:0.2 }).addTo(map);
         currentMarker = L.marker(latlng).addTo(map).bindPopup(`Ваше місцерозташування (точність ${Math.round(position.coords.accuracy)} м)`).openPopup();
         map.setView(latlng, 16);
       }, error => {
@@ -625,7 +721,7 @@
       if (navigator.share) {
         navigator.share({ title, text: `Територія: №${number}`, url }).catch(err => {
           console.warn('share failed', err);
-          try { navigator.clipboard.writeText(url); alert('Посилання скопійовано в буфер'); } catch(e) { prompt('Посилання на територію:', url); }
+          try { navigator.clipboard.writeText(url); alert('Посилання скопійовано в буфер'); } catch(e){ prompt('Посилання на територію:', url); }
         });
       } else {
         try {
@@ -645,15 +741,15 @@
 
       const toggleAll = toggleAllCheckbox?.checked ?? true;
 
-      const totalCount = 102;
+      const totalCount = districts.length;
       let takenCount = 0;
       let freeCount = 0;
       const takenSubCounts = {};
       const freeSubCounts = {};
       subTypes.forEach(t => { takenSubCounts[t] = 0; freeSubCounts[t] = 0; });
 
-      Object.keys(territoryStatuses).forEach(id => {
-        const status = territoryStatuses[id];
+      Object.keys(territoryInfo).forEach(id => {
+        const status = territoryInfo[id]?.status || "вільно";
         const typeKey = territoryTypes[id];
         if (status === "на руках") {
           takenCount++;
@@ -683,11 +779,12 @@
             if (map.hasLayer(item.layerGroup)) map.removeLayer(item.layerGroup);
           }
         });
+        updateStyles();
         return;
       }
 
       loadedLayers.forEach(({ id, layerGroup }) => {
-        const status = territoryStatuses[id] || "вільно";
+        const status = territoryInfo[id]?.status || "вільно";
         const typeKey = territoryTypes[id];
         let shouldShow = false;
 
@@ -707,6 +804,7 @@
           if (map.hasLayer(layerGroup)) map.removeLayer(layerGroup);
         }
       });
+      updateStyles();
     }
 
     function updateParentState(statusPrefix) {
@@ -726,7 +824,7 @@
       }
     }
 
-    function tryAddLayersControl() {
+    function tryAddLayersControl(){
       if (layersControl) return;
       const sortedOverlayMaps = {};
       loadedLayers.forEach(({ name, layerGroup }) => { sortedOverlayMaps[name] = layerGroup; });
@@ -828,6 +926,7 @@
 
       updateParentState('taken');
       updateParentState('free');
+
       updateTerritoriesDisplay();
     }
 
