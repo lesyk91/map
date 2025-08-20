@@ -287,7 +287,7 @@
     }
 
     async function fetchTerritoryTypes() {
-      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1).filter(n => n !== 27);
+      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1);
       const promises = territoryNumbers.map(async num => {
         try {
           const docRef = doc(db, `territories/${num}`);
@@ -311,7 +311,7 @@
       noRecordsTable.innerHTML = '';
       noRecordsData = [];
 
-      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1).filter(n => n !== 27);
+      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1);
       const totalTerritories = territoryNumbers.length;
       let territoryCount = 0;
 
@@ -360,7 +360,7 @@
       processedTable.innerHTML = '';
       processedData = [];
 
-      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1).filter(n => n !== 27);
+      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1);
       const totalTerritories = territoryNumbers.length;
       let territoryCount = 0;
 
