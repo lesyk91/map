@@ -287,7 +287,7 @@
     }
 
     async function fetchTerritoryTypes() {
-      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1);
+      const territoryNumbers = Array.from({ length: 117 }, (_, i) => i + 1);
       const promises = territoryNumbers.map(async num => {
         try {
           const docRef = doc(db, `territories/${num}`);
@@ -305,42 +305,48 @@
       });
     }
 
-    async function fetchNoRecords(typeFilter = '') {
-      loader.style.display = 'block';
-      updateProgress(0);
-      noRecordsTable.innerHTML = '';
-      noRecordsData = [];
+async function fetchNoRecords(typeFilter = '') {
+  try {
+    loader.style.display = 'block';
+    updateProgress(0);
+    noRecordsTable.innerHTML = '';
+    noRecordsData = [];
 
-      const territoryNumbers = Array.from({ length: 102 }, (_, i) => i + 1);
-      const totalTerritories = territoryNumbers.length;
-      let territoryCount = 0;
+    const territoryNumbers = Array.from({ length: 117 }, (_, i) => i + 1);
+    const totalTerritories = territoryNumbers.length;
+    let territoryCount = 0;
 
-      const promises = territoryNumbers.map(async num => {
-        const q = query(collection(db, `territories/${num}/history`), orderBy('timestamp', 'desc'));
-        const snap = await getDocs(q);
-        return { num, snap };
-      });
+    const promises = territoryNumbers.map(async num => {
+      const q = query(collection(db, `territories/${num}/history`), orderBy('timestamp', 'desc'));
+      const snap = await getDocs(q);
+      return { num, snap };
+    });
 
-      const results = await Promise.all(promises.map(p => p.catch(e => ({ num: null, snap: null, error: e }))));
+    const results = await Promise.all(promises.map(p => p.catch(e => ({ num: null, snap: null, error: e }))));
 
-      for (const { num, snap, error } of results) {
-        if (error) {
-          console.warn(`Помилка для території ${num}: ${error.message}`);
-          continue;
-        }
-        if (snap.empty && (!typeFilter || territoryTypes[num] === typeFilter)) {
-          noRecordsData.push({ number: num, type: territoryTypes[num] });
-        }
-        territoryCount++;
-        updateProgress((territoryCount / totalTerritories) * 100);
+    for (const { num, snap, error } of results) {
+      if (error) {
+        console.warn(`Помилка для території ${num}: ${error.message}`);
+        continue;
       }
-
-      noRecordsData = sortData('no-records-table', 'number', noRecordsData);
-      renderNoRecordsTable();
-      noRecordsCount.textContent = noRecordsData.length;
-      loader.style.display = 'none';
-      progressContainer.style.display = 'none';
+      if (snap.empty && (!typeFilter || territoryTypes[num] === typeFilter)) {
+        noRecordsData.push({ number: num, type: territoryTypes[num] });
+      }
+      territoryCount++;
+      updateProgress((territoryCount / totalTerritories) * 100);
     }
+
+    noRecordsData = sortData('no-records-table', 'number', noRecordsData);
+    renderNoRecordsTable();
+    noRecordsCount.textContent = noRecordsData.length;
+  } catch (err) {
+    console.error('Помилка в fetchNoRecords:', err);
+    alert('Виникла помилка під час завантаження даних. Спробуйте ще раз.');
+  } finally {
+    loader.style.display = 'none';
+    progressContainer.style.display = 'none';
+  }
+}
 
     function renderNoRecordsTable() {
       noRecordsTable.innerHTML = '';
@@ -354,51 +360,56 @@
       });
     }
 
-    async function fetchProcessed(daysFilter = 0, typeFilter = '') {
-      loader.style.display = 'block';
-      updateProgress(0);
-      processedTable.innerHTML = '';
-      processedData = [];
+async function fetchProcessed(daysFilter = 0, typeFilter = '') {
+  try {
+    loader.style.display = 'block';
+    updateProgress(0);
+    processedTable.innerHTML = '';
+    processedData = [];
 
-      const territoryNumbers = Array.from({ length: 117 }, (_, i) => i + 1);
-      const totalTerritories = territoryNumbers.length;
-      let territoryCount = 0;
+    const territoryNumbers = Array.from({ length: 117 }, (_, i) => i + 1);
+    const totalTerritories = territoryNumbers.length;
+    let territoryCount = 0;
 
-      const promises = territoryNumbers.map(async num => {
-        const q = query(collection(db, `territories/${num}/history`), orderBy('timestamp', 'desc'));
-        const snap = await getDocs(q);
-        return { num, snap };
-      });
+    const promises = territoryNumbers.map(async num => {
+      const q = query(collection(db, `territories/${num}/history`), orderBy('timestamp', 'desc'));
+      const snap = await getDocs(q);
+      return { num, snap };
+    });
 
-      const results = await Promise.all(promises.map(p => p.catch(e => ({ num: null, snap: null, error: e }))));
+    const results = await Promise.all(promises.map(p => p.catch(e => ({ num: null, snap: null, error: e }))));
 
-      for (const { num, snap, error } of results) {
-        if (error) {
-          console.warn(`Помилка для території ${num}: ${error.message}`);
-          continue;
-        }
-        if (!snap.empty) {
-          const latest = snap.docs[0].data();
-          if (latest.dateGet && latest.dateProcess) {
-            const processDate = new Date(latest.dateProcess);
-            const daysSinceProcessed = Math.floor((today - processDate) / (1000 * 60 * 60 * 24));
-            if (daysSinceProcessed >= daysFilter && (!typeFilter || territoryTypes[num] === typeFilter)) {
-              processedData.push({ number: num, type: territoryTypes[num], processDate, daysSinceProcessed });
-            }
+    for (const { num, snap, error } of results) {
+      if (error) {
+        console.warn(`Помилка для території ${num}: ${error.message}`);
+        continue;
+      }
+      if (!snap.empty) {
+        const latest = snap.docs[0].data();
+        if (latest.dateGet && latest.dateProcess) {
+          const processDate = new Date(latest.dateProcess);
+          const daysSinceProcessed = Math.floor((today - processDate) / (1000 * 60 * 60 * 24));
+          if (daysSinceProcessed >= daysFilter && (!typeFilter || territoryTypes[num] === typeFilter)) {
+            processedData.push({ number: num, type: territoryTypes[num], processDate, daysSinceProcessed });
           }
         }
-        territoryCount++;
-        updateProgress((territoryCount / totalTerritories) * 100);
       }
-
-      // Default sort by daysSinceProcessed in descending order
-      sortConfig = { table: 'processed-table', column: 'days', direction: 'desc' };
-      processedData = sortData('processed-table', 'days', processedData);
-      renderProcessedTable();
-      processedCount.textContent = processedData.length;
-      loader.style.display = 'none';
-      progressContainer.style.display = 'none';
+      territoryCount++;
+      updateProgress((territoryCount / totalTerritories) * 100);
     }
+
+    sortConfig = { table: 'processed-table', column: 'days', direction: 'desc' };
+    processedData = sortData('processed-table', 'days', processedData);
+    renderProcessedTable();
+    processedCount.textContent = processedData.length;
+  } catch (err) {
+    console.error('Помилка в fetchProcessed:', err);
+    alert('Виникла помилка під час завантаження даних. Спробуйте ще раз.');
+  } finally {
+    loader.style.display = 'none';
+    progressContainer.style.display = 'none';
+  }
+}
 
     function renderProcessedTable() {
       processedTable.innerHTML = '';
@@ -414,37 +425,42 @@
       });
     }
 
-    function sortData(tableId, column, data) {
-      const direction = sortConfig.table === tableId && sortConfig.column === column && sortConfig.direction === 'asc' ? 'asc' : 'desc'; 
-      sortConfig = { table: tableId, column, direction };
+function sortData(tableId, column, data) {
+  const direction = sortConfig.table === tableId && sortConfig.column === column && sortConfig.direction === 'asc' ? 'asc' : 'desc';
+  sortConfig = { table: tableId, column, direction };
 
-      const headers = document.querySelectorAll(`#${tableId} th`);
-      headers.forEach(header => {
-        header.classList.remove('sort-asc', 'sort-desc');
-        if (header.dataset.sort === column) {
-          header.classList.add(`sort-${direction}`);
-        }
-      });
-
-      const sortedData = [...data].sort((a, b) => {
-        let valA = a[column], valB = b[column];
-        if (column === 'processDate') {
-          valA = a.processDate.getTime();
-          valB = b.processDate.getTime();
-        } else if (column === 'number') {
-          valA = Number(valA.replace('Територія ', '')) || valA;
-          valB = Number(valB.replace('Територія ', '')) || valB;
-        } else if (column === 'days') {
-          valA = a.daysSinceProcessed;
-          valB = b.daysSinceProcessed;
-        }
-        if (valA < valB) return direction === 'asc' ? -1 : 1;
-        if (valA > valB) return direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-
-      return sortedData;
+  const headers = document.querySelectorAll(`#${tableId} th`);
+  headers.forEach(header => {
+    header.classList.remove('sort-asc', 'sort-desc');
+    if (header.dataset.sort === column) {
+      header.classList.add(`sort-${direction}`);
     }
+  });
+
+  const sortedData = [...data].sort((a, b) => {
+    let valA = a[column], valB = b[column];
+    if (column === 'processDate') {
+      valA = a.processDate.getTime();
+      valB = b.processDate.getTime();
+    } else if (column === 'number' && tableId === 'no-records-table') {
+      // For no-records-table, number is already a number, no need for replace
+      valA = Number(valA);
+      valB = Number(valB);
+    } else if (column === 'number' && tableId === 'processed-table') {
+      // For processed-table, number might need parsing if stored as a string
+      valA = Number(valA.replace('Територія ', '')) || valA;
+      valB = Number(valB.replace('Територія ', '')) || valB;
+    } else if (column === 'days') {
+      valA = a.daysSinceProcessed;
+      valB = b.daysSinceProcessed;
+    }
+    if (valA < valB) return direction === 'asc' ? -1 : 1;
+    if (valA > valB) return direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  return sortedData;
+}
 
     function addTableSorting() {
       const tables = ['no-records-table', 'processed-table'];
