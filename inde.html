@@ -871,19 +871,19 @@ async function getTerritoryStatusPopup(number, name){
 }
 window.searchTerritory = searchTerritory;
 	
-function tryAddLayersControl(){
+function tryAddLayersControl() {
   if (layersControl) return;
   const sortedOverlayMaps = {};
-  // Сортування територій за номером (залишаємо як є)
+  // Sort territories by number (as in original code)
   loadedLayers.forEach(({ name, layerGroup }) => { sortedOverlayMaps[name] = layerGroup; });
 
-  // Створення layersControl з базовими шарами та overlay-шарами
+  // Create layersControl with base layers and overlay layers
   layersControl = L.control.layers({ 
     "Стандартна карта": googleStreets, 
     "Супутникова карта": satellite 
   }, sortedOverlayMaps, { collapsed: true }).addTo(map);
 
-  // Додавання пошукового поля
+  // Add search input to layers control
   const layersControlContainer = document.querySelector('.leaflet-control-layers');
   const searchContainer = document.createElement('div');
   searchContainer.className = 'leaflet-control-layers-search';
@@ -893,17 +893,25 @@ function tryAddLayersControl(){
       <button onclick="searchTerritory()">Пошук</button>
     </div>
   `;
-  
-  // Зміна: Вставляємо пошукове поле після базових шарів, але перед overlay-шарами
-  const baseLayersSection = layersControlContainer.querySelector('.leaflet-control-layers-base');
-  if (baseLayersSection && baseLayersSection.nextSibling) {
-    layersControlContainer.insertBefore(searchContainer, baseLayersSection.nextSibling);
-  } else {
-    // Fallback: якщо базові шари не знайдені, додаємо в кінець
-    layersControlContainer.appendChild(searchContainer);
-  }
 
-  // Решта коду без змін (обробка подій для чекбоксів)
+  // Fix: Wait for DOM to be fully rendered and insert searchContainer after base layers
+  setTimeout(() => {
+    const baseLayersSection = layersControlContainer.querySelector('.leaflet-control-layers-base');
+    const overlaysSection = layersControlContainer.querySelector('.leaflet-control-layers-overlays');
+    
+    if (baseLayersSection && overlaysSection) {
+      // Insert searchContainer between base layers and overlay layers
+      layersControlContainer.insertBefore(searchContainer, overlaysSection);
+    } else if (baseLayersSection) {
+      // If overlays section is missing, append after base layers
+      layersControlContainer.appendChild(searchContainer);
+    } else {
+      // Fallback: append to container if base layers are not found
+      layersControlContainer.appendChild(searchContainer);
+    }
+  }, 0); // Delay to ensure DOM is updated
+
+  // Rest of the code (unchanged)
   const toggleAllCheckbox = document.getElementById('toggleAll');
   const toggleAllLabel = document.getElementById('toggleAllLabel');
   const showTakenCheckbox = document.getElementById('showTaken');
