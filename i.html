@@ -871,6 +871,7 @@ async function getTerritoryStatusPopup(number, name){
 }
 window.searchTerritory = searchTerritory;
 	
+
 function tryAddLayersControl(){
   if (layersControl) return;
   const sortedOverlayMaps = {};
@@ -878,22 +879,22 @@ function tryAddLayersControl(){
 
   layersControl = L.control.layers({ "Стандартна карта": googleStreets, "Супутникова карта": satellite }, sortedOverlayMaps, { collapsed: true }).addTo(map);
 
-  // Add search input to layers control
-  const layersControlContainer = document.querySelector('.leaflet-control-layers');
-  const baseLayersContainer = document.querySelector('.leaflet-control-layers-base');
-  const searchContainer = document.createElement('div');
-  searchContainer.className = 'leaflet-control-layers-search';
-  searchContainer.innerHTML = `
-    <div class="search-container">
-      <input type="number" id="territory-search-layers" placeholder="Номер території" min="1" max="117">
-      <button onclick="searchTerritory()">Пошук</button>
-    </div>
-  `;
-  if (baseLayersContainer && baseLayersContainer.nextSibling) {
-    layersControlContainer.insertBefore(searchContainer, baseLayersContainer.nextSibling);
-  } else {
-    layersControlContainer.appendChild(searchContainer);
-  }
+// Add search input to layers control
+const layersControlContainer = document.querySelector('.leaflet-control-layers');
+const baseLayersContainer = document.querySelector('.leaflet-control-layers-base');
+const searchContainer = document.createElement('div');
+searchContainer.className = 'leaflet-control-layers-search';
+searchContainer.innerHTML = `
+  <div class="search-container">
+    <input type="number" id="territory-search-layers" placeholder="Номер території" min="1" max="117">
+    <button onclick="searchTerritory()">Пошук</button>
+  </div>
+`;
+if (baseLayersContainer && baseLayersContainer.nextSibling) {
+  layersControlContainer.insertBefore(searchContainer, baseLayersContainer.nextSibling);
+} else {
+  layersControlContainer.appendChild(searchContainer);
+}
 
   const toggleAllCheckbox = document.getElementById('toggleAll');
   const toggleAllLabel = document.getElementById('toggleAllLabel');
