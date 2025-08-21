@@ -874,16 +874,16 @@ window.searchTerritory = searchTerritory;
 function tryAddLayersControl() {
   if (layersControl) return;
   const sortedOverlayMaps = {};
-  // Sort territories by number (as in original code)
+  // Сортування територій за номером (залишаємо як є)
   loadedLayers.forEach(({ name, layerGroup }) => { sortedOverlayMaps[name] = layerGroup; });
 
-  // Create layersControl with base layers and overlay layers
+  // Створення layersControl з базовими шарами та overlay-шарами
   layersControl = L.control.layers({ 
     "Стандартна карта": googleStreets, 
     "Супутникова карта": satellite 
   }, sortedOverlayMaps, { collapsed: true }).addTo(map);
 
-  // Add search input to layers control
+  // Додавання пошукового поля
   const layersControlContainer = document.querySelector('.leaflet-control-layers');
   const searchContainer = document.createElement('div');
   searchContainer.className = 'leaflet-control-layers-search';
@@ -894,24 +894,38 @@ function tryAddLayersControl() {
     </div>
   `;
 
-  // Fix: Wait for DOM to be fully rendered and insert searchContainer after base layers
-  setTimeout(() => {
+  // Фікс: Використовуємо MutationObserver для очікування появи секції overlays
+  const waitForLayers = () => {
     const baseLayersSection = layersControlContainer.querySelector('.leaflet-control-layers-base');
     const overlaysSection = layersControlContainer.querySelector('.leaflet-control-layers-overlays');
-    
+
     if (baseLayersSection && overlaysSection) {
-      // Insert searchContainer between base layers and overlay layers
+      // Вставляємо searchContainer між базовими шарами та overlay-шарами
       layersControlContainer.insertBefore(searchContainer, overlaysSection);
     } else if (baseLayersSection) {
-      // If overlays section is missing, append after base layers
+      // Якщо overlay-шари відсутні, додаємо після базових шарів
       layersControlContainer.appendChild(searchContainer);
     } else {
-      // Fallback: append to container if base layers are not found
+      // Fallback: додаємо в кінець контейнера
       layersControlContainer.appendChild(searchContainer);
     }
-  }, 0); // Delay to ensure DOM is updated
+  };
 
-  // Rest of the code (unchanged)
+  // Використовуємо MutationObserver для спостереження за змінами в DOM
+  const observer = new MutationObserver((mutations, obs) => {
+    if (layersControlContainer.querySelector('.leaflet-control-layers-base')) {
+      waitForLayers();
+      obs.disconnect(); // Припиняємо спостереження після вставки
+    }
+  });
+
+  // Починаємо спостереження за контейнером
+  observer.observe(layersControlContainer, { childList: true, subtree: true });
+
+  // На випадок, якщо DOM уже готовий, викликаємо одразу
+  waitForLayers();
+
+  // Решта коду без змін
   const toggleAllCheckbox = document.getElementById('toggleAll');
   const toggleAllLabel = document.getElementById('toggleAllLabel');
   const showTakenCheckbox = document.getElementById('showTaken');
