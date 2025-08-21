@@ -213,30 +213,33 @@
         right: 5px;
         padding: 6px 12px;
       }
-	  /* Search input and button */
-.search-container {
+	  /* Search input and button in layers control */
+.leaflet-control-layers-search {
+  padding: 8px;
+  border-bottom: 1px solid #d1d5db;
+}
+.leaflet-control-layers-search .search-container {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
 }
-.search-container input {
+.leaflet-control-layers-search input {
   flex: 1;
-  padding: 8px;
+  padding: 6px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 14px;
 }
-.search-container button {
-  padding: 8px 16px;
+.leaflet-control-layers-search button {
+  padding: 6px 12px;
   background: #10b981;
   color: white;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   transition: background 0.3s;
 }
-.search-container button:hover {
+.leaflet-control-layers-search button:hover {
   background: #0a6118;
 }
     }
@@ -291,13 +294,8 @@
       </div>
     </div>
   </div>
-<div class="search-container">
-  <input type="number" id="territory-search" placeholder="Введіть номер території" min="1" max="117">
-  <button onclick="searchTerritory()">Пошук</button>
-</div>
+
   <div id="map"></div>
-  
-  
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
@@ -830,9 +828,9 @@ async function getTerritoryStatusPopup(number, name){
         parentCheckbox.indeterminate = true;
       }
     }
-
-function searchTerritory() {
-  const searchInput = document.getElementById('territory-search');
+	
+	function searchTerritory() {
+  const searchInput = document.getElementById('territory-search-layers');
   const number = searchInput.value.trim();
   if (!number || isNaN(number) || number < 1 || number > 117) {
     alert('⚠ Введіть дійсний номер території (від 1 до 117)');
@@ -865,117 +863,132 @@ function searchTerritory() {
       sub.bindPopup(popupContent + `<br><button class="popup-btn route-btn" onclick="routeToDistrict('${targetLayer.name}')">📌 Маршрут</button>`).openPopup();
     });
   })();
-  // Optional: Clear search input
+  // Clear search input
   searchInput.value = '';
+  // Update toggleAll to reflect single territory display
+  document.getElementById('toggleAll').checked = false;
+  document.getElementById('toggleAllLabel').innerText = 'Показати всіх';
 }
 window.searchTerritory = searchTerritory;
+	
 
+function tryAddLayersControl(){
+  if (layersControl) return;
+  const sortedOverlayMaps = {};
+  loadedLayers.forEach(({ name, layerGroup }) => { sortedOverlayMaps[name] = layerGroup; });
 
-    function tryAddLayersControl(){
-      if (layersControl) return;
-      const sortedOverlayMaps = {};
-      loadedLayers.forEach(({ name, layerGroup }) => { sortedOverlayMaps[name] = layerGroup; });
+  layersControl = L.control.layers({ "Стандартна карта": googleStreets, "Супутникова карта": satellite }, sortedOverlayMaps, { collapsed: true }).addTo(map);
 
-      layersControl = L.control.layers({ "Стандартна карта": googleStreets, "Супутникова карта": satellite }, sortedOverlayMaps, { collapsed: true }).addTo(map);
+  // Add search input to layers control
+  const layersControlContainer = document.querySelector('.leaflet-control-layers');
+  const searchContainer = document.createElement('div');
+  searchContainer.className = 'leaflet-control-layers-search';
+  searchContainer.innerHTML = `
+    <div class="search-container">
+      <input type="number" id="territory-search-layers" placeholder="Номер території" min="1" max="117">
+      <button onclick="searchTerritory()">Пошук</button>
+    </div>
+  `;
+  layersControlContainer.insertBefore(searchContainer, layersControlContainer.firstChild);
 
-      const toggleAllCheckbox = document.getElementById('toggleAll');
-      const toggleAllLabel = document.getElementById('toggleAllLabel');
-      const showTakenCheckbox = document.getElementById('showTaken');
-      const showFreeCheckbox = document.getElementById('showFree');
+  const toggleAllCheckbox = document.getElementById('toggleAll');
+  const toggleAllLabel = document.getElementById('toggleAllLabel');
+  const showTakenCheckbox = document.getElementById('showTaken');
+  const showFreeCheckbox = document.getElementById('showFree');
 
-      toggleAllCheckbox.checked = !targetId;
-      toggleAllLabel.innerText = toggleAllCheckbox.checked ? 'Приховати всіх' : 'Показати всіх';
+  toggleAllCheckbox.checked = !targetId;
+  toggleAllLabel.innerText = toggleAllCheckbox.checked ? 'Приховати всіх' : 'Показати всіх';
 
-      if (showTakenCheckbox) showTakenCheckbox.checked = false;
-      if (showFreeCheckbox) showFreeCheckbox.checked = false;
+  if (showTakenCheckbox) showTakenCheckbox.checked = false;
+  if (showFreeCheckbox) showFreeCheckbox.checked = false;
+  subTypes.forEach(t => {
+    const takenSub = document.getElementById(`taken_${t}`);
+    const freeSub = document.getElementById(`free_${t}`);
+    if (takenSub) takenSub.checked = false;
+    if (freeSub) freeSub.checked = false;
+  });
+
+  toggleAllCheckbox.addEventListener('change', function() {
+    toggleAllLabel.innerText = this.checked ? 'Приховати всіх' : 'Показати всіх';
+    if (targetId) targetId = null;
+    if (this.checked) {
+      showTakenCheckbox.checked = false;
+      showFreeCheckbox.checked = false;
       subTypes.forEach(t => {
-        const takenSub = document.getElementById(`taken_${t}`);
-        const freeSub = document.getElementById(`free_${t}`);
-        if (takenSub) takenSub.checked = false;
-        if (freeSub) freeSub.checked = false;
+        document.getElementById(`taken_${t}`).checked = false;
+        document.getElementById(`free_${t}`).checked = false;
       });
-
-      toggleAllCheckbox.addEventListener('change', function() {
-        toggleAllLabel.innerText = this.checked ? 'Приховати всіх' : 'Показати всіх';
-        if (targetId) targetId = null;
-        if (this.checked) {
-          showTakenCheckbox.checked = false;
-          showFreeCheckbox.checked = false;
-          subTypes.forEach(t => {
-            document.getElementById(`taken_${t}`).checked = false;
-            document.getElementById(`free_${t}`).checked = false;
-          });
-          updateParentState('taken');
-          updateParentState('free');
-        } else {
-          showTakenCheckbox.checked = false;
-          showFreeCheckbox.checked = false;
-          subTypes.forEach(t => {
-            document.getElementById(`taken_${t}`).checked = false;
-            document.getElementById(`free_${t}`).checked = false;
-          });
-          updateParentState('taken');
-          updateParentState('free');
-        }
-        updateTerritoriesDisplay();
-      });
-
-      if (showTakenCheckbox) {
-        showTakenCheckbox.addEventListener('change', () => {
-          toggleAllCheckbox.checked = false;
-          toggleAllLabel.innerText = 'Показати всіх';
-          subTypes.forEach(t => {
-            const subCheckbox = document.getElementById(`taken_${t}`);
-            if (subCheckbox) subCheckbox.checked = showTakenCheckbox.checked;
-          });
-          if (targetId) targetId = null;
-          updateTerritoriesDisplay();
-          updateParentState('taken');
-        });
-      }
-
-      if (showFreeCheckbox) {
-        showFreeCheckbox.addEventListener('change', () => {
-          toggleAllCheckbox.checked = false;
-          toggleAllLabel.innerText = 'Показати всіх';
-          subTypes.forEach(t => {
-            const subCheckbox = document.getElementById(`free_${t}`);
-            if (subCheckbox) subCheckbox.checked = showFreeCheckbox.checked;
-          });
-          if (targetId) targetId = null;
-          updateTerritoriesDisplay();
-          updateParentState('free');
-        });
-      }
-
-      subTypes.forEach(t => {
-        const takenSub = document.getElementById(`taken_${t}`);
-        const freeSub = document.getElementById(`free_${t}`);
-        if (takenSub) {
-          takenSub.addEventListener('change', () => {
-            toggleAllCheckbox.checked = false;
-            toggleAllLabel.innerText = 'Показати всіх';
-            if (targetId) targetId = null;
-            updateTerritoriesDisplay();
-            updateParentState('taken');
-          });
-        }
-        if (freeSub) {
-          freeSub.addEventListener('change', () => {
-            toggleAllCheckbox.checked = false;
-            toggleAllLabel.innerText = 'Показати всіх';
-            if (targetId) targetId = null;
-            updateTerritoriesDisplay();
-            updateParentState('free');
-          });
-        }
-      });
-
       updateParentState('taken');
       updateParentState('free');
-
-      updateTerritoriesDisplay();
+    } else {
+      showTakenCheckbox.checked = false;
+      showFreeCheckbox.checked = false;
+      subTypes.forEach(t => {
+        document.getElementById(`taken_${t}`).checked = false;
+        document.getElementById(`free_${t}`).checked = false;
+      });
+      updateParentState('taken');
+      updateParentState('free');
     }
+    updateTerritoriesDisplay();
+  });
+
+  if (showTakenCheckbox) {
+    showTakenCheckbox.addEventListener('change', () => {
+      toggleAllCheckbox.checked = false;
+      toggleAllLabel.innerText = 'Показати всіх';
+      subTypes.forEach(t => {
+        const subCheckbox = document.getElementById(`taken_${t}`);
+        if (subCheckbox) subCheckbox.checked = showTakenCheckbox.checked;
+      });
+      if (targetId) targetId = null;
+      updateTerritoriesDisplay();
+      updateParentState('taken');
+    });
+  }
+
+  if (showFreeCheckbox) {
+    showFreeCheckbox.addEventListener('change', () => {
+      toggleAllCheckbox.checked = false;
+      toggleAllLabel.innerText = 'Показати всіх';
+      subTypes.forEach(t => {
+        const subCheckbox = document.getElementById(`free_${t}`);
+        if (subCheckbox) subCheckbox.checked = showFreeCheckbox.checked;
+      });
+      if (targetId) targetId = null;
+      updateTerritoriesDisplay();
+      updateParentState('free');
+    });
+  }
+
+  subTypes.forEach(t => {
+    const takenSub = document.getElementById(`taken_${t}`);
+    const freeSub = document.getElementById(`free_${t}`);
+    if (takenSub) {
+      takenSub.addEventListener('change', () => {
+        toggleAllCheckbox.checked = false;
+        toggleAllLabel.innerText = 'Показати всіх';
+        if (targetId) targetId = null;
+        updateTerritoriesDisplay();
+        updateParentState('taken');
+      });
+    }
+    if (freeSub) {
+      freeSub.addEventListener('change', () => {
+        toggleAllCheckbox.checked = false;
+        toggleAllLabel.innerText = 'Показати всіх';
+        if (targetId) targetId = null;
+        updateTerritoriesDisplay();
+        updateParentState('free');
+      });
+    }
+  });
+
+  updateParentState('taken');
+  updateParentState('free');
+
+  updateTerritoriesDisplay();
+}
 
     function toggleControls() {
       const controls = document.querySelector('.controls');
