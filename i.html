@@ -879,9 +879,8 @@ function tryAddLayersControl(){
 
   layersControl = L.control.layers({ "Стандартна карта": googleStreets, "Супутникова карта": satellite }, sortedOverlayMaps, { collapsed: true }).addTo(map);
 
-  // Add search input to layers control
+  // Додавання поля пошуку до елементів управління шарами
   const layersControlContainer = document.querySelector('.leaflet-control-layers');
-  const baseLayersContainer = document.querySelector('.leaflet-control-layers-base');
   const searchContainer = document.createElement('div');
   searchContainer.className = 'leaflet-control-layers-search';
   searchContainer.innerHTML = `
@@ -890,11 +889,15 @@ function tryAddLayersControl(){
       <button onclick="searchTerritory()">Пошук</button>
     </div>
   `;
-  if (baseLayersContainer && baseLayersContainer.nextSibling) {
-    layersControlContainer.insertBefore(searchContainer, baseLayersContainer.nextSibling);
-  } else {
-    layersControlContainer.appendChild(searchContainer);
-  }
+  // Чекаємо готовності DOM
+  setTimeout(() => {
+    const baseLayersContainer = document.querySelector('.leaflet-control-layers-base');
+    if (baseLayersContainer && baseLayersContainer.nextSibling) {
+      layersControlContainer.insertBefore(searchContainer, baseLayersContainer.nextSibling);
+    } else {
+      layersControlContainer.appendChild(searchContainer);
+    }
+  }, 0);
 
   const toggleAllCheckbox = document.getElementById('toggleAll');
   const toggleAllLabel = document.getElementById('toggleAllLabel');
