@@ -59,8 +59,8 @@
       shareButton.addEventListener("click", async () => {
         const shareData = {
           title: `Територія ${number}`,
-          text: `Перегляньте деталі території ${number}`,
-          url: `${window.location.origin}/index.html?territory=${number}`
+          text: `Територія №${number}`,
+          url: `${window.location.origin}${window.location.pathname}?territory=${number}`
         };
         try {
           await navigator.share(shareData);
