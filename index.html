@@ -264,6 +264,10 @@
         <label for="free_Dilovi">Ділові <span id="free_Dilovi-count" class="text-sm text-gray-500">(0)</span></label><br>
       </div>
     </div>
+	<div style="padding-top: 15px;">
+	 <input style="width: 90px;" id="search-input" type="number" min="1" max="117" placeholder="№ території" class="p-2 border border-green-300 rounded-lg bg-white shadow-sm">
+    <button onclick="searchTerritory()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">Пошук</button>
+	</div>
   </div>
 
   <div id="map"></div>
@@ -911,7 +915,37 @@ async function getTerritoryStatusPopup(number, name){
       controls.classList.toggle('visible');
     }
     window.toggleControls = toggleControls;
+
+    window.searchTerritory = function() {
+      const input = document.getElementById('search-input');
+      const num = parseInt(input.value, 10);
+      if (isNaN(num) || num < 1 || num > 117) {
+        alert('⚠ Невірний номер території (має бути від 1 до 117)');
+        return;
+      }
+      const id = 'district' + num;
+      const district = districts.find(d => d.id === id);
+      if (!district) {
+        alert('⚠ Територію не знайдено');
+        return;
+      }
+      targetId = id;
+      const controls = document.querySelector('.controls');
+      if (controls) controls.classList.remove('visible');
+      updateTerritoriesDisplay();
+      const item = loadedLayers.find(l => l.id === id);
+      if (item) {
+        const bounds = item.geoJsonLayer.getBounds();
+        if (bounds && bounds.isValid()) {
+          map.fitBounds(bounds.pad(0.15));
+        }
+        item.geoJsonLayer.eachLayer(async (layer) => {
+          const idNum = id.replace('district', '');
+          const popupContent = await getTerritoryStatusPopup(idNum, district.name);
+          layer.bindPopup(popupContent + `<br><button class="popup-btn route-btn" onclick="routeToDistrict('${district.name}')">📌 Маршрут</button>`).openPopup();
+        });
+      }
+    };
   </script>
 </body>
 </html>
-
