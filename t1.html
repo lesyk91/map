@@ -60,7 +60,7 @@
         const shareData = {
           title: `Територія ${number}`,
           text: `Територія №${number}`,
-          url: `${window.location.origin}/index.html?territory=${number}`
+          url: `${window.location.origin}/map/index.html?territory=${number}`
         };
         try {
           await navigator.share(shareData);
