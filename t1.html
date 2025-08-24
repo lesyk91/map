@@ -55,8 +55,23 @@
       const statusElement = document.getElementById("territory-status");
       const shareButton = document.getElementById("share-button");
 
-      // Set share button href
-      shareButton.href = `index.html?territory=${number}`;
+      // Set up share button functionality
+      shareButton.addEventListener("click", async () => {
+        const shareData = {
+          title: `Територія ${number}`,
+          text: `Перегляньте деталі території ${number}`,
+          url: `${window.location.origin}/index.html?territory=${number}`
+        };
+        try {
+          await navigator.share(shareData);
+        } catch (err) {
+          console.error("Помилка під час спроби поділитися:", err);
+          // Fallback: Copy URL to clipboard
+          navigator.clipboard.writeText(shareData.url).then(() => {
+            alert("Посилання скопійовано до буфера обміну!");
+          });
+        }
+      });
 
       onAuthStateChanged(auth, async (user) => {
         if (!user) return (location.href = "index.html");
@@ -194,24 +209,24 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col">
   <header class="bg-white shadow-md p-4 sticky top-0 z-10">
-    <div class="max-w-7xl mx-auto flex justify-between items-center">
-      <div class="flex items-center space-x-4">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:justify-between items-center space-y-2 sm:space-y-0">
+      <div class="flex items-center space-x-4 w-full sm:w-auto justify-between">
         <a href="territories.html" class="text-blue-600 hover:text-blue-800 font-semibold flex items-center">
           <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
           </svg>
           Назад
         </a>
-        <h1 id="title" class="text-2xl font-bold text-gray-800"></h1>
+        <h1 id="title" class="text-xl sm:text-2xl font-bold text-gray-800 truncate"></h1>
       </div>
-      <div class="flex items-center space-x-4">
-        <p id="territory-status" class="text-lg font-semibold"></p>
-        <a id="share-button" href="#" class="text-blue-600 hover:text-blue-800 font-semibold flex items-center">
+      <div class="flex items-center space-x-4 w-full sm:w-auto justify-between sm:justify-end">
+        <p id="territory-status" class="text-base sm:text-lg font-semibold truncate"></p>
+        <button id="share-button" class="text-blue-600 hover:text-blue-800 font-semibold flex items-center">
           <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C9.375 12.651 10.4 12.651 11.091 13.342L14.757 17.008M14.757 17.008L17.008 14.757M14.757 17.008L17.008 19.259M9.343 10.658C8.652 11.349 8.652 12.375 9.343 13.066L13.009 16.732M13.009 16.732L15.259 14.481M13.009 16.732L15.259 18.983M6 8.999l2.251-2.251M6 8.999l2.251 2.251M18 8.999l-2.251-2.251M18 8.999l-2.251 2.251"></path>
           </svg>
           Поділитися
-        </a>
+        </button>
       </div>
     </div>
   </header>
