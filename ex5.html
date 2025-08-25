@@ -4,7 +4,7 @@
   <meta name="robots" content="noindex, nofollow">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Експорт історії всіх територій</title>
+  <title>Експорт S-13</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
@@ -217,7 +217,7 @@
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Лист1');
         
-        XLSX.writeFile(workbook, 'Лист Microsoft Excel.xlsx');
+        XLSX.writeFile(workbook, 'S-13.xlsx');
         console.log('Файл успішно створено та завантажено');
         progressContainer.style.display = 'none';
       } catch (error) {
