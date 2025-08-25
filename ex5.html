@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Експорт історії всіх територій</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+    }
+    .btn {
+      transition: all 0.3s ease;
+    }
+    #progress-container {
+      display: none;
+      margin-top: 1rem;
+    }
+    #progress-bar {
+      width: 100%;
+      background-color: #e0e0e0;
+      border-radius: 0.5rem;
+      overflow: hidden;
+    }
+    #progress-fill {
+      height: 1.5rem;
+      background-color: #4CAF50;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    #progress-text {
+      margin-top: 0.5rem;
+      font-weight: 600;
+      color: #333;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+  <header class="bg-white shadow-md p-4 sticky top-0 z-10" style="width: 100%; position: fixed;">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+      <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+        <nav class="flex space-x-2">
+          <a href="index.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Карта</a>
+          <a href="territories.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Території</a>
+          <a href="zvit.html" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Звіти</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+  <div class="max-w-7xl mx-auto text-center">
+    <h1 id="title" class="text-2xl font-bold text-gray-800 mb-4">Експорт історії всіх територій</h1>
+    <button onclick="exportToExcel()" class="btn bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg">Експорт в Excel</button>
+    <div id="progress-container">
+      <div id="progress-bar">
+        <div id="progress-fill"></div>
+      </div>
+      <div id="progress-text">Прогрес: 0%</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getFirestore, collection, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDracSUSYz_QrmmDj_HcBfQpJlJ3FjPHpU",
+      authDomain: "map-illintsi.firebaseapp.com",
+      projectId: "map-illintsi",
+      storageBucket: "map-illintsi.appspot.com",
+      messagingSenderId: "62267872375",
+      appId: "1:62267872375:web:10945d2d63b93bccc5e272"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const formatDate = (dateStr) => {
+      if (!dateStr) return "";
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return "";
+      return date.toLocaleDateString("uk-UA", { day: '2-digit', month: '2-digit', year: '2-digit' });
+    };
+
+    window.exportToExcel = async function() {
+      try {
+        if (!auth.currentUser) {
+          alert('Будь ласка, увійдіть у систему для експорту.');
+          location.href = "index.html";
+          return;
+        }
+
+        if (typeof XLSX === 'undefined') {
+          throw new Error('Бібліотека XLSX не завантажена');
+        }
+
+        console.log('Початок експорту...');
+
+        const progressContainer = document.getElementById('progress-container');
+        const progressFill = document.getElementById('progress-fill');
+        const progressText = document.getElementById('progress-text');
+        progressContainer.style.display = 'block';
+        progressFill.style.width = '0%';
+        progressText.innerText = 'Прогрес: 0%';
+
+        const maxTerritoryNumber = 102;
+        const progressStep = 100 / maxTerritoryNumber;
+
+        const worksheet = XLSX.utils.aoa_to_sheet([
+          ["ЗАПИСИ ПРО ОПРАЦЮВАННЯ ТЕРИТОРІЙ"]
+        ]);
+
+        XLSX.utils.sheet_add_aoa(worksheet, [["№ Території", "Остання дата опрацювання", "Вісник", "", "Вісник", "", "Вісник", "", "Вісник", ""]], {origin: 'A2'});
+        XLSX.utils.sheet_add_aoa(worksheet, [[null, null, "Дата отримання", "Дата опрацювання", "Дата отримання", "Дата опрацювання", "Дата отримання", "Дата опрацювання", "Дата отримання", "Дата опрацювання"]], {origin: 'A3'});
+
+        worksheet['!merges'] = [
+          {s: {r: 0, c: 0}, e: {r: 0, c: 9}}, // A1:J1
+          {s: {r: 1, c: 0}, e: {r: 2, c: 0}}, // A2:A3
+          {s: {r: 1, c: 1}, e: {r: 2, c: 1}}, // B2:B3
+          {s: {r: 1, c: 2}, e: {r: 1, c: 3}}, // C2:D2
+          {s: {r: 1, c: 4}, e: {r: 1, c: 5}}, // E2:F2
+          {s: {r: 1, c: 6}, e: {r: 1, c: 7}}, // G2:H2
+          {s: {r: 1, c: 8}, e: {r: 1, c: 9}}  // I2:J2
+        ];
+
+        let currentRow = 4;
+
+        for (let territoryNumber = 1; territoryNumber <= maxTerritoryNumber; territoryNumber++) {
+          const historyQuery = query(
+            collection(db, `territories/${territoryNumber}/history`),
+            orderBy('timestamp', 'desc'),
+            limit(4)
+          );
+          const historySnapshot = await getDocs(historyQuery);
+          console.log(`Знайдено записів у history для території ${territoryNumber}: ${historySnapshot.size}`);
+
+          let history = [];
+          historySnapshot.forEach(doc => {
+            history.push(doc.data());
+          });
+          history = history.reverse(); // Реверс, щоб найстаріший запис був першим
+
+          let lastProcessDate = "";
+          if (history.length > 0) {
+            for (let i = history.length - 1; i >= 0; i--) {
+              if (history[i].dateProcess) {
+                lastProcessDate = formatDate(history[i].dateProcess);
+                break;
+              }
+            }
+          }
+
+          let row1 = [territoryNumber.toString(), lastProcessDate];
+          let row2 = [null, null];
+
+          for (let i = 0; i < 4; i++) {
+            if (i < history.length) {
+              const record = history[i];
+              row1.push(record.pib || "");
+              row1.push(null);
+              row2.push(formatDate(record.dateGet));
+              row2.push(formatDate(record.dateProcess));
+            } else {
+              row1.push(null);
+              row1.push(null);
+              row2.push(null);
+              row2.push(null);
+            }
+          }
+
+          XLSX.utils.sheet_add_aoa(worksheet, [row1], {origin: {r: currentRow - 1, c: 0}});
+          XLSX.utils.sheet_add_aoa(worksheet, [row2], {origin: {r: currentRow, c: 0}});
+
+          worksheet['!merges'].push(
+            {s: {r: currentRow - 1, c: 0}, e: {r: currentRow, c: 0}}, // Merge № Території
+            {s: {r: currentRow - 1, c: 1}, e: {r: currentRow, c: 1}}, // Merge Остання дата опрацювання
+            {s: {r: currentRow - 1, c: 2}, e: {r: currentRow - 1, c: 3}}, // Merge C:D for Вісник (ім'я)
+            {s: {r: currentRow - 1, c: 4}, e: {r: currentRow - 1, c: 5}}, // Merge E:F for Вісник (ім'я)
+            {s: {r: currentRow - 1, c: 6}, e: {r: currentRow - 1, c: 7}}, // Merge G:H for Вісник (ім'я)
+            {s: {r: currentRow - 1, c: 8}, e: {r: currentRow - 1, c: 9}}  // Merge I:J for Вісник (ім'я)
+          );
+
+          // Форматування для вирівнювання по центру та додавання меж
+          const range = XLSX.utils.decode_range(worksheet['!ref']);
+          for (let R = range.s.r; R <= currentRow; R++) {
+            for (let C = range.s.c; C <= range.e.c; C++) {
+              const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
+              if (!worksheet[cellAddress]) continue;
+              worksheet[cellAddress].s = {
+                alignment: { horizontal: "center", vertical: "center" },
+                border: {
+                  top: { style: "thin", color: { rgb: "000000" } },
+                  bottom: { style: "thin", color: { rgb: "000000" } },
+                  left: { style: "thin", color: { rgb: "000000" } },
+                  right: { style: "thin", color: { rgb: "000000" } }
+                }
+              };
+            }
+          }
+
+          currentRow += 2;
+
+          const progress = Math.min(Math.round((territoryNumber / maxTerritoryNumber) * 100), 100);
+          progressFill.style.width = `${progress}%`;
+          progressText.innerText = `Прогрес: ${progress}%`;
+        }
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Лист1');
+        
+        XLSX.writeFile(workbook, 'Лист Microsoft Excel.xlsx');
+        console.log('Файл успішно створено та завантажено');
+        progressContainer.style.display = 'none';
+      } catch (error) {
+        console.error('Помилка експорту:', error);
+        alert('Сталася помилка під час експорту: ' + error.message);
+        progressContainer.style.display = 'none';
+      }
+    };
+  </script>
+</body>
+</html>
