@@ -4,7 +4,7 @@
   <meta name="robots" content="noindex, nofollow">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Експорт історії всіх територій</title>
+  <title>Експорт історії2 всіх територій</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
@@ -163,8 +163,8 @@
               const record = history[i];
               row1.push(record.pib || "");
               row1.push(null);
-              row2.push(formatDate(record.dateGet));
-              row2.push(formatDate(record.dateProcess));
+              row2.push(formatDate(record.dateGet) + (record.dateProcess ? " - " + formatDate(record.dateProcess) : ""));
+              row2.push(null);
             } else {
               row1.push(null);
               row1.push(null);
@@ -179,10 +179,14 @@
           worksheet['!merges'].push(
             {s: {r: currentRow - 1, c: 0}, e: {r: currentRow, c: 0}}, // Merge № Території
             {s: {r: currentRow - 1, c: 1}, e: {r: currentRow, c: 1}}, // Merge Остання дата опрацювання
-            {s: {r: currentRow - 1, c: 2}, e: {r: currentRow - 1, c: 3}}, // Merge C:D for Вісник
-            {s: {r: currentRow - 1, c: 4}, e: {r: currentRow - 1, c: 5}}, // Merge E:F for Вісник
-            {s: {r: currentRow - 1, c: 6}, e: {r: currentRow - 1, c: 7}}, // Merge G:H for Вісник
-            {s: {r: currentRow - 1, c: 8}, e: {r: currentRow - 1, c: 9}}  // Merge I:J for Вісник
+            {s: {r: currentRow - 1, c: 2}, e: {r: currentRow - 1, c: 3}}, // Merge C:D for Вісник (ім'я)
+            {s: {r: currentRow - 1, c: 4}, e: {r: currentRow - 1, c: 5}}, // Merge E:F for Вісник (ім'я)
+            {s: {r: currentRow - 1, c: 6}, e: {r: currentRow - 1, c: 7}}, // Merge G:H for Вісник (ім'я)
+            {s: {r: currentRow - 1, c: 8}, e: {r: currentRow - 1, c: 9}}, // Merge I:J for Вісник (ім'я)
+            {s: {r: currentRow, c: 2}, e: {r: currentRow, c: 3}}, // Merge C:D for дати
+            {s: {r: currentRow, c: 4}, e: {r: currentRow, c: 5}}, // Merge E:F for дати
+            {s: {r: currentRow, c: 6}, e: {r: currentRow, c: 7}}, // Merge G:H for дати
+            {s: {r: currentRow, c: 8}, e: {r: currentRow, c: 9}}  // Merge I:J for дати
           );
 
           // Форматування для вирівнювання по центру та додавання меж
