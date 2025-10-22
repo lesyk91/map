@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Програма зібрання</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #34495e;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 20px 0;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .date-selector {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .date-selector label {
+            font-weight: 500;
+            color: var(--dark-color);
+        }
+        
+        .date-selector input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        .date-selector input:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        .date-selector button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .date-selector button:hover {
+            background-color: #2980b9;
+        }
+        
+        .program-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .program-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .program-title {
+            font-size: 1.4rem;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .program-date {
+            font-size: 1.1rem;
+            color: var(--dark-color);
+            font-weight: 500;
+        }
+        
+        .program-item {
+            display: flex;
+            padding: 15px 10px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s;
+        }
+        
+        .program-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .program-item:last-child {
+            border-bottom: none;
+        }
+        
+        .program-number {
+            font-weight: 600;
+            color: var(--primary-color);
+            min-width: 40px;
+            font-size: 1.1rem;
+        }
+        
+        .program-content {
+            flex: 1;
+        }
+        
+        .program-task {
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: var(--dark-color);
+        }
+        
+        .program-person {
+            color: #7f8c8d;
+            font-size: 0.95rem;
+        }
+        
+        .program-section {
+            margin-bottom: 25px;
+        }
+        
+        .section-title {
+            font-size: 1.2rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid var(--light-color);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #7f8c8d;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--secondary-color);
+        }
+        
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .date-selector {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .date-selector button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Програма зібрання</h1>
+            <div class="subtitle">План завдань на зібрання</div>
+        </header>
+        
+        <div class="date-selector">
+            <div>
+                <label for="meetingDate">Оберіть дату зібрання:</label>
+                <input type="date" id="meetingDate">
+            </div>
+            <button id="loadProgramBtn">Завантажити програму</button>
+        </div>
+        
+        <div id="programContainer" class="program-container">
+            <div class="empty-state">
+                Оберіть дату зібрання та натисніть "Завантажити програму"
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase конфігурація
+        const firebaseConfig = {
+            apiKey: "AIzaSyCKOETwl_-0PD4qdgkazLECzy4w5BGs4nQ",
+            authDomain: "school-82913.firebaseapp.com",
+            projectId: "school-82913",
+            storageBucket: "school-82913.firebasestorage.app",
+            messagingSenderId: "753638595191",
+            appId: "1:753638595191:web:7a4b1e4457782a14288472",
+            measurementId: "G-8FVHRNMELV"
+        };
+
+        // Ініціалізація Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Глобальні змінні
+        let meetingSchedules = [];
+        let taskHistory = [];
+        let visnykyData = [];
+        let visnykyTasks = [];
+
+        // DOM елементи
+        const meetingDateInput = document.getElementById('meetingDate');
+        const loadProgramBtn = document.getElementById('loadProgramBtn');
+        const programContainer = document.getElementById('programContainer');
+
+        // Ініціалізація додатка
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            meetingDateInput.value = today.toISOString().split('T')[0];
+            
+            setupEventListeners();
+        });
+
+        // Налаштування обробників подій
+        function setupEventListeners() {
+            loadProgramBtn.addEventListener('click', loadProgram);
+        }
+
+        // Завантаження програми зібрання
+        async function loadProgram() {
+            const dateStr = meetingDateInput.value;
+            if (!dateStr) {
+                showError('Будь ласка, оберіть дату зібрання');
+                return;
+            }
+
+            const meetingDate = new Date(dateStr);
+            
+            try {
+                showLoading();
+                
+                // Завантаження всіх необхідних даних
+                await Promise.all([
+                    loadMeetingSchedules(),
+                    loadTaskHistory(),
+                    loadVisnykyData(),
+                    loadVisnykyTasks()
+                ]);
+                
+                // Пошук зібрання на вибрану дату
+                const meeting = findMeetingByDate(meetingDate);
+                
+                if (!meeting) {
+                    showError('На вибрану дату не знайдено зібрання');
+                    return;
+                }
+                
+                // Формування програми зібрання
+                const program = await buildMeetingProgram(meeting, meetingDate);
+                
+                // Відображення програми
+                displayProgram(program, meetingDate);
+                
+            } catch (error) {
+                console.error('Помилка при завантаженні програми:', error);
+                showError('Помилка при завантаженні програми: ' + error.message);
+            }
+        }
+
+        // Завантаження розкладу зібрань
+        async function loadMeetingSchedules() {
+            try {
+                const querySnapshot = await db.collection('meetingSchedules')
+                    .orderBy('date', 'desc')
+                    .limit(100)
+                    .get();
+                
+                meetingSchedules = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    meetingSchedules.push({
+                        id: doc.id,
+                        ...data,
+                        date: data.date.toDate()
+                    });
+                });
+            } catch (error) {
+                console.error("Помилка при завантаженні розкладу зібрань: ", error);
+                throw error;
+            }
+        }
+
+        // Завантаження історії завдань
+        async function loadTaskHistory() {
+            try {
+                const querySnapshot = await db.collection('taskHistory')
+                    .orderBy('date', 'desc')
+                    .limit(100)
+                    .get();
+                
+                taskHistory = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    taskHistory.push({
+                        id: doc.id,
+                        ...data,
+                        date: data.date.toDate()
+                    });
+                });
+            } catch (error) {
+                console.error("Помилка при завантаженні історії завдань: ", error);
+                throw error;
+            }
+        }
+
+        // Завантаження даних вісників
+        async function loadVisnykyData() {
+            try {
+                const querySnapshot = await db.collection('visnyky').get();
+                visnykyData = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    visnykyData.push({
+                        id: doc.id,
+                        ...data
+                    });
+                });
+            } catch (error) {
+                console.error("Помилка при завантаженні даних вісників: ", error);
+                throw error;
+            }
+        }
+
+        // Завантаження завдань вісників
+        async function loadVisnykyTasks() {
+            try {
+                const querySnapshot = await db.collection('visnykyTasks').get();
+                visnykyTasks = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    visnykyTasks.push({
+                        id: doc.id,
+                        ...data
+                    });
+                });
+            } catch (error) {
+                console.error("Помилка при завантаженні завдань вісників: ", error);
+                throw error;
+            }
+        }
+
+        // Пошук зібрання за датою
+        function findMeetingByDate(date) {
+            const targetDate = new Date(date);
+            targetDate.setHours(0, 0, 0, 0);
+            
+            return meetingSchedules.find(meeting => {
+                const meetingDate = new Date(meeting.date);
+                meetingDate.setHours(0, 0, 0, 0);
+                
+                return meetingDate.getTime() === targetDate.getTime();
+            });
+        }
+
+        // Формування програми зібрання
+        async function buildMeetingProgram(meeting, meetingDate) {
+            const program = [];
+            
+            // 0. Ведучий та молитви
+            const leader = getTaskPerson(meeting, 'leader');
+            const openingPrayer = getTaskPerson(meeting, 'opening_prayer');
+            const closingPrayer = getTaskPerson(meeting, 'closing_prayer');
+            
+            // 1. Скарби
+            const treasures = getTaskPerson(meeting, 'treasures');
+            
+            // 2. Духовні Перлини
+            const pearls = getTaskPerson(meeting, 'pearls');
+            
+            // 3. Читання Біблії
+            const bibleReading = getTaskPerson(meeting, 'bible_reading');
+            
+            // 4. Завдання №4 з ІсторіїЗавдань
+            const task4 = await getTaskFromHistory(4, meetingDate);
+            
+            // 5. Завдання №5 з ІсторіїЗавдань
+            const task5 = await getTaskFromHistory(5, meetingDate);
+            
+            // 6. Завдання №6
+            const task6 = await getTask6(meeting, meetingDate);
+            
+            // 7. Завдання №7
+            const task7 = await getTask7(meeting, meetingDate);
+            
+            // 8. Завдання №8
+            const task8 = await getTask8(meeting, meetingDate, task7);
+            
+            // 9. Вивчення Біблії та Читання
+            const bibleStudy = getTaskPerson(meeting, 'bible_study');
+            const reading = getTaskPerson(meeting, 'reading');
+            
+            // Формування програми
+            program.push({
+                number: '',
+                task: 'Ведучий зібрання',
+                person: leader
+            });
+            
+            program.push({
+                number: '',
+                task: 'Молитва на початку',
+                person: openingPrayer
+            });
+            
+            program.push({
+                number: '1',
+                task: 'Скарби з Біблії',
+                person: treasures
+            });
+            
+            program.push({
+                number: '2',
+                task: 'Духовні перлини',
+                person: pearls
+            });
+            
+            program.push({
+                number: '3',
+                task: 'Читання Біблії',
+                person: bibleReading
+            });
+            
+            if (task4) {
+                program.push({
+                    number: '4',
+                    task: task4.task,
+                    person: `${task4.mainHerald}/${task4.partnerHerald}`
+                });
+            }
+            
+            if (task5) {
+                program.push({
+                    number: '5',
+                    task: task5.task,
+                    person: `${task5.mainHerald}/${task5.partnerHerald}`
+                });
+            }
+            
+            if (task6) {
+                program.push({
+                    number: '6',
+                    task: task6.task,
+                    person: task6.person
+                });
+            }
+            
+            if (task7) {
+                program.push({
+                    number: '7',
+                    task: task7.task,
+                    person: task7.person
+                });
+            }
+            
+            if (task8) {
+                program.push({
+                    number: '8',
+                    task: task8.task,
+                    person: task8.person
+                });
+            }
+            
+            program.push({
+                number: '9',
+                task: 'Вивчення Біблії та читання',
+                person: `${bibleStudy}/${reading}`
+            });
+            
+            program.push({
+                number: '',
+                task: 'Молитва в кінці',
+                person: closingPrayer
+            });
+            
+            return program;
+        }
+
+        // Отримання особи для завдання з ГрафікБрати
+        function getTaskPerson(meeting, taskId) {
+            if (!meeting.tasks || !meeting.tasks[taskId] || !meeting.tasks[taskId].brother) {
+                return 'Не призначено';
+            }
+            
+            return meeting.tasks[taskId].brother.name;
+        }
+
+        // Отримання завдання з ІсторіїЗавдань за номером
+        async function getTaskFromHistory(taskNumber, date) {
+            const targetDate = new Date(date);
+            targetDate.setHours(0, 0, 0, 0);
+            
+            const task = taskHistory.find(record => {
+                const recordDate = new Date(record.date);
+                recordDate.setHours(0, 0, 0, 0);
+                
+                return record.taskNumber === taskNumber && 
+                       recordDate.getTime() === targetDate.getTime();
+            });
+            
+            return task || null;
+        }
+
+        // Отримання завдання №6
+        async function getTask6(meeting, date) {
+            // Спочатку перевіряємо чи є завдання з ІсторіїЗавдань під номером 6
+            const task6FromHistory = await getTaskFromHistory(6, date);
+            
+            if (task6FromHistory) {
+                return {
+                    task: task6FromHistory.task,
+                    person: `${task6FromHistory.mainHerald}/${task6FromHistory.partnerHerald}`
+                };
+            }
+            
+            // Якщо немає, перевіряємо чи є Промова Учнівська
+            const studentSpeech = getTaskPerson(meeting, 'student_speech');
+            
+            if (studentSpeech && studentSpeech !== 'Не призначено') {
+                return {
+                    task: 'Промова учнівська',
+                    person: studentSpeech
+                };
+            }
+            
+            return null;
+        }
+
+        // Отримання завдання №7
+        async function getTask7(meeting, date) {
+            // Спочатку перевіряємо чи є завдання з ІсторіїЗавдань під номером 7
+            const task7FromHistory = await getTaskFromHistory(7, date);
+            
+            if (task7FromHistory) {
+                return {
+                    task: task7FromHistory.task,
+                    person: `${task7FromHistory.mainHerald}/${task7FromHistory.partnerHerald}`
+                };
+            }
+            
+            // Якщо немає, перевіряємо чи є Промова Учнівська
+            const studentSpeech = getTaskPerson(meeting, 'student_speech');
+            
+            if (studentSpeech && studentSpeech !== 'Не призначено') {
+                return {
+                    task: 'Промова учнівська',
+                    person: studentSpeech
+                };
+            }
+            
+            // Якщо немає, то це Обговорення1
+            const discussion1 = getTaskPerson(meeting, 'discussion1');
+            
+            if (discussion1 && discussion1 !== 'Не призначено') {
+                return {
+                    task: 'Обговорення1',
+                    person: discussion1
+                };
+            }
+            
+            return null;
+        }
+
+        // Отримання завдання №8
+        async function getTask8(meeting, date, task7) {
+            // Якщо в завданні №7 було Обговорення1, то в №8 буде Обговорення2
+            if (task7 && task7.task === 'Обговорення1') {
+                const discussion2 = getTaskPerson(meeting, 'discussion2');
+                
+                if (discussion2 && discussion2 !== 'Не призначено') {
+                    return {
+                        task: 'Обговорення2',
+                        person: discussion2
+                    };
+                }
+                
+                // Якщо немає Обговорення2, перевіряємо Місцеві Потреби
+                const localNeeds = getTaskPerson(meeting, 'local_needs');
+                
+                if (localNeeds && localNeeds !== 'Не призначено') {
+                    return {
+                        task: 'Місцеві потреби',
+                        person: localNeeds
+                    };
+                }
+            } 
+            // Якщо в завданні №7 було щось інше, то в №8 буде Обговорення1
+            else if (task7) {
+                const discussion1 = getTaskPerson(meeting, 'discussion1');
+                
+                if (discussion1 && discussion1 !== 'Не призначено') {
+                    return {
+                        task: 'Обговорення1',
+                        person: discussion1
+                    };
+                }
+            }
+            
+            return null;
+        }
+
+        // Відображення програми
+        function displayProgram(program, date) {
+            const formattedDate = formatDate(date);
+            
+            let html = `
+                <div class="program-header">
+                    <div class="program-title">Програма зібрання</div>
+                    <div class="program-date">${formattedDate}</div>
+                </div>
+            `;
+            
+            if (program.length === 0) {
+                html += '<div class="empty-state">Програма зібрання порожня</div>';
+            } else {
+                // Розділ: Початок зібрання
+                html += '<div class="program-section">';
+                html += '<div class="section-title">Початок зібрання</div>';
+                
+                for (let i = 0; i < 2; i++) {
+                    if (program[i]) {
+                        html += `
+                            <div class="program-item">
+                                <div class="program-number">${program[i].number}</div>
+                                <div class="program-content">
+                                    <div class="program-task">${program[i].task}</div>
+                                    <div class="program-person">${program[i].person}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                
+                html += '</div>';
+                
+                // Розділ: Основний час зібрання
+                html += '<div class="program-section">';
+                html += '<div class="section-title">Основний час зібрання</div>';
+                
+                for (let i = 2; i < program.length - 1; i++) {
+                    if (program[i]) {
+                        html += `
+                            <div class="program-item">
+                                <div class="program-number">${program[i].number}</div>
+                                <div class="program-content">
+                                    <div class="program-task">${program[i].task}</div>
+                                    <div class="program-person">${program[i].person}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                
+                html += '</div>';
+                
+                // Розділ: Завершення зібрання
+                html += '<div class="program-section">';
+                html += '<div class="section-title">Завершення зібрання</div>';
+                
+                const lastItem = program[program.length - 1];
+                if (lastItem) {
+                    html += `
+                        <div class="program-item">
+                            <div class="program-number">${lastItem.number}</div>
+                            <div class="program-content">
+                                <div class="program-task">${lastItem.task}</div>
+                                <div class="program-person">${lastItem.person}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+            }
+            
+            programContainer.innerHTML = html;
+        }
+
+        // Утиліти
+        function formatDate(date) {
+            return new Date(date).toLocaleDateString('uk-UA', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        function showLoading() {
+            programContainer.innerHTML = '<div class="loading">Завантаження програми...</div>';
+        }
+
+        function showError(message) {
+            programContainer.innerHTML = `<div class="error-message">${message}</div>`;
+        }
+    </script>
+</body>
+</html>
