@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Імпорт та Експорт історії завдань</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #34495e;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--light-color);
+        }
+        
+        .tab {
+            padding: 15px 30px;
+            background: none;
+            border: none;
+            font-size: 1.1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab.active {
+            color: var(--secondary-color);
+            border-bottom-color: var(--secondary-color);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .upload-section {
+            background: var(--light-color);
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border: 2px dashed #bdc3c7;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .upload-section:hover {
+            border-color: var(--secondary-color);
+            background: #e1f0fa;
+        }
+        
+        .upload-area {
+            padding: 40px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover {
+            transform: scale(1.02);
+        }
+        
+        .upload-icon {
+            font-size: 4rem;
+            color: var(--secondary-color);
+            margin-bottom: 15px;
+        }
+        
+        .upload-text {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        
+        .upload-hint {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #219653;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        
+        .btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .preview-section {
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--light-color);
+        }
+        
+        .preview-table-container {
+            overflow-x: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background-color: var(--light-color);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .error-row {
+            background-color: #f8d7da !important;
+            color: #721c24;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .status-section {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .status-title {
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-details {
+            margin-top: 15px;
+        }
+        
+        .file-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        
+        .file-name {
+            font-weight: 500;
+        }
+        
+        .file-size {
+            color: #7f8c8d;
+        }
+        
+        .instructions {
+            background: #e7f3ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid var(--secondary-color);
+        }
+        
+        .instructions h3 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+        }
+        
+        .instructions table {
+            margin: 15px 0;
+            background: white;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .instructions th {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        .controls-section {
+            background: var(--light-color);
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .filter-group label {
+            font-weight: 500;
+            color: var(--dark-color);
+        }
+        
+        input, select {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+            border-left: 4px solid var(--secondary-color);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        .export-options {
+            background: #e7f3ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--secondary-color);
+        }
+        
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .option-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .option-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+        
+        @media (max-width: 768px) {
+            .actions {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .file-info {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .tab {
+                text-align: center;
+            }
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--secondary-color);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Імпорт та Експорт історії завдань</h1>
+            <div class="subtitle">Завантажте дані з Excel або експортуйте дані з бази</div>
+        </header>
+        
+        <div class="content">
+            <div class="tabs">
+                <button class="tab active" data-tab="import">Імпорт з Excel</button>
+                <button class="tab" data-tab="export">Експорт в Excel</button>
+            </div>
+            
+            <!-- Вкладка імпорту -->
+            <div id="importTab" class="tab-content active">
+                <div class="instructions">
+                    <h3>Інструкція з підготовки Excel файлу</h3>
+                    <ol>
+                        <li>Підготуйте Excel файл з наступною структурою стовпців:</li>
+                    </ol>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Стовпець</th>
+                                <th>Опис</th>
+                                <th>Формат</th>
+                                <th>Приклад</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>A (A2...)</strong></td>
+                                <td>Порядковий номер</td>
+                                <td>Число</td>
+                                <td>1, 2, 3, 4...</td>
+                            </tr>
+                            <tr>
+                                <td><strong>B (B2...)</strong></td>
+                                <td>Номер завдання</td>
+                                <td>Число</td>
+                                <td>4, 5, 6, 7...</td>
+                            </tr>
+                            <tr>
+                                <td><strong>C (C2...)</strong></td>
+                                <td>Ім'я головного вісника</td>
+                                <td>Текст</td>
+                                <td>Іваненко Петро</td>
+                            </tr>
+                            <tr>
+                                <td><strong>D (D2...)</strong></td>
+                                <td>Ім'я напарника</td>
+                                <td>Текст</td>
+                                <td>Коваленко Марія</td>
+                            </tr>
+                            <tr>
+                                <td><strong>E (E2...)</strong></td>
+                                <td>Дата</td>
+                                <td>ДД.ММ.РРРР</td>
+                                <td>20.10.2025</td>
+                            </tr>
+                            <tr>
+                                <td><strong>F (F2...)</strong></td>
+                                <td>Назва завдання</td>
+                                <td>Текст</td>
+                                <td>Починаємо розмову</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <p><strong>Примітка:</strong> Дані повинні починатися з рядка 2. Рядок 1 зазвичай містить заголовки.</p>
+                </div>
+                
+                <div class="upload-section">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📊</div>
+                        <div class="upload-text">Перетягніть Excel файл сюди або натисніть для вибору</div>
+                        <div class="upload-hint">Підтримуються файли .xlsx, .xls, .csv</div>
+                        <button class="btn btn-primary" id="selectFileBtn">
+                            <span>Обрати файл</span>
+                        </button>
+                        <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls,.csv">
+                    </div>
+                    
+                    <div id="fileInfo" class="file-info" style="display: none;">
+                        <div>
+                            <span class="file-name" id="fileName">Назва файлу</span>
+                            <span class="file-size" id="fileSize">(розмір)</span>
+                        </div>
+                        <div>
+                            <span id="rowCount">0 рядків</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="preview-section">
+                    <h2 class="section-title">Попередній перегляд даних</h2>
+                    <div class="preview-table-container">
+                        <table id="previewTable">
+                            <thead>
+                                <tr>
+                                    <th>Пор. номер</th>
+                                    <th>№ завдання</th>
+                                    <th>Головний</th>
+                                    <th>Напарник</th>
+                                    <th>Дата</th>
+                                    <th>Завдання</th>
+                                    <th>Статус</th>
+                                </tr>
+                            </thead>
+                            <tbody id="previewTableBody">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; padding: 40px;">
+                                        <div style="color: #7f8c8d;">Завантажте файл для перегляду даних</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="actions">
+                    <button class="btn btn-success" id="importBtn" disabled>
+                        <span>Імпортувати дані</span>
+                    </button>
+                    <button class="btn btn-danger" id="clearBtn" disabled>
+                        <span>Очистити</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Вкладка експорту -->
+            <div id="exportTab" class="tab-content">
+                <div class="controls-section">
+                    <h2 class="section-title">Фільтри експорту</h2>
+                    
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label for="filterMainHerald">Головний вісник:</label>
+                            <select id="filterMainHerald">
+                                <option value="">Всі головні</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="filterPartnerHerald">Напарник:</label>
+                            <select id="filterPartnerHerald">
+                                <option value="">Всі напарники</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="filterDateFrom">Дата від:</label>
+                            <input type="date" id="filterDateFrom">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="filterDateTo">Дата до:</label>
+                            <input type="date" id="filterDateTo">
+                        </div>
+                    </div>
+                    
+                    <div class="export-options">
+                        <h3>Опції експорту</h3>
+                        <div class="options-grid">
+                            <div class="option-group">
+                                <input type="checkbox" id="includeSerialNumber" checked>
+                                <label for="includeSerialNumber">Включити порядковий номер</label>
+                            </div>
+                            <div class="option-group">
+                                <input type="checkbox" id="includeTaskNumber" checked>
+                                <label for="includeTaskNumber">Включити номер завдання</label>
+                            </div>
+                            <div class="option-group">
+                                <input type="checkbox" id="includeImportDate" checked>
+                                <label for="includeImportDate">Включити дату імпорту</label>
+                            </div>
+                            <div class="option-group">
+                                <input type="checkbox" id="formatDates" checked>
+                                <label for="formatDates">Форматувати дати</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="actions">
+                        <button class="btn btn-primary" id="loadDataBtn">
+                            <span>Завантажити дані</span>
+                        </button>
+                        <button class="btn btn-success" id="exportBtn" disabled>
+                            <span>Експортувати в Excel</span>
+                        </button>
+                        <button class="btn btn-primary" id="clearFiltersBtn">
+                            <span>Очистити фільтри</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="stats-section">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalRecords">0</div>
+                        <div class="stat-label">Всього записів</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="filteredRecords">0</div>
+                        <div class="stat-label">Знайдено за фільтром</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="dateRange">-</div>
+                        <div class="stat-label">Діапазон дат</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="fileSize">-</div>
+                        <div class="stat-label">Розмір файлу</div>
+                    </div>
+                </div>
+                
+                <div class="preview-section">
+                    <h2 class="section-title">Попередній перегляд даних</h2>
+                    <div class="preview-table-container">
+                        <table id="exportPreviewTable">
+                            <thead>
+                                <tr>
+                                    <th>№</th>
+                                    <th>№ завдання</th>
+                                    <th>Головний</th>
+                                    <th>Напарник</th>
+                                    <th>Дата</th>
+                                    <th>Завдання</th>
+                                    <th>Дата імпорту</th>
+                                </tr>
+                            </thead>
+                            <tbody id="exportPreviewTableBody">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; padding: 40px;">
+                                        <div style="color: #7f8c8d;">Застосуйте фільтри та завантажте дані для перегляду</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="status-section" id="statusSection">
+                <div class="status-title">
+                    <span id="statusIcon">ℹ️</span>
+                    <span id="statusTitle">Статус операції</span>
+                </div>
+                <div id="statusMessage"></div>
+                <div class="status-details" id="statusDetails"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase конфігурація
+        const firebaseConfig = {
+            apiKey: "AIzaSyCKOETwl_-0PD4qdgkazLECzy4w5BGs4nQ",
+            authDomain: "school-82913.firebaseapp.com",
+            projectId: "school-82913",
+            storageBucket: "school-82913.firebasestorage.app",
+            messagingSenderId: "753638595191",
+            appId: "1:753638595191:web:7a4b1e4457782a14288472",
+            measurementId: "G-8FVHRNMELV"
+        };
+
+        // Ініціалізація Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Глобальні змінні
+        let importedData = [];
+        let fileName = '';
+        let fileData = null;
+        let allData = [];
+        let filteredData = [];
+
+        // DOM елементи
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const selectFileBtn = document.getElementById('selectFileBtn');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileNameElement = document.getElementById('fileName');
+        const fileSizeElement = document.getElementById('fileSize');
+        const rowCountElement = document.getElementById('rowCount');
+        const previewTableBody = document.getElementById('previewTableBody');
+        const importBtn = document.getElementById('importBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const statusSection = document.getElementById('statusSection');
+        const statusTitle = document.getElementById('statusTitle');
+        const statusIcon = document.getElementById('statusIcon');
+        const statusMessage = document.getElementById('statusMessage');
+        const statusDetails = document.getElementById('statusDetails');
+
+        // Елементи експорту
+        const filterMainHerald = document.getElementById('filterMainHerald');
+        const filterPartnerHerald = document.getElementById('filterPartnerHerald');
+        const filterDateFrom = document.getElementById('filterDateFrom');
+        const filterDateTo = document.getElementById('filterDateTo');
+        const loadDataBtn = document.getElementById('loadDataBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+        const exportPreviewTableBody = document.getElementById('exportPreviewTableBody');
+        const totalRecords = document.getElementById('totalRecords');
+        const filteredRecords = document.getElementById('filteredRecords');
+        const dateRange = document.getElementById('dateRange');
+        const fileSize = document.getElementById('fileSize');
+
+        // Опції експорту
+        const includeSerialNumber = document.getElementById('includeSerialNumber');
+        const includeTaskNumber = document.getElementById('includeTaskNumber');
+        const includeImportDate = document.getElementById('includeImportDate');
+        const formatDates = document.getElementById('formatDates');
+
+        // Обробники подій
+        document.addEventListener('DOMContentLoaded', function() {
+            // Переключення вкладок
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Видалити активний клас з усіх вкладок
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    // Додати активний клас до поточної вкладки
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab') + 'Tab';
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+            
+            // Імпорт: Клік по кнопці вибору файлу
+            selectFileBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                fileInput.click();
+            });
+            
+            // Імпорт: Клік по області завантаження
+            uploadArea.addEventListener('click', function(e) {
+                if (e.target !== selectFileBtn && !selectFileBtn.contains(e.target)) {
+                    fileInput.click();
+                }
+            });
+            
+            // Імпорт: Перетягування файлу
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#3498db';
+                uploadArea.style.background = '#e1f0fa';
+            });
+            
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#bdc3c7';
+                uploadArea.style.background = '#ecf0f1';
+            });
+            
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#bdc3c7';
+                uploadArea.style.background = '#ecf0f1';
+                
+                if (e.dataTransfer.files.length) {
+                    handleFile(e.dataTransfer.files[0]);
+                }
+            });
+            
+            // Імпорт: Зміна файлу через input
+            fileInput.addEventListener('change', function(e) {
+                if (e.target.files.length) {
+                    handleFile(e.target.files[0]);
+                }
+            });
+            
+            // Імпорт: Кнопка імпорту
+            importBtn.addEventListener('click', importData);
+            
+            // Імпорт: Кнопка очищення
+            clearBtn.addEventListener('click', clearData);
+            
+            // Експорт: Встановлюємо дати за замовчуванням (останні 30 днів)
+            const today = new Date();
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(today.getDate() - 30);
+            
+            filterDateFrom.value = thirtyDaysAgo.toISOString().split('T')[0];
+            filterDateTo.value = today.toISOString().split('T')[0];
+            
+            // Експорт: Завантажуємо дані при завантаженні сторінки
+            loadExportData();
+            
+            // Експорт: Обробники подій
+            loadDataBtn.addEventListener('click', loadExportData);
+            exportBtn.addEventListener('click', exportToExcel);
+            clearFiltersBtn.addEventListener('click', clearExportFilters);
+            
+            // Експорт: Автоматичне оновлення при зміні фільтрів
+            [filterMainHerald, filterPartnerHerald, filterDateFrom, filterDateTo].forEach(element => {
+                element.addEventListener('change', applyExportFilters);
+            });
+        });
+
+        // ========== ФУНКЦІЇ ІМПОРТУ ==========
+
+        // Перевірка типу файлу
+        function isValidFileType(file) {
+            const fileName = file.name.toLowerCase();
+            return fileName.endsWith('.xlsx') || 
+                   fileName.endsWith('.xls') || 
+                   fileName.endsWith('.csv');
+        }
+
+        // Обробка файлу
+        function handleFile(file) {
+            if (!isValidFileType(file)) {
+                showStatus('error', 'Помилка', 'Будь ласка, оберіть файл Excel (.xlsx, .xls) або CSV');
+                return;
+            }
+            
+            fileName = file.name;
+            fileData = file;
+            
+            // Оновити інформацію про файл
+            fileNameElement.textContent = file.name;
+            fileSizeElement.textContent = `(${formatFileSize(file.size)})`;
+            fileInfo.style.display = 'flex';
+            
+            // Прочитати файл
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Отримати перший аркуш
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // Конвертувати в JSON
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    // Обробити дані
+                    processExcelData(jsonData);
+                    
+                } catch (error) {
+                    console.error('Помилка читання файлу:', error);
+                    showStatus('error', 'Помилка', 'Не вдалося прочитати файл. Перевірте формат.');
+                }
+            };
+            
+            reader.onerror = function() {
+                showStatus('error', 'Помилка', 'Помилка при читанні файлу');
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Обробка даних з Excel
+        function processExcelData(data) {
+            importedData = [];
+            
+            // Знайти рядок з даними (пропускаємо заголовки)
+            let startRow = 0;
+            for (let i = 0; i < data.length; i++) {
+                if (data[i].length >= 6 && data[i][0] !== undefined && data[i][0] !== '') {
+                    startRow = i;
+                    break;
+                }
+            }
+            
+            // Обробити кожен рядок
+            const processedRows = [];
+            let validRows = 0;
+            let errorRows = 0;
+            
+            for (let i = startRow; i < data.length; i++) {
+                const row = data[i];
+                const processedRow = processRow(row, i + 1);
+                processedRows.push(processedRow);
+                
+                if (processedRow.isValid) {
+                    validRows++;
+                    importedData.push(processedRow.data);
+                } else {
+                    errorRows++;
+                }
+            }
+            
+            // Оновити інформацію про рядки
+            rowCountElement.textContent = `${validRows} валідних рядків, ${errorRows} з помилками`;
+            
+            // Показати попередній перегляд
+            displayPreview(processedRows);
+            
+            // Активувати кнопки
+            importBtn.disabled = validRows === 0;
+            clearBtn.disabled = false;
+            
+            if (validRows > 0) {
+                showStatus('info', 'Готово до імпорту', 
+                    `Знайдено ${validRows} валідних записів для імпорту. ${errorRows > 0 ? `${errorRows} записів мають помилки.` : ''}`);
+            } else {
+                showStatus('error', 'Помилка', 'Не знайдено жодного валідного запису для імпорту.');
+            }
+        }
+
+        // Обробка окремого рядка
+        function processRow(row, rowNumber) {
+            const result = {
+                rowNumber: rowNumber,
+                isValid: false,
+                errors: [],
+                data: null,
+                originalRow: row
+            };
+            
+            // Перевірка наявності всіх стовпців (тепер 6 стовпців)
+            if (!row || row.length < 6) {
+                result.errors.push('Недостатньо стовпців. Очікується 6 стовпців');
+                return result;
+            }
+            
+            const serialNumber = row[0];  // Нова колонка - порядковий номер
+            const taskNumber = row[1];    // Тепер це друга колонка
+            const mainHerald = row[2];    // Третя колонка
+            const partnerHerald = row[3]; // Четверта колонка
+            const dateStr = row[4];       // П'ята колонка
+            const taskName = row[5];      // Шоста колонка
+            
+            // Валідація порядкового номера
+            if (serialNumber === undefined || serialNumber === null || serialNumber === '') {
+                result.errors.push('Відсутній порядковий номер');
+            } else if (isNaN(serialNumber)) {
+                result.errors.push('Порядковий номер має бути числом');
+            }
+            
+            // Валідація номеру завдання
+            if (taskNumber === undefined || taskNumber === null || taskNumber === '') {
+                result.errors.push('Відсутній номер завдання');
+            } else if (isNaN(taskNumber)) {
+                result.errors.push('Номер завдання має бути числом');
+            }
+            
+            // Валідація імені головного
+            if (!mainHerald || typeof mainHerald !== 'string' || mainHerald.trim() === '') {
+                result.errors.push('Відсутнє ім\'я головного вісника');
+            }
+            
+            // Валідація імені напарника
+            if (!partnerHerald || typeof partnerHerald !== 'string' || partnerHerald.trim() === '') {
+                result.errors.push('Відсутнє ім\'я напарника');
+            }
+            
+            // Валідація дати
+            let dateObj = null;
+            if (dateStr === undefined || dateStr === null || dateStr === '') {
+                result.errors.push('Відсутня дата');
+            } else {
+                dateObj = parseDate(dateStr);
+                if (!dateObj) {
+                    result.errors.push(`Невірний формат дати: "${dateStr}". Очікується ДД.ММ.РРРР або дата Excel`);
+                }
+            }
+            
+            // Валідація назви завдання
+            if (!taskName || typeof taskName !== 'string' || taskName.trim() === '') {
+                result.errors.push('Відсутня назва завдання');
+            }
+            
+            // Якщо немає помилок, формуємо об'єкт даних
+            if (result.errors.length === 0) {
+                result.isValid = true;
+                result.data = {
+                    serialNumber: parseInt(serialNumber),  // Додаємо порядковий номер
+                    taskNumber: parseInt(taskNumber),
+                    mainHerald: mainHerald.trim(),
+                    partnerHerald: partnerHerald.trim(),
+                    date: dateObj,
+                    task: taskName.trim()
+                };
+            }
+            
+            return result;
+        }
+
+        // Парсинг дати з формату Excel або ДД.ММ.РРРР
+        function parseDate(dateValue) {
+            // Якщо це число Excel (кількість днів з 1 січня 1900)
+            if (typeof dateValue === 'number') {
+                // Excel дати починаються з 1 січня 1900
+                const excelEpoch = new Date(1900, 0, 1);
+                const date = new Date(excelEpoch.getTime() + (dateValue - 1) * 24 * 60 * 60 * 1000);
+                
+                // Виправлення для Excel багу (вважає 1900 рік високосним)
+                if (dateValue > 60) {
+                    date.setTime(date.getTime() - 24 * 60 * 60 * 1000);
+                }
+                
+                return date;
+            }
+            
+            // Якщо це текст у форматі ДД.ММ.РРРР
+            if (typeof dateValue === 'string') {
+                const parts = dateValue.split('.');
+                if (parts.length === 3) {
+                    const day = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10) - 1;
+                    const year = parseInt(parts[2], 10);
+                    
+                    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+                        const date = new Date(year, month, day);
+                        // Перевірка чи дата валідна
+                        if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
+                            return date;
+                        }
+                    }
+                }
+                
+                // Спроба парсингу як стандартної дати
+                const date = new Date(dateValue);
+                if (!isNaN(date.getTime())) {
+                    return date;
+                }
+            }
+            
+            return null;
+        }
+
+        // Відображення попереднього перегляду
+        function displayPreview(rows) {
+            previewTableBody.innerHTML = '';
+            
+            if (rows.length === 0) {
+                previewTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px;">
+                            <div style="color: #7f8c8d;">Не знайдено даних для відображення</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            rows.forEach(row => {
+                const tr = document.createElement('tr');
+                if (!row.isValid) {
+                    tr.classList.add('error-row');
+                }
+                
+                const originalRow = row.originalRow || [];
+                const serialNumber = row.data ? row.data.serialNumber : (originalRow[0] || '');
+                const taskNumber = row.data ? row.data.taskNumber : (originalRow[1] || '');
+                const mainHerald = row.data ? row.data.mainHerald : (originalRow[2] || '');
+                const partnerHerald = row.data ? row.data.partnerHerald : (originalRow[3] || '');
+                
+                const originalDate = originalRow[4] || '';
+                const date = row.data ? formatDateForDisplay(row.data.date) : 
+                             (typeof originalDate === 'number' ? `Excel дата: ${originalDate}` : originalDate);
+                
+                const taskName = row.data ? row.data.task : (originalRow[5] || '');
+                
+                let status = '';
+                if (row.isValid) {
+                    status = '<span style="color: var(--success-color);">✓ Валідний</span>';
+                } else {
+                    status = `<span style="color: var(--danger-color);">✗ Помилки: ${row.errors.join(', ')}</span>`;
+                }
+                
+                tr.innerHTML = `
+                    <td>${serialNumber}</td>
+                    <td>${taskNumber}</td>
+                    <td>${mainHerald}</td>
+                    <td>${partnerHerald}</td>
+                    <td>${date}</td>
+                    <td>${taskName}</td>
+                    <td>${status}</td>
+                `;
+                
+                previewTableBody.appendChild(tr);
+            });
+        }
+
+        // Допоміжна функція для отримання існуючих порядкових номерів
+        async function getExistingSerialNumbers() {
+            try {
+                const querySnapshot = await db.collection('taskHistory')
+                    .select('serialNumber')
+                    .get();
+                
+                const existingNumbers = new Set();
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.serialNumber) {
+                        existingNumbers.add(data.serialNumber);
+                    }
+                });
+                
+                return existingNumbers;
+            } catch (error) {
+                console.error('Помилка отримання порядкових номерів:', error);
+                return new Set();
+            }
+        }
+
+        // Імпорт даних в Firebase
+        async function importData() {
+            if (importedData.length === 0) {
+                showStatus('error', 'Помилка', 'Немає даних для імпорту');
+                return;
+            }
+            
+            importBtn.disabled = true;
+            importBtn.innerHTML = '<div class="spinner"></div><span>Імпорт...</span>';
+            
+            try {
+                showStatus('info', 'Імпорт даних', 'Перевірка унікальності порядкових номерів...');
+                
+                // Перевіряємо, чи є конфлікти з існуючими порядковими номерами
+                const existingNumbers = await getExistingSerialNumbers();
+                const conflictingRecords = importedData.filter(record => 
+                    existingNumbers.has(record.serialNumber)
+                );
+                
+                if (conflictingRecords.length > 0) {
+                    const conflictNumbers = conflictingRecords.map(r => r.serialNumber).join(', ');
+                    showStatus('error', 'Помилка', 
+                        `Знайдено конфлікти порядкових номерів: ${conflictNumbers}. Будь ласка, виправте номери та спробуйте знову.`);
+                    return;
+                }
+                
+                showStatus('info', 'Імпорт даних', `Початок імпорту ${importedData.length} записів...`);
+                
+                let successCount = 0;
+                let errorCount = 0;
+                const errors = [];
+                
+                // Імпортуємо кожен запис
+                for (let i = 0; i < importedData.length; i++) {
+                    const record = importedData[i];
+                    
+                    try {
+                        await db.collection('taskHistory').add({
+                            serialNumber: record.serialNumber,  // Використовуємо порядковий номер з Excel
+                            taskNumber: record.taskNumber,
+                            mainHerald: record.mainHerald,
+                            partnerHerald: record.partnerHerald,
+                            date: firebase.firestore.Timestamp.fromDate(record.date),
+                            task: record.task,
+                            importedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        successCount++;
+                        
+                        if (successCount % 10 === 0) {
+                            statusMessage.textContent = `Імпортовано ${successCount} з ${importedData.length} записів...`;
+                        }
+                        
+                    } catch (error) {
+                        errorCount++;
+                        errors.push(`Рядок ${i + 1}: ${error.message}`);
+                        console.error(`Помилка імпорту рядка ${i + 1}:`, error);
+                    }
+                }
+                
+                if (errorCount === 0) {
+                    showStatus('success', 'Успішно!', 
+                        `Всі ${successCount} записів успішно імпортовані в базу даних.`);
+                } else {
+                    showStatus('warning', 'Частково успішно', 
+                        `Імпортовано ${successCount} записів. ${errorCount} записів не вдалося імпортувати.`);
+                    
+                    if (errors.length > 0) {
+                        statusDetails.innerHTML = '<strong>Помилки:</strong><br>' + 
+                            errors.slice(0, 5).join('<br>') + 
+                            (errors.length > 5 ? `<br>... і ще ${errors.length - 5} помилок` : '');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Загальна помилка імпорту:', error);
+                showStatus('error', 'Помилка імпорту', 
+                    'Сталася помилка під час імпорту даних: ' + error.message);
+            } finally {
+                importBtn.disabled = false;
+                importBtn.innerHTML = '<span>Імпортувати дані</span>';
+            }
+        }
+
+        // Очищення даних імпорту
+        function clearData() {
+            fileInput.value = '';
+            importedData = [];
+            fileName = '';
+            fileData = null;
+            
+            fileInfo.style.display = 'none';
+            previewTableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 40px;">
+                        <div style="color: #7f8c8d;">Завантажте файл для перегляду даних</div>
+                    </td>
+                </tr>
+            `;
+            
+            importBtn.disabled = true;
+            clearBtn.disabled = true;
+            statusSection.style.display = 'none';
+        }
+
+        // ========== ФУНКЦІЇ ЕКСПОРТУ ==========
+
+        // Завантаження даних для експорту
+        async function loadExportData() {
+            loadDataBtn.disabled = true;
+            loadDataBtn.innerHTML = '<div class="spinner"></div><span>Завантаження...</span>';
+            
+            try {
+                showStatus('info', 'Завантаження', 'Отримання даних з бази...');
+                
+                const querySnapshot = await db.collection('taskHistory')
+                    .orderBy('date', 'desc')
+                    .get();
+                
+                allData = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    allData.push({
+                        id: doc.id,
+                        serialNumber: data.serialNumber || 0,
+                        taskNumber: data.taskNumber || 1,
+                        mainHerald: data.mainHerald || '',
+                        partnerHerald: data.partnerHerald || '',
+                        date: data.date ? data.date.toDate() : new Date(),
+                        task: data.task || '',
+                        importedAt: data.importedAt ? data.importedAt.toDate() : null
+                    });
+                });
+                
+                updateExportFilters();
+                applyExportFilters();
+                showStatus('success', 'Успішно', `Завантажено ${allData.length} записів`);
+                
+            } catch (error) {
+                console.error('Помилка завантаження даних:', error);
+                showStatus('error', 'Помилка', 'Не вдалося завантажити дані: ' + error.message);
+            } finally {
+                loadDataBtn.disabled = false;
+                loadDataBtn.innerHTML = '<span>Завантажити дані</span>';
+            }
+        }
+
+        // Оновлення фільтрів експорту
+        function updateExportFilters() {
+            const mainHeralds = [...new Set(allData.map(record => record.mainHerald))].filter(Boolean).sort();
+            const partnerHeralds = [...new Set(allData.map(record => record.partnerHerald))].filter(Boolean).sort();
+            
+            updateSelectOptions(filterMainHerald, mainHeralds, 'Всі головні');
+            updateSelectOptions(filterPartnerHerald, partnerHeralds, 'Всі напарники');
+            
+            totalRecords.textContent = allData.length;
+        }
+
+        function updateSelectOptions(selectElement, options, defaultText) {
+            const currentValue = selectElement.value;
+            selectElement.innerHTML = `<option value="">${defaultText}</option>`;
+            
+            options.forEach(option => {
+                const optionElement = document.createElement('option');
+                optionElement.value = option;
+                optionElement.textContent = option;
+                selectElement.appendChild(optionElement);
+            });
+            
+            if (options.includes(currentValue)) {
+                selectElement.value = currentValue;
+            }
+        }
+
+        // Застосування фільтрів експорту
+        function applyExportFilters() {
+            filteredData = allData.filter(record => {
+                if (filterMainHerald.value && record.mainHerald !== filterMainHerald.value) return false;
+                if (filterPartnerHerald.value && record.partnerHerald !== filterPartnerHerald.value) return false;
+                
+                const recordDate = new Date(record.date);
+                if (filterDateFrom.value && recordDate < new Date(filterDateFrom.value)) return false;
+                if (filterDateTo.value && recordDate > new Date(filterDateTo.value + 'T23:59:59')) return false;
+                
+                return true;
+            });
+            
+            updateExportPreview();
+            updateExportStats();
+            
+            exportBtn.disabled = filteredData.length === 0;
+        }
+
+        // Оновлення статистики експорту
+        function updateExportStats() {
+            filteredRecords.textContent = filteredData.length;
+            
+            if (filteredData.length > 0) {
+                const dates = filteredData.map(record => new Date(record.date));
+                const minDate = new Date(Math.min(...dates));
+                const maxDate = new Date(Math.max(...dates));
+                dateRange.textContent = `${formatDateForDisplay(minDate)} - ${formatDateForDisplay(maxDate)}`;
+            } else {
+                dateRange.textContent = '-';
+            }
+            
+            const estimatedSize = filteredData.length * 100;
+            fileSize.textContent = formatFileSize(estimatedSize);
+        }
+
+        // Оновлення попереднього перегляду експорту
+        function updateExportPreview() {
+            exportPreviewTableBody.innerHTML = '';
+            
+            if (filteredData.length === 0) {
+                exportPreviewTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px;">
+                            <div style="color: #7f8c8d;">Не знайдено записів за обраними фільтрами</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            const displayData = filteredData.slice(0, 100);
+            
+            displayData.forEach(record => {
+                const tr = document.createElement('tr');
+                
+                tr.innerHTML = `
+                    <td>${record.serialNumber || ''}</td>
+                    <td>${record.taskNumber}</td>
+                    <td>${record.mainHerald}</td>
+                    <td>${record.partnerHerald}</td>
+                    <td>${formatDateForDisplay(record.date)}</td>
+                    <td>${record.task}</td>
+                    <td>${record.importedAt ? formatDateForDisplay(record.importedAt) : ''}</td>
+                `;
+                
+                exportPreviewTableBody.appendChild(tr);
+            });
+            
+            if (filteredData.length > 100) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td colspan="7" style="text-align: center; padding: 20px; background: #f8f9fa;">
+                        <div style="color: #7f8c8d;">
+                            Показано перші 100 записів з ${filteredData.length}. Всі дані будуть включені в експорт.
+                        </div>
+                    </td>
+                `;
+                exportPreviewTableBody.appendChild(tr);
+            }
+        }
+
+        // Експорт в Excel
+        function exportToExcel() {
+            if (filteredData.length === 0) {
+                showStatus('error', 'Помилка', 'Немає даних для експорту');
+                return;
+            }
+            
+            exportBtn.disabled = true;
+            exportBtn.innerHTML = '<div class="spinner"></div><span>Експорт...</span>';
+            
+            try {
+                showStatus('info', 'Експорт', 'Підготовка Excel файлу...');
+                
+                const exportData = filteredData.map(record => {
+                    const row = {};
+                    
+                    if (includeSerialNumber.checked) {
+                        row['Порядковий номер'] = record.serialNumber || '';
+                    }
+                    
+                    if (includeTaskNumber.checked) {
+                        row['Номер завдання'] = record.taskNumber;
+                    }
+                    
+                    row['Головний вісник'] = record.mainHerald;
+                    row['Напарник'] = record.partnerHerald;
+                    
+                    if (formatDates.checked) {
+                        row['Дата'] = formatDateForDisplay(record.date);
+                    } else {
+                        row['Дата'] = record.date;
+                    }
+                    
+                    row['Завдання'] = record.task;
+                    
+                    if (includeImportDate.checked && record.importedAt) {
+                        if (formatDates.checked) {
+                            row['Дата імпорту'] = formatDateForDisplay(record.importedAt);
+                        } else {
+                            row['Дата імпорту'] = record.importedAt;
+                        }
+                    }
+                    
+                    return row;
+                });
+                
+                const worksheet = XLSX.utils.json_to_sheet(exportData);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Історія завдань');
+                
+                const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                const fileName = `історія_завдань_${timestamp}.xlsx`;
+                
+                XLSX.writeFile(workbook, fileName);
+                
+                showStatus('success', 'Успішно!', `Файл "${fileName}" успішно експортовано. Експортовано ${filteredData.length} записів.`);
+                
+            } catch (error) {
+                console.error('Помилка експорту:', error);
+                showStatus('error', 'Помилка', 'Не вдалося експортувати дані: ' + error.message);
+            } finally {
+                exportBtn.disabled = false;
+                exportBtn.innerHTML = '<span>Експортувати в Excel</span>';
+            }
+        }
+
+        // Очищення фільтрів експорту
+        function clearExportFilters() {
+            filterMainHerald.value = '';
+            filterPartnerHerald.value = '';
+            
+            const today = new Date();
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(today.getDate() - 30);
+            
+            filterDateFrom.value = thirtyDaysAgo.toISOString().split('T')[0];
+            filterDateTo.value = today.toISOString().split('T')[0];
+            
+            applyExportFilters();
+        }
+
+        // ========== СПІЛЬНІ ФУНКЦІЇ ==========
+
+        // Показати статус
+        function showStatus(type, title, message) {
+            statusSection.className = 'status-section';
+            
+            switch (type) {
+                case 'success':
+                    statusSection.classList.add('status-success');
+                    statusIcon.textContent = '✅';
+                    break;
+                case 'error':
+                    statusSection.classList.add('status-error');
+                    statusIcon.textContent = '❌';
+                    break;
+                case 'warning':
+                    statusSection.classList.add('status-info');
+                    statusIcon.textContent = '⚠️';
+                    break;
+                default:
+                    statusSection.classList.add('status-info');
+                    statusIcon.textContent = 'ℹ️';
+            }
+            
+            statusTitle.textContent = title;
+            statusMessage.textContent = message;
+            statusSection.style.display = 'block';
+            
+            statusSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Допоміжні функції
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function formatDateForDisplay(date) {
+            if (!date) return '';
+            const d = new Date(date);
+            return d.toLocaleDateString('uk-UA');
+        }
+    </script>
+</body>
+</html>

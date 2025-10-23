@@ -1,0 +1,1715 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta name="robots" content="noindex, nofollow">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Графік завдань для братів</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #34495e;
+            --highlight-color: #e1f5fe;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.4;
+            font-size: 14px;
+        }
+        
+        .container {
+            max-width: 1300px; /* Змінено з 800px на 1300px */
+            margin: 0 auto;
+            padding: 15px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+        
+        .subtitle {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .controls {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .date-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .date-section label {
+            font-weight: 500;
+            min-width: 120px;
+        }
+        
+        .date-section input {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        .week-navigation {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+            position: relative;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn-primary {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background-color: #2980b9;
+        }
+        
+        .btn-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .btn-success:hover:not(:disabled) {
+            background-color: #219653;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        .btn-danger:hover:not(:disabled) {
+            background-color: #c0392b;
+        }
+        
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid var(--secondary-color);
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .meetings-container {
+            margin-bottom: 15px;
+        }
+        
+        .meeting-item {
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        
+        .meeting-item.current-week {
+            background: var(--highlight-color);
+        }
+        
+        .meeting-item.executed {
+            border-left: 4px solid var(--success-color);
+        }
+        
+        .meeting-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: var(--light-color);
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .meeting-header:hover {
+            background: #dfe6e9;
+        }
+        
+        .meeting-date {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        .meeting-special {
+            font-size: 0.8rem;
+            color: var(--warning-color);
+            font-weight: 500;
+        }
+        
+        .meeting-status {
+            font-size: 0.8rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: white;
+        }
+        
+        .meeting-status.planned {
+            background: var(--secondary-color);
+        }
+        
+        .meeting-status.executed {
+            background: var(--success-color);
+        }
+        
+        .week-badge {
+            background: var(--warning-color);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            margin-left: 5px;
+        }
+        
+        .meeting-arrow {
+            transition: transform 0.3s;
+        }
+        
+        .meeting-arrow.open {
+            transform: rotate(180deg);
+        }
+        
+        .meeting-content {
+            display: none;
+            padding: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        .meeting-content.open {
+            display: block;
+        }
+        
+        .meeting-special-events {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            flex-wrap: wrap;
+        }
+        
+        .event-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .event-checkbox input {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .tasks-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        
+        .task-row {
+            display: flex;
+            align-items: center;
+            padding: 8px 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            gap: 8px;
+        }
+        
+        .task-row.optional {
+            background-color: #f8f8f8;
+        }
+        
+        .task-row.disabled {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .task-name {
+            min-width: 160px;
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+        
+        .task-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 70px;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 18px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 18px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .toggle-slider {
+            background-color: var(--success-color);
+        }
+        
+        input:checked + .toggle-slider:before {
+            transform: translateX(18px);
+        }
+        
+        .task-assignment {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .assigned-brother {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px;
+            background: var(--light-color);
+            border-radius: 4px;
+            flex: 1;
+        }
+        
+        .brother-name {
+            font-weight: 500;
+            flex: 1;
+        }
+        
+        .brother-days {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            min-width: 60px;
+            text-align: right;
+        }
+        
+        .brother-days.negative {
+            color: var(--danger-color);
+            font-weight: 500;
+        }
+        
+        .select-brother-btn, .delete-brother-btn {
+            padding: 5px 8px;
+            border: 1px dashed #bdc3c7;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+            min-width: 80px;
+            text-align: center;
+        }
+        
+        .select-brother-btn {
+            background: var(--light-color);
+            color: #7f8c8d;
+        }
+        
+        .select-brother-btn:hover {
+            background: #dfe6e9;
+            border-color: var(--secondary-color);
+            color: var(--secondary-color);
+        }
+        
+        .delete-brother-btn {
+            background: var(--danger-color);
+            color: white;
+            border: none;
+        }
+        
+        .delete-brother-btn:hover {
+            background: #c0392b;
+        }
+        
+        .history-section {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            padding: 15px;
+        }
+        
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .section-title {
+            font-size: 1.1rem;
+            color: var(--primary-color);
+        }
+        
+        .history-filters {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-select {
+            padding: 5px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        
+        .history-table th, .history-table td {
+            padding: 8px 6px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .history-table th {
+            background-color: var(--light-color);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            font-size: 0.75rem;
+        }
+        
+        .history-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .congress-row {
+            background-color: #fff3cd !important;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 500px;
+            max-height: 70vh;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal-header {
+            padding: 15px;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 5px;
+        }
+        
+        .modal-body {
+            padding: 15px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+        
+        .error-message {
+            color: var(--danger-color);
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+        
+        .brothers-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .brother-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .brother-item:hover {
+            background: var(--light-color);
+            border-color: var(--secondary-color);
+        }
+        
+        .brother-item.selected {
+            background: #e1f5fe;
+            border-color: var(--secondary-color);
+        }
+        
+        .brother-info {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            align-items: center;
+        }
+        
+        .edit-date-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 10px;
+        }
+        
+        .edit-date-btn, .delete-meeting-btn {
+            padding: 5px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+        
+        .edit-date-btn {
+            background: var(--light-color);
+            border: 1px dashed #bdc3c7;
+            color: #7f8c8d;
+        }
+        
+        .edit-date-btn:hover {
+            background: #dfe6e9;
+            border-color: var(--secondary-color);
+            color: var(--secondary-color);
+        }
+        
+        .delete-meeting-btn {
+            background: var(--danger-color);
+            color: white;
+            border: none;
+        }
+        
+        .delete-meeting-btn:hover {
+            background: #c0392b;
+        }
+        
+        .pagination-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-top: 15px;
+            padding: 10px;
+        }
+        
+        .pagination-controls .btn {
+            flex: none;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .task-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            
+            .task-name {
+                min-width: auto;
+            }
+            
+            .task-toggle {
+                min-width: auto;
+                justify-content: space-between;
+            }
+            
+            .task-assignment {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .assigned-brother {
+                justify-content: space-between;
+            }
+            
+            .history-table {
+                font-size: 0.7rem;
+            }
+            
+            .history-table th, .history-table td {
+                padding: 6px 4px;
+            }
+            
+            .history-header {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+            
+            .edit-date-container {
+                margin-left: 0;
+                margin-top: 5px;
+                flex-wrap: wrap;
+            }
+			.filter-select[type="date"] {
+    min-width: 130px;
+}
+
+#refreshHistoryBtn {
+    flex: none;
+    min-width: 100px;
+}
+
+.filter-select[type="date"] {
+    min-width: 130px;
+}
+
+#refreshHistoryBtn {
+    flex: none;
+    min-width: 100px;
+}
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Графік завдань для братів</h1>
+            <div class="subtitle">Планування та історія виконання завдань на зібраннях</div>
+        </header>
+        
+        <div class="controls">
+            <div class="date-section">
+                <label for="meetingDate">Дата зібрання:</label>
+                <input type="date" id="meetingDate">
+                <button class="btn btn-success" id="createMeetingBtn">
+                    Створити зібрання
+                </button>
+            </div>
+            
+            <div class="week-navigation">
+                <button class="btn btn-primary" id="prevWeekBtn">
+                    ← Попередній період
+                </button>
+                <button class="btn btn-primary" id="nextWeekBtn">
+                    Наступний період →
+                </button>
+            </div>
+        </div>
+        
+        <div class="meetings-container" id="meetingsContainer">
+            <!-- Зібрання будуть додані через JavaScript -->
+        </div>
+        
+        <div class="history-section">
+            <div class="history-header">
+                <h2 class="section-title">Історія завдань</h2>
+                <div class="history-filters">
+
+					    <input type="date" class="filter-select" id="dateFromFilter" placeholder="Від дати">
+    <input type="date" class="filter-select" id="dateToFilter" placeholder="До дати">
+                    <select class="filter-select" id="taskFilter">
+                        <option value="">Всі завдання</option>
+                    </select>
+                    <select class="filter-select" id="brotherFilter">
+                        <option value="">Всі брати</option>
+                    </select>
+					 <button class="btn btn-primary" id="refreshHistoryBtn">Оновити</button>
+                </div>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Ведучий</th>
+                            <th>Молитва Поч.</th>
+                            <th>Скарби Промова</th>
+                            <th>Духовні Перлини</th>
+                            <th>Читання Біблії</th>
+                            <th>Промова Учнівська</th>
+                            <th>Обговорення1</th>
+                            <th>Обговорення2</th>
+                            <th>Місцеві Потреби</th>
+                            <th>Вивчення Біблії</th>
+                            <th>Читання</th>
+                            <th>Молитва Зак.</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <!-- Історія буде додана через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-controls" id="paginationControls">
+                <!-- Пагінація буде додана через JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальне вікно для вибору брата -->
+    <div class="modal" id="brotherModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Вибір брата</div>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="brothers-list" id="brothersList">
+                    <!-- Список братів буде доданий через JavaScript -->
+                </div>
+                <div class="error-message" id="modalError" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase конфігурація
+        const firebaseConfig = {
+            apiKey: "AIzaSyCKOETwl_-0PD4qdgkazLECzy4w5BGs4nQ",
+            authDomain: "school-82913.firebaseapp.com",
+            projectId: "school-82913",
+            storageBucket: "school-82913.firebasestorage.app",
+            messagingSenderId: "753638595191",
+            appId: "1:753638595191:web:7a4b1e4457782a14288472",
+            measurementId: "G-8FVHRNMELV"
+        };
+
+        // Ініціалізація Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Константи
+        const PERIOD_DAYS = 84; // 12 тижнів
+        const MAX_HISTORY = 100;
+        const WEEKS_PER_PAGE = 10;
+
+        // Список завдань
+        const TASKS = [
+            { id: 'leader', name: 'Ведучий', dbName: 'Ведучий', required: true },
+            { id: 'opening_prayer', name: 'Молитва Поч.', dbName: 'Молитва', required: true },
+            { id: 'treasures', name: 'Скарби Промова', dbName: 'Скарби Промова', required: true },
+            { id: 'pearls', name: 'Духовні Перлини', dbName: 'Духовні Перлини', required: true },
+            { id: 'bible_reading', name: 'Читання Біблії', dbName: 'Учбове Читання Біблії', required: true },
+            { id: 'student_speech', name: 'Промова Учнівська', dbName: 'Учбова Промова', required: false },
+            { id: 'discussion1', name: 'Обговорення1', dbName: 'Християнське Життя', required: true },
+            { id: 'discussion2', name: 'Обговорення2', dbName: 'Християнське Життя', required: false },
+            { id: 'local_needs', name: 'Місцеві Потреби', dbName: 'Християнське Життя', required: false },
+            { id: 'bible_study', name: 'Вивчення Біблії', dbName: 'Вивчення Біблії у Зборі', required: true },
+            { id: 'reading', name: 'Читання', dbName: 'Читач', required: true },
+            { id: 'closing_prayer', name: 'Молитва Зак.', dbName: 'Молитва', required: true }
+        ];
+
+        // Глобальні змінні
+        let brothersData = [];
+        let brotherTasksMap = new Map();
+        let taskHistory = [];
+        let scheduleHistory = [];
+        let currentWeekStart = new Date();
+        let currentTask = null;
+        let currentMeetingId = null;
+        let meetingStates = new Map();
+        function getToday() {
+    return new Date();
+}
+        let historyPage = 0;
+
+        // DOM елементи
+        const meetingsContainer = document.getElementById('meetingsContainer');
+        const meetingDateInput = document.getElementById('meetingDate');
+        const createMeetingBtn = document.getElementById('createMeetingBtn');
+        const prevWeekBtn = document.getElementById('prevWeekBtn');
+        const nextWeekBtn = document.getElementById('nextWeekBtn');
+        const historyBody = document.getElementById('historyBody');
+        const dateFilter = document.getElementById('dateFilter');
+        const taskFilter = document.getElementById('taskFilter');
+        const brotherFilter = document.getElementById('brotherFilter');
+        const brotherModal = document.getElementById('brotherModal');
+		const refreshHistoryBtn = document.getElementById('refreshHistoryBtn');
+        const modalTitle = document.getElementById('modalTitle');
+        const brothersList = document.getElementById('brothersList');
+        const closeModal = document.getElementById('closeModal');
+        const modalError = document.getElementById('modalError');
+        const paginationControls = document.getElementById('paginationControls');
+		// Додайте до глобальних DOM елементів:
+const dateFromFilter = document.getElementById('dateFromFilter');
+const dateToFilter = document.getElementById('dateToFilter');
+
+        // Ініціалізація
+        document.addEventListener('DOMContentLoaded', initApp);
+
+        async function initApp() {
+            today = new Date();
+            meetingDateInput.value = today.toISOString().split('T')[0];
+            currentWeekStart = new Date(today.getTime() - (today.getDay() * 24 * 60 * 60 * 1000));
+
+            await loadAllData();
+            setupEventListeners();
+        }
+
+        // Завантаження даних
+        async function loadAllData() {
+            try {
+                showLoading(createMeetingBtn, true);
+                await refreshLocalData();
+                await autoPopulateHistory();
+                await loadMeetingsForPeriod();
+                updateHistoryFilters();
+                updateHistoryTable();
+            } catch (error) {
+                showModalError('Помилка завантаження даних: ' + error.message);
+            } finally {
+                showLoading(createMeetingBtn, false);
+            }
+        }
+
+        // Оновлення локальних даних
+        async function refreshLocalData() {
+            const [brothersSnapshot, tasksSnapshot, historySnapshot, schedulesSnapshot] = 
+                await Promise.all([
+                    db.collection('visnyky').where('gender', '==', 'брат').get(),
+                    db.collection('visnykyTasks').get(),
+                    db.collection('brotherTaskHistory')
+                        .orderBy('date', 'desc')
+                        .limit(MAX_HISTORY)
+                        .get(),
+                    db.collection('meetingSchedules')
+                        .orderBy('date', 'desc')
+                        .limit(100)
+                        .get()
+                ]);
+
+            // Обробка братів
+            brothersData = brothersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            // Обробка завдань братів
+            brotherTasksMap.clear();
+            tasksSnapshot.docs.forEach(doc => {
+                const { visnykId, task } = doc.data();
+                if (visnykId && task) {
+                    if (!brotherTasksMap.has(visnykId)) brotherTasksMap.set(visnykId, new Set());
+                    brotherTasksMap.get(visnykId).add(task);
+                }
+            });
+            
+            // Обробка історії
+            taskHistory = historySnapshot.docs.map(doc => ({ 
+                id: doc.id, 
+                ...doc.data(), 
+                date: doc.data().date.toDate() 
+            }));
+            
+            // Обробка розкладу
+            scheduleHistory = schedulesSnapshot.docs.map(doc => ({ 
+                id: doc.id, 
+                ...doc.data(), 
+                date: doc.data().date.toDate() 
+            }));
+        }
+
+        // Авто-виконання для минулих зібрань
+        async function autoPopulateHistory() {
+            const pastMeetings = scheduleHistory.filter(m => m.date < today && !m.executed);
+            if (pastMeetings.length === 0) return;
+
+            const batch = db.batch();
+            let hasChanges = false;
+
+            for (const meeting of pastMeetings) {
+                // Позначаємо зібрання як виконане
+                const meetingRef = db.collection('meetingSchedules').doc(meeting.id);
+                batch.update(meetingRef, { executed: true });
+
+                // Додаємо завдання в історію
+                Object.entries(meeting.tasks ?? {}).forEach(([taskId, task]) => {
+                    if (task.enabled && task.brother) {
+                        const taskInfo = TASKS.find(t => t.id === taskId);
+                        if (taskInfo) {
+                            const historyRef = db.collection('brotherTaskHistory').doc();
+                            batch.set(historyRef, {
+                                brotherId: task.brother.id,
+                                brotherName: task.brother.name,
+                                task: taskInfo.dbName,
+                                date: firebase.firestore.Timestamp.fromDate(meeting.date),
+                                meetingId: meeting.id
+                            });
+                            hasChanges = true;
+                        }
+                    }
+                });
+            }
+
+            if (hasChanges) {
+                await batch.commit();
+                await refreshLocalData();
+            }
+        }
+
+        // Завантаження зібрань для періоду
+        async function loadMeetingsForPeriod() {
+            const periodStart = new Date(currentWeekStart);
+            const periodEnd = new Date(periodStart.getTime() + (PERIOD_DAYS * 24 * 60 * 60 * 1000));
+
+            const meetings = scheduleHistory.filter(meeting => 
+                meeting.date >= periodStart && meeting.date <= periodEnd
+            ).sort((a, b) => b.date - a.date);
+
+            renderMeetings(meetings);
+        }
+
+        // Обробники подій
+        function setupEventListeners() {
+            createMeetingBtn.addEventListener('click', createNewMeeting);
+            prevWeekBtn.addEventListener('click', () => { 
+                currentWeekStart.setDate(currentWeekStart.getDate() - PERIOD_DAYS); 
+                loadMeetingsForPeriod(); 
+            });
+            nextWeekBtn.addEventListener('click', () => { 
+                currentWeekStart.setDate(currentWeekStart.getDate() + PERIOD_DAYS); 
+                loadMeetingsForPeriod(); 
+            });
+
+            taskFilter.addEventListener('change', updateHistoryTable);
+            brotherFilter.addEventListener('change', updateHistoryTable);
+
+            closeModal.addEventListener('click', closeBrotherModal);
+
+            window.addEventListener('click', (e) => {
+                if (e.target === brotherModal) closeBrotherModal();
+            });
+			dateFromFilter.addEventListener('change', updateHistoryTable);
+    dateToFilter.addEventListener('change', updateHistoryTable);
+	document.getElementById('refreshHistoryBtn').addEventListener('click', refreshHistoryTable);
+        }
+async function refreshHistoryTable() {
+    try {
+        showLoading(document.getElementById('refreshHistoryBtn'), true);
+        await refreshLocalData();
+        updateHistoryTable();
+    } catch (error) {
+        showModalError('Помилка оновлення: ' + error.message);
+    } finally {
+        showLoading(document.getElementById('refreshHistoryBtn'), false);
+    }
+}
+
+        // Створення нового зібрання
+        async function createNewMeeting() {
+            const dateStr = meetingDateInput.value;
+            if (!dateStr) return showModalError('Оберіть дату!');
+
+            const meetingDate = normalizeDate(dateStr);
+            if (isNaN(meetingDate.getTime())) return showModalError('Невалідна дата!');
+
+            const existing = scheduleHistory.find(s => 
+                s.date.toDateString() === meetingDate.toDateString()
+            );
+            if (existing) return showModalError('Зібрання на цю дату вже існує!');
+
+            try {
+                showLoading(createMeetingBtn, true);
+                const tasks = {};
+                TASKS.forEach(task => {
+                    tasks[task.id] = { 
+                        enabled: true, // ВСІ завдання завжди активні
+                        brother: null 
+                    };
+                });
+
+                const data = {
+                    date: firebase.firestore.Timestamp.fromDate(meetingDate),
+                    tasks,
+                    districtOverseer: false,
+                    congress: false,
+                    executed: false
+                };
+
+                await db.collection('meetingSchedules').add(data);
+                
+                await refreshLocalData();
+                await loadMeetingsForPeriod();
+                showModalError('Зібрання створено!');
+            } catch (error) {
+                showModalError('Помилка: ' + error.message);
+            } finally {
+                showLoading(createMeetingBtn, false);
+            }
+        }
+
+        // Відображення зібрань
+        function renderMeetings(meetings) {
+            meetingsContainer.innerHTML = meetings.length === 0 ? 
+                '<div class="empty-state">Немає зібрань для цього періоду</div>' : '';
+
+            const currentDate = today;
+            meetings.slice(0, 12).forEach((meeting, index) => {
+                const isOpen = meetingStates.get(meeting.id) ?? (meeting.date.toDateString() === getToday().toDateString());
+                meetingStates.set(meeting.id, isOpen);
+
+                const isExecuted = meeting.date < getToday() || meeting.executed;
+                const status = isExecuted ? 'Виконано' : 'Заплановано';
+                const statusClass = isExecuted ? 'executed' : 'planned';
+
+                const isMidWeek = index % 7 >= 3 && index % 7 <= 4;
+                const specialBadge = (meeting.districtOverseer || meeting.congress) && isMidWeek ? 
+                    `<span class="week-badge">${meeting.districtOverseer ? 'РН' : 'Конгрес'}</span>` : '';
+
+                const meetingItem = document.createElement('div');
+                meetingItem.className = `meeting-item ${meeting.date.toDateString() === getToday().toDateString() ? 'current-week' : ''} ${isExecuted ? 'executed' : ''}`;
+
+                const dateInputValue = meeting.date.toISOString().split('T')[0];
+
+                meetingItem.innerHTML = `
+                    <div class="meeting-header" data-meeting="${meeting.id}">
+                        <div class="meeting-date">
+                            ${meeting.date.toLocaleDateString('uk-UA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                            ${specialBadge}
+                        </div>
+                        <div class="meeting-special">${meeting.congress ? 'Конгрес' : meeting.districtOverseer ? 'Районний Наглядач' : ''}</div>
+                        <div class="meeting-status ${statusClass}">${status}</div>
+                        <div class="edit-date-container">
+                            <input type="date" class="edit-date-input" data-meeting="${meeting.id}" value="${dateInputValue}">
+                            <button class="edit-date-btn" data-meeting="${meeting.id}">Оновити</button>
+                            <button class="delete-meeting-btn" data-meeting="${meeting.id}">Видалити</button>
+                        </div>
+                        <div class="meeting-arrow ${isOpen ? 'open' : ''}">▼</div>
+                    </div>
+                    <div class="meeting-content ${isOpen ? 'open' : ''}" id="content-${meeting.id}">
+                        <div class="meeting-special-events">
+                            <div class="event-checkbox">
+                                <input type="checkbox" id="districtOverseer-${meeting.id}" 
+                                    ${meeting.districtOverseer ? 'checked' : ''} 
+                                    data-meeting="${meeting.id}">
+                                <label for="districtOverseer-${meeting.id}">Районний Наглядач</label>
+                            </div>
+                            <div class="event-checkbox">
+                                <input type="checkbox" id="congress-${meeting.id}" 
+                                    ${meeting.congress ? 'checked' : ''} 
+                                    data-meeting="${meeting.id}">
+                                <label for="congress-${meeting.id}">Конгрес</label>
+                            </div>
+                        </div>
+                        <div class="tasks-container"></div>
+                    </div>
+                `;
+                meetingsContainer.appendChild(meetingItem);
+
+                renderTasksForMeeting(meeting.id, meeting.tasks ?? {}, meeting.districtOverseer, meeting.congress, isExecuted);
+
+                // Event listeners
+                const header = meetingItem.querySelector('.meeting-header');
+                header.addEventListener('click', (e) => {
+                    if (e.target.closest('.edit-date-container') || e.target.closest('.meeting-special-events')) return;
+                    toggleMeetingContent(meeting.id);
+                    currentMeetingId = meeting.id;
+                });
+
+                // Слухачі для галочок спеціальних подій
+                const districtCheckbox = meetingItem.querySelector(`#districtOverseer-${meeting.id}`);
+                const congressCheckbox = meetingItem.querySelector(`#congress-${meeting.id}`);
+                
+                districtCheckbox.addEventListener('change', (e) => {
+                    updateMeetingSpecialEvents(meeting.id, e.target.checked, false);
+                    if (e.target.checked) congressCheckbox.checked = false;
+                });
+                
+                congressCheckbox.addEventListener('change', (e) => {
+                    updateMeetingSpecialEvents(meeting.id, false, e.target.checked);
+                    if (e.target.checked) districtCheckbox.checked = false;
+                });
+
+                meetingItem.querySelector('.edit-date-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    updateMeetingDate(meeting.id);
+                });
+                
+                meetingItem.querySelector('.delete-meeting-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteMeeting(meeting.id);
+                });
+            });
+        }
+
+        function toggleMeetingContent(meetingId) {
+            const content = document.getElementById(`content-${meetingId}`);
+            const arrow = document.querySelector(`[data-meeting="${meetingId}"] .meeting-arrow`);
+            const isOpen = content.classList.contains('open');
+            content.classList.toggle('open');
+            arrow.classList.toggle('open');
+            meetingStates.set(meetingId, !isOpen);
+        }
+
+        // Відображення завдань
+        function renderTasksForMeeting(meetingId, tasks, isDistrictOverseer, isCongress, isExecuted) {
+            const container = document.getElementById(`content-${meetingId}`)?.querySelector('.tasks-container');
+            if (!container) return;
+
+            if (isCongress) {
+                container.innerHTML = '<div class="empty-state">Конгрес - зібрання не відбувається</div>';
+                return;
+            }
+
+            const activeTasks = TASKS.filter(task => {
+                if (isDistrictOverseer && (task.id === 'bible_study' || task.id === 'reading')) return false;
+                return true;
+            }).map(task => {
+                // Робимо всі завдання активними
+                if (!tasks[task.id]) {
+                    tasks[task.id] = { enabled: true, brother: null };
+                } else {
+                    tasks[task.id].enabled = true;
+                }
+                return task;
+            });
+            
+            container.innerHTML = '';
+            activeTasks.forEach(task => {
+                const taskData = tasks[task.id] ?? { enabled: task.required };
+                const isEnabled = taskData.enabled;
+                const brother = taskData.brother;
+                const row = createTaskRow(task, meetingId, isEnabled, brother, isExecuted);
+                container.appendChild(row);
+            });
+
+            container.querySelectorAll('.select-brother-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openBrotherSelection(meetingId, btn.dataset.task);
+                });
+            });
+            
+            container.querySelectorAll('.delete-brother-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteBrotherAssignment(meetingId, btn.dataset.task);
+                });
+            });
+        }
+
+        function createTaskRow(task, meetingId, isEnabled, brother, isExecuted) {
+            const div = document.createElement('div');
+            div.className = `task-row ${!task.required ? 'optional' : ''}`;
+
+            // ВИДАЛІТЬ весь блок з toggleHtml і замініть на пустий div
+            const toggleHtml = '<div class="task-toggle"></div>';
+
+            let assignmentHtml = '';
+            if (brother) {
+                const daysText = brother.daysSinceLast === "не виконував" ? 
+                    "не виконував" : 
+                    `${brother.daysSinceLast} дн.`;
+                
+                assignmentHtml = `
+                    <div class="assigned-brother">
+                        <div class="brother-name">${brother.name}</div>
+                        <div class="brother-days">${daysText}</div>
+                    </div>
+                    <button class="select-brother-btn" data-task="${task.id}" data-meeting="${meetingId}">Змінити</button>
+                    <button class="delete-brother-btn" data-task="${task.id}" data-meeting="${meetingId}">Видалити</button>
+                `;
+            } else {
+                assignmentHtml = `
+                    <button class="select-brother-btn" data-task="${task.id}" data-meeting="${meetingId}">Обрати</button>
+                `;
+            }
+
+            div.innerHTML = `
+                <div class="task-name">${task.name}</div>
+                ${toggleHtml}
+                <div class="task-assignment">${assignmentHtml}</div>
+            `;
+            return div;
+        }
+
+        // Оновлення спеціальних подій
+        async function updateMeetingSpecialEvents(meetingId, districtOverseer, congress) {
+            try {
+                await db.collection('meetingSchedules').doc(meetingId).update({
+                    districtOverseer,
+                    congress
+                });
+
+                await refreshLocalData();
+                await loadMeetingsForPeriod();
+                
+            } catch (error) {
+                console.error('Помилка оновлення подій:', error);
+                showModalError('Помилка оновлення подій');
+            }
+        }
+
+        // Відкриття модалу вибору брата
+        function openBrotherSelection(meetingId, taskId) {
+            currentMeetingId = meetingId;
+            currentTask = taskId;
+            const task = TASKS.find(t => t.id === taskId);
+            modalTitle.textContent = `${task.name} - Вибір брата`;
+            modalError.style.display = 'none';
+
+            const available = getAvailableBrothersForTask(task.dbName, meetingId);
+            
+            brothersList.innerHTML = available.length === 0 ? 
+                '<div class="empty-state">Немає братів для цього завдання</div>' : 
+                available.map(brother => {
+                    const daysText = brother.daysSinceLast === "не виконував" ? 
+                        "не виконував" : 
+                        `${brother.daysSinceLast} дн.`;
+                    
+                    return `
+                        <div class="brother-item" data-brother-id="${brother.id}">
+                            <div class="brother-info">
+                                <div class="brother-name">${brother.name}</div>
+                                <div class="brother-days">${daysText}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            brothersList.querySelectorAll('.brother-item').forEach(item => {
+                item.addEventListener('click', async () => {
+                    const brother = available.find(b => b.id === item.dataset.brotherId);
+                    await selectBrotherForTask(meetingId, taskId, brother);
+                });
+            });
+
+            brotherModal.style.display = 'flex';
+        }
+
+        function closeBrotherModal() {
+            brotherModal.style.display = 'none';
+            modalError.style.display = 'none';
+        }
+
+        // Доступні брати для завдання
+        function getAvailableBrothersForTask(taskDbName, meetingId) {
+            const currentMeeting = scheduleHistory.find(m => m.id === meetingId);
+            if (!currentMeeting) return [];
+            
+            const meetingDate = currentMeeting.date;
+            
+            const available = brothersData
+                .filter(b => brotherTasksMap.get(b.id)?.has(taskDbName))
+                .map(b => ({ 
+                    ...b, 
+                    daysSinceLast: getDaysSinceLastTask(b.id, taskDbName, meetingDate) 
+                }));
+            
+            available.sort((a, b) => {
+                if (a.daysSinceLast === "не виконував" && b.daysSinceLast === "не виконував") return 0;
+                if (a.daysSinceLast === "не виконував") return 1;
+                if (b.daysSinceLast === "не виконував") return -1;
+                return b.daysSinceLast - a.daysSinceLast;
+            });
+            
+            return available;
+        }
+
+        // Дні з останнього виконання
+        function getDaysSinceLastTask(brotherId, taskDbName, meetingDate) {
+            const allAssignments = [];
+            
+            taskHistory.forEach(h => {
+                if (h.brotherId === brotherId && h.task === taskDbName) {
+                    allAssignments.push(h.date);
+                }
+            });
+            
+            scheduleHistory.forEach(meeting => {
+                if (meeting.id !== currentMeetingId && meeting.tasks) {
+                    Object.entries(meeting.tasks).forEach(([taskId, taskData]) => {
+                        const taskInfo = TASKS.find(t => t.id === taskId);
+                        if (taskInfo && taskInfo.dbName === taskDbName && 
+                            taskData.enabled && taskData.brother && 
+                            taskData.brother.id === brotherId) {
+                            allAssignments.push(meeting.date);
+                        }
+                    });
+                }
+            });
+            
+            if (allAssignments.length === 0) return "не виконував";
+
+            const assignmentsBeforeCurrent = allAssignments.filter(date => date < meetingDate);
+            
+            if (assignmentsBeforeCurrent.length === 0) return "не виконував";
+
+            const lastDate = assignmentsBeforeCurrent.reduce((latest, date) => {
+                return date > latest ? date : latest;
+            });
+            
+            const diffTime = meetingDate - lastDate;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            return diffDays;
+        }
+
+        // Призначення брата
+        async function selectBrotherForTask(meetingId, taskId, brother) {
+            try {
+                const ref = db.collection('meetingSchedules').doc(meetingId);
+                const doc = await ref.get();
+                if (!doc.exists) return;
+
+                const data = doc.data();
+                const meetingDate = data.date.toDate();
+                const taskInfo = TASKS.find(t => t.id === taskId);
+                
+                const currentDays = getDaysSinceLastTask(brother.id, taskInfo.dbName, meetingDate);
+                
+                const tasks = { ...data.tasks };
+                if (!tasks[taskId]) {
+                    tasks[taskId] = {};
+                }
+                
+                tasks[taskId].brother = { 
+                    id: brother.id, 
+                    name: brother.name, 
+                    daysSinceLast: currentDays 
+                };
+                
+                await ref.update({ tasks });
+
+                await refreshLocalData();
+
+                closeBrotherModal();
+                await loadMeetingsForPeriod();
+                
+            } catch (error) {
+                console.error('Помилка призначення:', error);
+                showModalError('Помилка призначення брата');
+            }
+        }
+
+        // Видалення призначення
+        async function deleteBrotherAssignment(meetingId, taskId) {
+            if (!confirm('Видалити призначення?')) return;
+
+            try {
+                const ref = db.collection('meetingSchedules').doc(meetingId);
+                const doc = await ref.get();
+                if (!doc.exists) return;
+
+                const data = doc.data();
+                const tasks = { ...data.tasks };
+                
+                if (tasks[taskId]) {
+                    // Отримуємо інформацію про брата перед видаленням
+                    const brotherInfo = tasks[taskId].brother;
+                    
+                    // Видаляємо призначення
+                    delete tasks[taskId].brother;
+
+                    // ВИДАЛЯЄМО З ІСТОРІЇ
+                    if (brotherInfo) {
+                        const taskInfo = TASKS.find(t => t.id === taskId);
+                        if (taskInfo) {
+                            // Знаходимо та видаляємо записи історії для цього завдання та зібрання
+                            const historyQuery = await db.collection('brotherTaskHistory')
+                                .where('meetingId', '==', meetingId)
+                                .where('task', '==', taskInfo.dbName)
+                                .get();
+                            
+                            const batch = db.batch();
+                            historyQuery.docs.forEach(doc => {
+                                batch.delete(doc.ref);
+                            });
+                            
+                            await batch.commit();
+                        }
+                    }
+                }
+
+                await ref.update({ tasks });
+
+                await refreshLocalData();
+                await loadMeetingsForPeriod();
+                
+            } catch (error) {
+                console.error('Помилка видалення:', error);
+                showModalError('Помилка видалення призначення');
+            }
+        }
+
+        // Оновлення дати зібрання
+        async function updateMeetingDate(meetingId) {
+            const input = document.querySelector(`.edit-date-input[data-meeting="${meetingId}"]`);
+            const newDateStr = input.value;
+            if (!newDateStr) return showModalError('Оберіть дату!');
+
+            const newDate = normalizeDate(newDateStr);
+            if (isNaN(newDate.getTime())) return showModalError('Невалідна дата!');
+
+            const existing = scheduleHistory.find(s => 
+                s.date.toDateString() === newDate.toDateString() && s.id !== meetingId
+            );
+            if (existing) return showModalError('Зібрання на цю дату вже існує!');
+
+            try {
+                await db.collection('meetingSchedules').doc(meetingId).update({
+                    date: firebase.firestore.Timestamp.fromDate(newDate)
+                });
+                
+                await refreshLocalData();
+                await loadMeetingsForPeriod();
+                
+            } catch (error) {
+                console.error('Помилка оновлення дати:', error);
+                showModalError('Помилка оновлення дати');
+            }
+        }
+
+        // Видалення зібрання
+        async function deleteMeeting(meetingId) {
+            if (!confirm('Видалити зібрання?')) return;
+
+            try {
+                // Видаляємо пов'язані записи історії
+                const historySnapshot = await db.collection('brotherTaskHistory')
+                    .where('meetingId', '==', meetingId)
+                    .get();
+                
+                const batch = db.batch();
+                historySnapshot.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                
+                // Видаляємо зібрання
+                batch.delete(db.collection('meetingSchedules').doc(meetingId));
+                
+                await batch.commit();
+                
+                await refreshLocalData();
+                await loadMeetingsForPeriod();
+                
+            } catch (error) {
+                console.error('Помилка видалення:', error);
+                showModalError('Помилка видалення зібрання');
+            }
+        }
+
+        // Фільтри історії
+        function updateHistoryFilters() {
+
+
+            taskFilter.innerHTML = '<option value="">Всі завдання</option>' + TASKS.map(t => 
+                `<option value="${t.id}">${t.name}</option>`
+            ).join('');
+
+            const brothers = [...new Set(taskHistory.map(h => h.brotherName))].filter(Boolean).sort();
+            brotherFilter.innerHTML = '<option value="">Всі брати</option>' + brothers.map(b => 
+                `<option value="${b}">${b}</option>`
+            ).join('');
+        }
+
+        // Таблиця історії
+function updateHistoryTable() {
+    const taskVal = taskFilter.value;
+    const brotherVal = brotherFilter.value;
+    
+    // Додаємо отримання значень нових фільтрів дат
+    const dateFromVal = document.getElementById('dateFromFilter')?.value || '';
+    const dateToVal = document.getElementById('dateToFilter')?.value || '';
+
+    // Об'єднуємо історію та заплановані завдання
+    const allAssignments = [];
+    
+    // Додаємо виконані завдання з історії
+    taskHistory.forEach(h => {
+        const taskId = TASKS.find(t => t.dbName === h.task)?.id;
+        if (taskId) {
+            allAssignments.push({
+                date: h.date,
+                type: 'executed',
+                taskId: taskId,
+                brotherName: h.brotherName || '-',
+                meetingId: h.meetingId
+            });
+        }
+    });
+    
+    // Додаємо заплановані завдання
+    scheduleHistory.forEach(meeting => {
+        if (meeting.tasks) {
+            Object.entries(meeting.tasks).forEach(([taskId, taskData]) => {
+                if (taskData.enabled && taskData.brother) {
+                    allAssignments.push({
+                        date: meeting.date,
+                        type: 'planned',
+                        taskId: taskId,
+                        brotherName: taskData.brother.name || '-',
+                        meetingId: meeting.id
+                    });
+                }
+            });
+        }
+    });
+
+    // Фільтрація - ОНОВЛЕНА ЧАСТИНА
+    let filtered = allAssignments.filter(h => {
+        const assignmentDate = h.date.toISOString().split('T')[0];
+        
+        
+        // НОВІ ФІЛЬТРИ: діапазон дат
+        if (dateFromVal && assignmentDate < dateFromVal) return false;
+        if (dateToVal && assignmentDate > dateToVal) return false;
+        
+        // Фільтр по завданню
+        if (taskVal && h.taskId !== taskVal) return false;
+        
+        // Фільтр по брату
+        if (brotherVal && h.brotherName !== brotherVal) return false;
+        
+        return true;
+    });
+
+    // Сортування за датою (новіші зверху)
+    filtered.sort((a, b) => b.date - a.date);
+
+    // Групування за датами
+    const grouped = {};
+    filtered.forEach(h => {
+        const dateKey = h.date.toDateString();
+        if (!grouped[dateKey]) grouped[dateKey] = { 
+            date: h.date, 
+            assignments: {},
+            type: h.type 
+        };
+        grouped[dateKey].assignments[h.taskId] = h.brotherName;
+    });
+
+    const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
+    
+    // Пагінація (10 тижнів на сторінку)
+    const weeksPerPage = WEEKS_PER_PAGE;
+    const totalPages = Math.ceil(sortedDates.length / weeksPerPage);
+    
+    // Оновлюємо поточну сторінку, якщо вона більша за загальну кількість сторінок
+    if (historyPage >= totalPages && totalPages > 0) {
+        historyPage = totalPages - 1;
+    }
+    
+    const startIndex = historyPage * weeksPerPage;
+    const endIndex = startIndex + weeksPerPage;
+    const paginatedDates = sortedDates.slice(startIndex, endIndex);
+    
+    // Оновлення таблиці
+    historyBody.innerHTML = paginatedDates.length === 0 ? 
+        '<tr><td colspan="13" class="empty-state">Немає завдань за фільтрами</td></tr>' : '';
+
+    paginatedDates.forEach(dateKey => {
+        const { date, assignments, type } = grouped[dateKey];
+        const row = document.createElement('tr');
+        
+        // Додаємо CSS клас для запланованих завдань
+const isToday = getToday();
+    if (date > isToday) {
+        row.style.backgroundColor = '#e1f5fe';
+    }
+    
+    let html = `<td>${date.toLocaleDateString('uk-UA', {day: '2-digit', month: '2-digit', year: 'numeric'})}`;
+        
+         html += date > isToday ? ' (заплан.)</td>' : '</td>';
+        
+        TASKS.forEach(task => {
+            html += `<td>${assignments[task.id] ?? '-'}</td>`;
+        });
+        row.innerHTML = html;
+        historyBody.appendChild(row);
+    });
+
+    // Додаємо пагінацію
+    addPaginationControls(totalPages);
+}
+
+        // Додаємо пагінацію
+        function addPaginationControls(totalPages) {
+            paginationControls.innerHTML = '';
+            
+            if (totalPages <= 1) return;
+            
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'btn btn-primary';
+            prevBtn.textContent = '← Попередні 10 тижнів';
+            prevBtn.disabled = historyPage === 0;
+            prevBtn.addEventListener('click', () => {
+                if (historyPage > 0) {
+                    historyPage--;
+                    updateHistoryTable();
+                }
+            });
+            
+            const pageInfo = document.createElement('span');
+            pageInfo.textContent = `Сторінка ${historyPage + 1} з ${totalPages}`;
+            
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'btn btn-primary';
+            nextBtn.textContent = 'Наступні 10 тижнів →';
+            nextBtn.disabled = historyPage >= totalPages - 1;
+            nextBtn.addEventListener('click', () => {
+                if (historyPage < totalPages - 1) {
+                    historyPage++;
+                    updateHistoryTable();
+                }
+            });
+            
+            paginationControls.appendChild(prevBtn);
+            paginationControls.appendChild(pageInfo);
+            paginationControls.appendChild(nextBtn);
+        }
+
+        // Утиліти
+        function normalizeDate(dateStr) {
+            const date = new Date(dateStr);
+            return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        }
+
+function showLoading(btn, show) {
+    if (show) {
+        // Зберігаємо оригінальний текст, якщо ще не збережений
+        if (!btn.dataset.originalText) {
+            btn.dataset.originalText = btn.innerHTML;
+        }
+        btn.innerHTML = '<div class="spinner"></div>Завантаження...';
+        btn.disabled = true;
+    } else {
+        // Використовуємо збережений текст або текст за замовчуванням
+        btn.innerHTML = btn.dataset.originalText || 'Оновити';
+        btn.disabled = false;
+    }
+}
+
+        function showModalError(message) {
+            modalError.textContent = message;
+            modalError.style.display = 'block';
+            setTimeout(() => {
+                modalError.style.display = 'none';
+            }, 3000);
+        }
+
+        // Зберегти оригінальний текст
+        createMeetingBtn.dataset.originalText = createMeetingBtn.innerHTML;
+    </script>
+</body>
+</html>
