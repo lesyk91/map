@@ -529,7 +529,7 @@
                 <table id="historyTable">
                     <thead>
                         <tr>
-							 <th data-sort="serialNumber">№</th> 
+							<th data-sort="serialNumber" class="sorted-desc">№</th>
                             <th data-sort="taskNumber">№ завдання</th>
                             <th data-sort="main">Головний</th>
                             <th data-sort="partner">Напарник</th>
@@ -580,7 +580,7 @@
         // Налаштування сортування
         let mainSortConfig = { column: 'lastMain', direction: 'asc' };
         let partnerSortConfig = { column: 'lastPartner', direction: 'asc' };
-        let historySortConfig = { column: 'date', direction: 'desc' };
+        let historySortConfig = { column: 'serialNumber', direction: 'desc' };
         
         // Фільтри історії
         let historyFilters = {
@@ -817,7 +817,7 @@
 // Завантаження історії завдань
 async function loadHistoryData() {
     try {
-        const querySnapshot = await db.collection('taskHistory').orderBy('date', 'desc').get();
+        const querySnapshot = await db.collection('taskHistory').orderBy('serialNumber', 'desc').get();
         historyData = [];
         querySnapshot.forEach((doc) => {
             const data = doc.data();
